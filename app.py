@@ -10,12 +10,19 @@ from botocore.awsrequest import AWSRequest
 # API Gateway URL from secrets
 api_url = st.secrets["API_URL"]
 
+# Retrieve AWS credentials from secrets
+aws_access_key_id = st.secrets["AWS_ACCESS_KEY_ID"]
+aws_secret_access_key = st.secrets["AWS_SECRET_ACCESS_KEY"]
+
 # Custom AWS Auth class to sign requests
 class AWSV4Auth(AuthBase):
     def __init__(self, service, region):
         self.service = service
         self.region = region
-        self.credentials = boto3.Session().get_credentials()
+        self.credentials = boto3.Session(
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key
+        ).get_credentials()
         self.signer = SigV4Auth(self.credentials, self.service, self.region)
 
     def __call__(self, r):
