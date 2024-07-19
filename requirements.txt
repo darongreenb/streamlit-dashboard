@@ -2,3 +2,5 @@ streamlit
 mysql-connector-python
 pandas
 matplotlib
+streamlit
+requests
