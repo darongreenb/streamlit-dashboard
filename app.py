@@ -2,39 +2,22 @@
 # conda activate streamlit_env
 # streamlit run app.py
 
-import os
 import streamlit as st
-import mysql.connector
+import requests
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# Get environment variables from Streamlit secrets
-db_host = st.secrets["DB_HOST"]
-db_user = st.secrets["DB_USER"]
-db_password = st.secrets["DB_PASSWORD"]
-db_name = st.secrets["DB_NAME"]
+# API Gateway URL
+api_url = "https://kaipkuyuf1.execute-api.us-east-1.amazonaws.com/prod/fetch_data"
 
-# Database connection function
-def get_db_connection():
-    conn = mysql.connector.connect(
-        host=db_host,
-        user=db_user,
-        password=db_password,
-        database=db_name
-    )
-    return conn
+# Fetch data from API
+response = requests.get(api_url)
+data = response.json()
 
-# Function to execute a query and return data as a single result
-def fetch_single_result(query, params):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(query, params)
-    result = cursor.fetchone()
-    cursor.close()
-    conn.close()
-    return float(result[0]) if result and result[0] is not None else 0.0
+# Convert the data to a DataFrame
+df = pd.DataFrame(data)
 
-# Your existing code
+# Streamlit App
 st.title('My First Streamlit App')
 st.write('Hello, world!')
 
@@ -47,26 +30,11 @@ st.sidebar.header('Filter Options')
 fund_option = st.sidebar.selectbox('Select Fund', ['GreenAleph', 'AnotherFund'])
 status_option = st.sidebar.selectbox('Select Status', ['Active', 'Inactive', 'All'])
 
-# SQL Query
-query_total_dollars_at_stake = """
-SELECT SUM(DISTINCT b.DollarsAtStake) AS TotalDollarsAtStake
-FROM bets b
-JOIN (
-    SELECT WagerID
-    FROM legs
-    GROUP BY WagerID
-    HAVING COUNT(*) > 1
-) l ON b.WagerID = l.WagerID
-WHERE b.WhichFund = %s
-"""
-if status_option != 'All':
-    query_total_dollars_at_stake += " AND b.WLCA = %s"
+# Filter the fetched data based on user input
+filtered_df = df[(df['fund'] == fund_option) & (df['status'] == status_option)]
 
-# Fetch the data based on user input
-params = [fund_option]
-if status_option != 'All':
-    params.append(status_option)
-total_dollars_at_stake = fetch_single_result(query_total_dollars_at_stake, params)
+# Calculate total dollars at stake based on filtered data
+total_dollars_at_stake = filtered_df['DollarsAtStake'].sum()
 
 # Display the fetched data
 st.subheader(f'Total Dollars At Stake for {fund_option} ({status_option})')
@@ -74,16 +42,16 @@ st.write(f'${total_dollars_at_stake:,.2f}')
 
 # Create data for visualization
 data = {'Category': ['Total Dollars At Stake'], 'Amount': [total_dollars_at_stake]}
-df = pd.DataFrame(data)
+visual_df = pd.DataFrame(data)
 
 # Plot the bar chart
 fig, ax = plt.subplots(figsize=(10, 6))
-bars = ax.bar(df['Category'], df['Amount'], color='lightgreen', width=0.2)
+bars = ax.bar(visual_df['Category'], visual_df['Amount'], color='lightgreen', width=0.2)
 ax.axhline(y=500000, color='green', linestyle='--', label='$500k Tranche')
 ax.set_xlabel('Category', fontsize=14)
 ax.set_ylabel('Amount in $', fontsize=14)
 ax.set_title(f'Total Dollars At Stake ({fund_option}, {status_option})', fontsize=16)
-ax.set_xticks(df['Category'])
+ax.set_xticks(visual_df['Category'])
 ax.tick_params(axis='x', rotation=0, labelsize=12)
 ax.tick_params(axis='y', labelsize=12)
 
@@ -100,4 +68,4 @@ st.pyplot(fig)
 
 # Display raw data in a table
 st.subheader('Raw Data')
-st.table(df)
+st.table(filtered_df)
