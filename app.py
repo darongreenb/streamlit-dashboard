@@ -7,8 +7,8 @@ from requests.auth import AuthBase
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
 
-# API Gateway URL
-api_url = ["API_URL"]
+# API Gateway URL from secrets
+api_url = st.secrets["API_URL"]
 
 # Custom AWS Auth class to sign requests
 class AWSV4Auth(AuthBase):
@@ -82,10 +82,6 @@ ax.legend()
 
 # Use Streamlit to display the chart
 st.pyplot(fig)
-
-# Display raw data in a table
-st.subheader('Raw Data')
-st.table(filtered_df)
 
 # Display raw data in a table
 st.subheader('Raw Data')
