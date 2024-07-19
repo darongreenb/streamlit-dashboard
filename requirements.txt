@@ -1,6 +1,5 @@
 streamlit
-mysql-connector-python
+requests
 pandas
 matplotlib
-streamlit
-requests
+boto3
