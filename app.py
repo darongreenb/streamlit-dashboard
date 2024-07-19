@@ -9,10 +9,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Get environment variables from Streamlit secrets
-db_host = st.secrets["DB_HOST"]
-db_user = st.secrets["DB_USER"]
-db_password = st.secrets["DB_PASSWORD"]
-db_name = st.secrets["DB_NAME"]
+db_host = st.secrets["betting-db.cp86ssaw6cm7.us-east-1.rds.amazonaws.com"]
+db_user = st.secrets["admin"]
+db_password = st.secrets["7nRB1i2&A-K>"]
+db_name = st.secrets["betting_db"]
 
 # Database connection function
 def get_db_connection():
