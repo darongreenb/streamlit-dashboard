@@ -8,7 +8,7 @@ from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
 
 # API Gateway URL
-api_url = "https://6qw9sjr2z8.execute-api.us-east-1.amazonaws.com/prod/fetch_data"
+api_url = ["API_URL"]
 
 # Custom AWS Auth class to sign requests
 class AWSV4Auth(AuthBase):
