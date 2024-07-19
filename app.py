@@ -1,17 +1,34 @@
-# cd /Users/aceyvogelstein/Bet_Housing_Database
-# conda activate streamlit_env
-# streamlit run app.py
-
 import streamlit as st
 import requests
 import pandas as pd
 import matplotlib.pyplot as plt
+import boto3
+from requests.auth import AuthBase
+from botocore.auth import SigV4Auth
+from botocore.awsrequest import AWSRequest
 
-# API Gateway URL from secrets
-api_url = st.secrets["API_URL"]
+# API Gateway URL
+api_url = "https://6qw9sjr2z8.execute-api.us-east-1.amazonaws.com/prod/fetch_data"
+
+# Custom AWS Auth class to sign requests
+class AWSV4Auth(AuthBase):
+    def __init__(self, service, region):
+        self.service = service
+        self.region = region
+        self.credentials = boto3.Session().get_credentials()
+        self.signer = SigV4Auth(self.credentials, self.service, self.region)
+
+    def __call__(self, r):
+        aws_request = AWSRequest(method=r.method, url=r.url, data=r.body)
+        self.signer.add_auth(aws_request)
+        r.headers.update(aws_request.headers.items())
+        return r
+
+# Create AWS V4 Auth
+auth = AWSV4Auth('execute-api', 'us-east-1')
 
 # Fetch data from API
-response = requests.get(api_url)
+response = requests.get(api_url, auth=auth)
 data = response.json()
 
 # Convert the data to a DataFrame
@@ -27,8 +44,8 @@ st.title('Interactive GreenAleph Principal Dashboard')
 st.sidebar.header('Filter Options')
 
 # User input widgets
-fund_option = st.sidebar.selectbox('Select Fund', ['GreenAleph', 'AnotherFund'])
-status_option = st.sidebar.selectbox('Select Status', ['Active', 'Inactive', 'All'])
+fund_option = st.sidebar.selectbox('Select Fund', df['fund'].unique())
+status_option = st.sidebar.selectbox('Select Status', df['status'].unique())
 
 # Filter the fetched data based on user input
 filtered_df = df[(df['fund'] == fund_option) & (df['status'] == status_option)]
@@ -65,6 +82,10 @@ ax.legend()
 
 # Use Streamlit to display the chart
 st.pyplot(fig)
+
+# Display raw data in a table
+st.subheader('Raw Data')
+st.table(filtered_df)
 
 # Display raw data in a table
 st.subheader('Raw Data')
