@@ -1,27 +1,26 @@
+# cd /Users/aceyvogelstein/Bet_Housing_Database
+# conda activate streamlit_env
+# streamlit run app.py
+
+import os
 import streamlit as st
 import mysql.connector
 import pandas as pd
 import matplotlib.pyplot as plt
 
-st.title('My First Streamlit App')
-st.write('Hello, world!')
-
-st.title('Interactive GreenAleph Principal Dashboard')
-
-# Sidebar for user input
-st.sidebar.header('Filter Options')
-
-# User input widgets
-fund_option = st.sidebar.selectbox('Select Fund', ['GreenAleph', 'AnotherFund'])
-status_option = st.sidebar.selectbox('Select Status', ['Active', 'Inactive', 'All'])
+# Get environment variables from Streamlit secrets
+db_host = st.secrets["DB_HOST"]
+db_user = st.secrets["DB_USER"]
+db_password = st.secrets["DB_PASSWORD"]
+db_name = st.secrets["DB_NAME"]
 
 # Database connection function
 def get_db_connection():
     conn = mysql.connector.connect(
-        host='betting-db.cp86ssaw6cm7.us-east-1.rds.amazonaws.com',
-        user='admin',
-        password='7nRB1i2&A-K>',
-        database='betting_db'
+        host=db_host,
+        user=db_user,
+        password=db_password,
+        database=db_name
     )
     return conn
 
@@ -34,6 +33,19 @@ def fetch_single_result(query, params):
     cursor.close()
     conn.close()
     return float(result[0]) if result and result[0] is not None else 0.0
+
+# Your existing code
+st.title('My First Streamlit App')
+st.write('Hello, world!')
+
+st.title('Interactive GreenAleph Principal Dashboard')
+
+# Sidebar for user input
+st.sidebar.header('Filter Options')
+
+# User input widgets
+fund_option = st.sidebar.selectbox('Select Fund', ['GreenAleph', 'AnotherFund'])
+status_option = st.sidebar.selectbox('Select Status', ['Active', 'Inactive', 'All'])
 
 # SQL Query
 query_total_dollars_at_stake = """
