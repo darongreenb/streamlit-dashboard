@@ -7,8 +7,8 @@ import requests
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# API Gateway URL
-api_url = "https://kaipkuyuf1.execute-api.us-east-1.amazonaws.com/prod/fetch_data"
+# API Gateway URL from secrets
+api_url = st.secrets["API_URL"]
 
 # Fetch data from API
 response = requests.get(api_url)
