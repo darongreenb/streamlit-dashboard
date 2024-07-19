@@ -7,10 +7,12 @@ from requests.auth import AuthBase
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
 
-# API Gateway URL from secrets
+# Retrieve secrets from Streamlit
+db_host = st.secrets["DB_HOST"]
+db_user = st.secrets["DB_USER"]
+db_password = st.secrets["DB_PASSWORD"]
+db_name = st.secrets["DB_NAME"]
 api_url = st.secrets["API_URL"]
-
-# Retrieve AWS credentials from secrets
 aws_access_key_id = st.secrets["AWS_ACCESS_KEY_ID"]
 aws_secret_access_key = st.secrets["AWS_SECRET_ACCESS_KEY"]
 
