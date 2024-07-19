@@ -38,8 +38,16 @@ auth = AWSV4Auth('execute-api', 'us-east-1')
 response = requests.get(api_url, auth=auth)
 data = response.json()
 
-# Convert the data to a DataFrame
-df = pd.DataFrame(data)
+# Debugging: Print the response data to understand its structure
+st.write("Response data:", data)
+
+# Ensure data is a list of dictionaries before converting to DataFrame
+if isinstance(data, list) and all(isinstance(item, dict) for item in data):
+    # Convert the data to a DataFrame
+    df = pd.DataFrame(data)
+else:
+    st.error("Unexpected data format received from API.")
+    st.stop()
 
 # Streamlit App
 st.title('My First Streamlit App')
