@@ -39,7 +39,7 @@ SELECT
 FROM 
     (SELECT DISTINCT WagerID, DollarsAtStake
      FROM bets
-     WHERE WhichFund = 'Beta'
+     WHERE WhichFund = 'GreenAleph'
        AND WLCA = 'Active') b
 JOIN 
     legs l ON b.WagerID = l.WagerID
@@ -54,7 +54,7 @@ SELECT
 FROM 
     (SELECT DISTINCT WagerID, DollarsAtStake
      FROM bets
-     WHERE WhichFund = 'Beta'
+     WHERE WhichFund = 'GreenAleph'
        AND WLCA = 'Active') b;
 """
 
@@ -72,7 +72,7 @@ else:
     df = df.sort_values(by='TotalDollarsAtStake')
 
     # Display the fetched data
-    st.subheader(f'Total Dollars At Stake for Beta Fund (Active)')
+    st.subheader(f'Total Dollars At Stake for GreenAleph Fund (Active)')
 
     # Display raw data in a table
     st.table(df)
