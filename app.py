@@ -51,7 +51,7 @@ SELECT
 FROM 
     (SELECT DISTINCT WagerID, DollarsAtStake
      FROM bets
-     WHERE WhichFund = 'Beta'
+     WHERE WhichFund = 'GreenAleph'
        AND WLCA = '{status_option}') b
 JOIN 
     legs l ON b.WagerID = l.WagerID
@@ -66,7 +66,7 @@ SELECT
 FROM 
     (SELECT DISTINCT WagerID, DollarsAtStake
      FROM bets
-     WHERE WhichFund = 'Beta'
+     WHERE WhichFund = 'GreenAleph'
        AND WLCA = '{status_option}') b;
 """
 
@@ -81,7 +81,7 @@ else:
     df = pd.DataFrame(filtered_data)
 
     # Display the fetched data
-    st.subheader(f'Total Dollars At Stake for Beta Fund ({status_option})')
+    st.subheader(f'Total Dollars At Stake for GreenAleph Fund ({status_option})')
 
     # Display raw data in a table
     st.table(df)
@@ -94,7 +94,7 @@ else:
     bars = ax.bar(df['LeagueName'], df['TotalDollarsAtStake'], color=['#6a0dad' if name == 'Total' else '#ffcccb' for name in df['LeagueName']], width=0.6, edgecolor='black')
 
     # Add labels and title
-    ax.set_title('Total Dollars At Stake by LeagueName (Beta Fund)', fontsize=18, fontweight='bold')
+    ax.set_title('Total Dollars At Stake by LeagueName (GreenAleph Fund)', fontsize=18, fontweight='bold')
     ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
 
     # Annotate each bar with the value
