@@ -1,64 +1,40 @@
 import streamlit as st
-import requests
 import pandas as pd
 import matplotlib.pyplot as plt
-import boto3
-from requests.auth import AuthBase
-from botocore.auth import SigV4Auth
-from botocore.awsrequest import AWSRequest
+import mysql.connector
 
 # Retrieve secrets from Streamlit
 db_host = st.secrets["DB_HOST"]
 db_user = st.secrets["DB_USER"]
 db_password = st.secrets["DB_PASSWORD"]
 db_name = st.secrets["DB_NAME"]
-api_url = st.secrets["API_URL"]
-aws_access_key_id = st.secrets["AWS_ACCESS_KEY_ID"]
-aws_secret_access_key = st.secrets["AWS_SECRET_ACCESS_KEY"]
 
-# Custom AWS Auth class to sign requests
-class AWSV4Auth(AuthBase):
-    def __init__(self, service, region):
-        self.service = service
-        self.region = region
-        self.credentials = boto3.Session(
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key
-        ).get_credentials()
-        self.signer = SigV4Auth(self.credentials, self.service, self.region)
-
-    def __call__(self, r):
-        aws_request = AWSRequest(method=r.method, url=r.url, data=r.body)
-        self.signer.add_auth(aws_request)
-        r.headers.update(aws_request.headers.items())
-        return r
-
-# Create AWS V4 Auth
-auth = AWSV4Auth('execute-api', 'us-east-1')
-
-# Fetch data from API
-response = requests.get(api_url, auth=auth)
-data = response.json()
-
-# Debugging: Print the response data to understand its structure
-st.write("Response data:", data)
-
-# Ensure data is a list of dictionaries before converting to DataFrame
-if isinstance(data, list) and all(isinstance(item, dict) for item in data):
-    # Convert the data to a DataFrame
-    df = pd.DataFrame(data)
-else:
-    st.error("Unexpected data format received from API.")
-    st.stop()
+# Connect to the database
+def get_db_connection():
+    conn = mysql.connector.connect(
+        host=db_host,
+        user=db_user,
+        password=db_password,
+        database=db_name
+    )
+    return conn
 
 # Streamlit App
-st.title('My First Streamlit App')
-st.write('Hello, world!')
-
 st.title('Interactive GreenAleph Principal Dashboard')
 
 # Sidebar for user input
 st.sidebar.header('Filter Options')
+
+# Fetch data from database
+conn = get_db_connection()
+query = "SELECT * FROM your_table_name"  # Replace 'your_table_name' with your actual table name
+df = pd.read_sql(query, conn)
+conn.close()
+
+# Ensure data is in the expected format
+if df.empty:
+    st.error("No data fetched from the database.")
+    st.stop()
 
 # User input widgets
 fund_option = st.sidebar.selectbox('Select Fund', df['fund'].unique())
