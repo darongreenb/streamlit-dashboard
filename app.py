@@ -80,6 +80,9 @@ else:
     # Create a DataFrame from the fetched data
     df = pd.DataFrame(filtered_data)
 
+    # Sort the DataFrame by TotalDollarsAtStake in ascending order
+    df = df.sort_values(by='TotalDollarsAtStake')
+
     # Display the fetched data
     st.subheader(f'Total Dollars At Stake for GreenAleph Fund ({status_option})')
 
@@ -91,10 +94,11 @@ else:
 
     # Plot the bar chart
     fig, ax = plt.subplots(figsize=(12, 8))
-    bars = ax.bar(df['LeagueName'], df['TotalDollarsAtStake'], color=['#6a0dad' if name == 'Total' else '#ffcccb' for name in df['LeagueName']], width=0.6, edgecolor='black')
+    colors = ['#ff9999', '#66b3ff', '#99ff99', '#ffcc99', '#c2c2f0', '#ffb3e6', '#c4e17f', '#76d7c4', '#ffcccb']
+    bars = ax.bar(df['LeagueName'], df['TotalDollarsAtStake'], color=colors[:len(df)], width=0.6, edgecolor='black')
 
     # Add labels and title
-    ax.set_title('Total Dollars At Stake by LeagueName (GreenAleph Fund)', fontsize=18, fontweight='bold')
+    ax.set_title('GreenAleph Fund: Total Active Principal', fontsize=18, fontweight='bold')
     ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
 
     # Annotate each bar with the value
