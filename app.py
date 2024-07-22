@@ -34,24 +34,40 @@ st.title('Interactive GreenAleph Principal Dashboard')
 # Sidebar for user input
 st.sidebar.header('Filter Options')
 
-# SQL query to get unique funds and statuses
-fund_query = "SELECT DISTINCT WhichFund FROM bets"
+# SQL query to get unique WLCA statuses
 status_query = "SELECT DISTINCT WLCA FROM bets"
 
-# Fetch unique fund and status options
-fund_options = [item['WhichFund'] for item in get_data_from_db(fund_query)]
+# Fetch unique status options
 status_options = [item['WLCA'] for item in get_data_from_db(status_query)]
 
-# User input widgets
-fund_option = st.sidebar.selectbox('Select Fund', fund_options)
+# User input widget for WLCA status
 status_option = st.sidebar.selectbox('Select Status', status_options)
 
 # SQL query to fetch filtered data
 data_query = f"""
-SELECT DollarsAtStake
-FROM bets
-WHERE WhichFund = '{fund_option}'
-  AND WLCA = '{status_option}'
+SELECT 
+    l.LeagueName,
+    SUM(b.DollarsAtStake) AS TotalDollarsAtStake
+FROM 
+    (SELECT DISTINCT WagerID, DollarsAtStake
+     FROM bets
+     WHERE WhichFund = 'Beta'
+       AND WLCA = '{status_option}') b
+JOIN 
+    legs l ON b.WagerID = l.WagerID
+GROUP BY 
+    l.LeagueName
+
+UNION ALL
+
+SELECT 
+    'Total' AS LeagueName,
+    SUM(b.DollarsAtStake) AS TotalDollarsAtStake
+FROM 
+    (SELECT DISTINCT WagerID, DollarsAtStake
+     FROM bets
+     WHERE WhichFund = 'Beta'
+       AND WLCA = '{status_option}') b;
 """
 
 # Fetch the filtered data
@@ -61,37 +77,46 @@ filtered_data = get_data_from_db(data_query)
 if filtered_data is None:
     st.error("Failed to fetch data from the database.")
 else:
-    # Calculate total dollars at stake based on filtered data
-    total_dollars_at_stake = sum([item['DollarsAtStake'] for item in filtered_data])
+    # Create a DataFrame from the fetched data
+    df = pd.DataFrame(filtered_data)
 
     # Display the fetched data
-    st.subheader(f'Total Dollars At Stake for {fund_option} ({status_option})')
-    st.write(f'${total_dollars_at_stake:,.2f}')
+    st.subheader(f'Total Dollars At Stake for Beta Fund ({status_option})')
+
+    # Display raw data in a table
+    st.table(df)
 
     # Create data for visualization
-    data = {'Category': ['Total Dollars At Stake'], 'Amount': [total_dollars_at_stake]}
-    visual_df = pd.DataFrame(data)
+    df['TotalDollarsAtStake'] = df['TotalDollarsAtStake'].astype(float)
 
     # Plot the bar chart
-    fig, ax = plt.subplots(figsize=(10, 6))
-    bars = ax.bar(visual_df['Category'], visual_df['Amount'], color='lightgreen', width=0.2)
-    ax.axhline(y=500000, color='green', linestyle='--', label='$500k Tranche')
-    ax.set_title(f'Total Dollars At Stake ({fund_option}, {status_option})', fontsize=16)
-    ax.set_xticks(visual_df['Category'])
-    ax.tick_params(axis='x', rotation=0, labelsize=12)
-    ax.tick_params(axis='y', labelsize=12)
+    fig, ax = plt.subplots(figsize=(12, 8))
+    bars = ax.bar(df['LeagueName'], df['TotalDollarsAtStake'], color=['#6a0dad' if name == 'Total' else '#ffcccb' for name in df['LeagueName']], width=0.6, edgecolor='black')
 
-    # Annotate the bar with the value
+    # Add labels and title
+    ax.set_title('Total Dollars At Stake by LeagueName (Beta Fund)', fontsize=18, fontweight='bold')
+    ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
+
+    # Annotate each bar with the value
     for bar in bars:
         height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width() / 2.0, height, f'${height:,.2f}', ha='center', va='bottom', fontsize=12, color='black')
+        ax.annotate(f'${height:,.2f}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                    xytext=(0, 3), textcoords="offset points",
+                    ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
 
-    # Add legend
-    ax.legend()
+    # Add horizontal line at y=0 for reference
+    ax.axhline(0, color='black', linewidth=0.8)
+
+    # Set background color to white
+    ax.set_facecolor('white')
+
+    # Add border around the plot
+    for spine in ax.spines.values():
+        spine.set_edgecolor('black')
+        spine.set_linewidth(1.2)
+
+    # Adjust layout
+    plt.tight_layout()
 
     # Use Streamlit to display the chart
     st.pyplot(fig)
-
-    # Display raw data in a table
-    st.subheader('Raw Data')
-    st.table(filtered_data)
