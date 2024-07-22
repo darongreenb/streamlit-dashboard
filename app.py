@@ -31,28 +31,16 @@ def get_data_from_db(query):
 # Streamlit App
 st.title('Interactive GreenAleph Principal Dashboard')
 
-# Sidebar for user input
-st.sidebar.header('Filter Options')
-
-# SQL query to get unique WLCA statuses
-status_query = "SELECT DISTINCT WLCA FROM bets"
-
-# Fetch unique status options
-status_options = [item['WLCA'] for item in get_data_from_db(status_query)]
-
-# User input widget for WLCA status
-status_option = st.sidebar.selectbox('Select Status', status_options)
-
-# SQL query to fetch filtered data
-data_query = f"""
+# SQL query to fetch data
+data_query = """
 SELECT 
     l.LeagueName,
     SUM(b.DollarsAtStake) AS TotalDollarsAtStake
 FROM 
     (SELECT DISTINCT WagerID, DollarsAtStake
      FROM bets
-     WHERE WhichFund = 'GreenAleph'
-       AND WLCA = '{status_option}') b
+     WHERE WhichFund = 'Beta'
+       AND WLCA = 'Active') b
 JOIN 
     legs l ON b.WagerID = l.WagerID
 GROUP BY 
@@ -66,25 +54,25 @@ SELECT
 FROM 
     (SELECT DISTINCT WagerID, DollarsAtStake
      FROM bets
-     WHERE WhichFund = 'GreenAleph'
-       AND WLCA = '{status_option}') b;
+     WHERE WhichFund = 'Beta'
+       AND WLCA = 'Active') b;
 """
 
-# Fetch the filtered data
-filtered_data = get_data_from_db(data_query)
+# Fetch the data
+data = get_data_from_db(data_query)
 
 # Check if data is fetched successfully
-if filtered_data is None:
+if data is None:
     st.error("Failed to fetch data from the database.")
 else:
     # Create a DataFrame from the fetched data
-    df = pd.DataFrame(filtered_data)
+    df = pd.DataFrame(data)
 
     # Sort the DataFrame by TotalDollarsAtStake in ascending order
     df = df.sort_values(by='TotalDollarsAtStake')
 
     # Display the fetched data
-    st.subheader(f'Total Dollars At Stake for GreenAleph Fund ({status_option})')
+    st.subheader(f'Total Dollars At Stake for Beta Fund (Active)')
 
     # Display raw data in a table
     st.table(df)
@@ -93,7 +81,7 @@ else:
     df['TotalDollarsAtStake'] = df['TotalDollarsAtStake'].astype(float)
 
     # Define colors for bars
-    colors = ['#77dd77', '#89cff0', '#fdfd96', '#ffb347', '#ff6961', '#aec6cf', '#cfcfc4', '#ffb6c1', '#b39eb5']
+    colors = ['#77dd77', '#89cff0', '#fdfd96', '#ffb347', '#aec6cf', '#cfcfc4', '#ffb6c1', '#b39eb5']
     total_color = '#006400'  # Dark green for the Total bar
 
     # Create color list ensuring 'Total' bar is dark green
