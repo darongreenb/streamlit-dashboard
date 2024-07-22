@@ -29,28 +29,30 @@ def get_data_from_db(query):
         return None
 
 # Streamlit App
-st.title('Interactive GreenAleph Principal Dashboard')
+st.title('Interactive Beta Principal Dashboard')
 
 # Sidebar for user input
 st.sidebar.header('Filter Options')
 
-# SQL query to get unique funds and statuses
-fund_query = "SELECT DISTINCT WhichFund FROM bets WHERE LegCount = 1"
-status_query = "SELECT DISTINCT WLCA FROM bets WHERE LegCount = 1"
+# SQL query to get unique WLCA statuses for Beta fund with LegCount = 1
+status_query = """
+SELECT DISTINCT WLCA 
+FROM bets 
+WHERE WhichFund = 'Beta' 
+  AND LegCount = 1
+"""
 
-# Fetch unique fund and status options
-fund_options = [item['WhichFund'] for item in get_data_from_db(fund_query)]
+# Fetch unique status options
 status_options = [item['WLCA'] for item in get_data_from_db(status_query)]
 
-# User input widgets
-fund_option = st.sidebar.selectbox('Select Fund', fund_options)
+# User input widget for WLCA status
 status_option = st.sidebar.selectbox('Select Status', status_options)
 
 # SQL query to fetch filtered data
 data_query = f"""
 SELECT DollarsAtStake
 FROM bets
-WHERE WhichFund = '{fund_option}'
+WHERE WhichFund = 'Beta'
   AND WLCA = '{status_option}'
   AND LegCount = 1
 """
@@ -66,7 +68,7 @@ else:
     total_dollars_at_stake = sum([item['DollarsAtStake'] for item in filtered_data])
 
     # Display the fetched data
-    st.subheader(f'Total Dollars At Stake for {fund_option} ({status_option})')
+    st.subheader(f'Total Dollars At Stake for Beta ({status_option})')
     st.write(f'${total_dollars_at_stake:,.2f}')
 
     # Create data for visualization
@@ -93,7 +95,7 @@ else:
     ax.axhline(y=500000, color='green', linestyle='--', label='$500k Tranche')
 
     # Add labels and title
-    ax.set_title(f'Total Dollars At Stake ({fund_option}, {status_option})', fontsize=16)
+    ax.set_title(f'Total Dollars At Stake (Beta, {status_option})', fontsize=16)
     ax.set_xticks(visual_df['Category'])
     ax.set_xticklabels(visual_df['Category'], fontsize=12)
     ax.tick_params(axis='x', rotation=0, labelsize=12)
