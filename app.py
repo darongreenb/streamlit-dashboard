@@ -92,10 +92,16 @@ else:
     # Create data for visualization
     df['TotalDollarsAtStake'] = df['TotalDollarsAtStake'].astype(float)
 
+    # Define colors for bars
+    colors = ['#77dd77', '#89cff0', '#fdfd96', '#ffb347', '#ff6961', '#aec6cf', '#cfcfc4', '#ffb6c1', '#b39eb5']
+    total_color = '#006400'  # Dark green for the Total bar
+
+    # Create color list ensuring 'Total' bar is dark green
+    bar_colors = [total_color if name == 'Total' else colors[i % len(colors)] for i, name in enumerate(df['LeagueName'])]
+
     # Plot the bar chart
     fig, ax = plt.subplots(figsize=(12, 8))
-    colors = ['#ff9999', '#66b3ff', '#99ff99', '#ffcc99', '#c2c2f0', '#ffb3e6', '#c4e17f', '#76d7c4', '#ffcccb']
-    bars = ax.bar(df['LeagueName'], df['TotalDollarsAtStake'], color=colors[:len(df)], width=0.6, edgecolor='black')
+    bars = ax.bar(df['LeagueName'], df['TotalDollarsAtStake'], color=bar_colors, width=0.6, edgecolor='black')
 
     # Add labels and title
     ax.set_title('GreenAleph Fund: Total Active Principal', fontsize=18, fontweight='bold')
