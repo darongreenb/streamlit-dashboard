@@ -126,4 +126,14 @@ if straight_bets_data:
 if parlay_bets_data:
     parlay_bets_df = pd.DataFrame(parlay_bets_data)
     st.subheader('Active Parlay Bets in GreenAleph Fund')
-    st.table(parlay_bets_df)
+    st.dataframe(parlay_bets_df)
+
+# To ensure that the full table width is visible
+st.write("""
+<style>
+    .reportview-container .main .block-container{
+        max-width: 100%;
+        padding: 1rem;
+    }
+</style>
+""", unsafe_allow_html=True)
