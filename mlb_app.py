@@ -28,7 +28,7 @@ def get_data_from_db(query):
         return None
 
 # Streamlit App
-st.title('MLB 2024 Betting Event View (Beta Fund)')
+st.title('MLB 2024 Betting Event View (GreenAleph Fund)')
 
 # SQL query to fetch the data for Active Straight Bets
 straight_bets_query = """
@@ -42,7 +42,7 @@ WITH BaseQuery AS (
     JOIN legs l ON b.WagerID = l.WagerID
     WHERE b.LegCount = 1
       AND l.LeagueName = 'MLB'
-      AND b.WhichFund = 'Beta'
+      AND b.WhichFund = 'GreenAleph'
       AND b.WLCA = 'Active'
     GROUP BY l.EventType, l.ParticipantName
     
@@ -57,7 +57,7 @@ WITH BaseQuery AS (
     JOIN legs l ON b.WagerID = l.WagerID
     WHERE b.LegCount = 1
       AND l.LeagueName = 'MLB'
-      AND b.WhichFund = 'Beta'
+      AND b.WhichFund = 'GreenAleph'
       AND b.WLCA = 'Active'
     GROUP BY l.EventType
 
@@ -72,7 +72,7 @@ WITH BaseQuery AS (
     JOIN legs l ON b.WagerID = l.WagerID
     WHERE b.LegCount = 1
       AND l.LeagueName = 'MLB'
-      AND b.WhichFund = 'Beta'
+      AND b.WhichFund = 'GreenAleph'
       AND b.WLCA = 'Active'
 )
 
@@ -120,7 +120,7 @@ parlay_bets_data = get_data_from_db(parlay_bets_query)
 # Display the data
 if straight_bets_data:
     straight_bets_df = pd.DataFrame(straight_bets_data)
-    st.subheader('Active Straight Bets in Beta Fund')
+    st.subheader('Active Straight Bets in GreenAleph Fund')
     st.table(straight_bets_df)
 
 if parlay_bets_data:
