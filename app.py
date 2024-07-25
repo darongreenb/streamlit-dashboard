@@ -29,7 +29,7 @@ def get_data_from_db(query):
         return None
 
 # Streamlit App
-st.title('Interactive GreenAleph Principal Dashboard')
+st.title('GreenAleph Principal Dashboard')
 
 # SQL query to fetch data
 data_query = """
