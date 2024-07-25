@@ -74,9 +74,6 @@ else:
     # Create a DataFrame from the fetched data
     main_df = pd.DataFrame(main_data)
 
-    # Remove the "Total" filter option
-    main_df = main_df[main_df['EventType'] != 'Total']
-
     # Display the fetched data
     st.subheader('Total Dollars At Stake by EventType (GreenAleph Fund)')
     
@@ -85,7 +82,7 @@ else:
 
     # Plot the main bar chart
     fig, ax = plt.subplots(figsize=(12, 8))
-    bars = ax.bar(main_df['EventType'], main_df['TotalDollarsAtStake'], color=['#a0d8f1', '#f4a261', '#e76f51', '#8ecae6', '#219ebc', '#023047', '#ffb703', '#fb8500'], width=0.6, edgecolor='black')
+    bars = ax.bar(main_df['EventType'], main_df['TotalDollarsAtStake'], color=['#6a0dad' if name == 'Total' else '#ffcccb' for name in main_df['EventType']], width=0.6, edgecolor='black')
 
     # Add labels and title
     ax.set_title('GreenAleph Fund: Total Active Principal', fontsize=18, fontweight='bold')
@@ -97,9 +94,6 @@ else:
         ax.annotate(f'${height:,.2f}', xy=(bar.get_x() + bar.get_width() / 2, height),
                     xytext=(0, 3), textcoords="offset points",
                     ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
-
-    # Rotate the x-axis labels vertically
-    plt.xticks(rotation=90)
 
     # Add horizontal line at y=0 for reference
     ax.axhline(0, color='black', linewidth=0.8)
@@ -173,9 +167,6 @@ else:
             ax.annotate(f'${height:,.2f}', xy=(bar.get_x() + bar.get_width() / 2, height),
                         xytext=(0, 3), textcoords="offset points",
                         ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
-
-        # Rotate the x-axis labels vertically
-        plt.xticks(rotation=90)
 
         # Add horizontal line at y=0 for reference
         ax.axhline(0, color='black', linewidth=0.8)
