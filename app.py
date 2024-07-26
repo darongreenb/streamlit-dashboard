@@ -33,16 +33,20 @@ st.title('GreenAleph Principal Dashboard')
 
 # SQL query to fetch data
 data_query = """
+WITH DistinctBets AS (
+    SELECT DISTINCT WagerID, DollarsAtStake
+    FROM bets
+    WHERE WhichFund = 'GreenAleph'
+      AND WLCA = 'Active'
+)
+
 SELECT 
     l.LeagueName,
-    SUM(b.DollarsAtStake) AS TotalDollarsAtStake
+    SUM(db.DollarsAtStake) AS TotalDollarsAtStake
 FROM 
-    (SELECT DISTINCT WagerID, DollarsAtStake
-     FROM bets
-     WHERE WhichFund = 'GreenAleph'
-       AND WLCA = 'Active') b
+    DistinctBets db
 JOIN 
-    legs l ON b.WagerID = l.WagerID
+    (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
 GROUP BY 
     l.LeagueName
 
@@ -50,12 +54,9 @@ UNION ALL
 
 SELECT 
     'Total' AS LeagueName,
-    SUM(b.DollarsAtStake) AS TotalDollarsAtStake
+    SUM(DollarsAtStake) AS TotalDollarsAtStake
 FROM 
-    (SELECT DISTINCT WagerID, DollarsAtStake
-     FROM bets
-     WHERE WhichFund = 'GreenAleph'
-       AND WLCA = 'Active') b;
+    DistinctBets;
 """
 
 # Fetch the data
