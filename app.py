@@ -42,7 +42,7 @@ WITH DistinctBets AS (
 
 SELECT 
     l.LeagueName,
-    FORMAT(ROUND(SUM(DollarsAtStake)), 0) AS TotalDollarsAtStake
+    ROUND(SUM(DollarsAtStake), 0) AS TotalDollarsAtStake
 FROM 
     DistinctBets db
 JOIN 
@@ -54,7 +54,7 @@ UNION ALL
 
 SELECT 
     'Total' AS LeagueName,
-    FORMAT(ROUND(SUM(DollarsAtStake)), 0) AS TotalDollarsAtStake
+    ROUND(SUM(DollarsAtStake), 0) AS TotalDollarsAtStake
 FROM 
     DistinctBets;
 """
@@ -69,6 +69,9 @@ else:
     # Create a DataFrame from the fetched data
     df = pd.DataFrame(data)
 
+    # Convert TotalDollarsAtStake to float for plotting
+    df['TotalDollarsAtStake'] = df['TotalDollarsAtStake'].astype(float)
+
     # Sort the DataFrame by TotalDollarsAtStake in ascending order
     df = df.sort_values(by='TotalDollarsAtStake')
 
@@ -77,9 +80,6 @@ else:
 
     # Display raw data in a table
     st.table(df)
-
-    # Create data for visualization
-    df['TotalDollarsAtStake'] = df['TotalDollarsAtStake'].astype(float)
 
     # Define colors for bars
     colors = ['#77dd77', '#89cff0', '#fdfd96', '#ffb347', '#aec6cf', '#cfcfc4', '#ffb6c1', '#b39eb5']
@@ -103,6 +103,9 @@ else:
                     xytext=(0, 3), textcoords="offset points",
                     ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
 
+    # Rotate the x-axis labels to 45 degrees
+    plt.xticks(rotation=45, ha='right')
+
     # Add horizontal line at y=0 for reference
     ax.axhline(0, color='black', linewidth=0.8)
 
@@ -111,7 +114,7 @@ else:
 
     # Add border around the plot
     for spine in ax.spines.values():
-        spine.setedgecolor('black')
+        spine.set_edgecolor('black')
         spine.set_linewidth(1.2)
 
     # Adjust layout
