@@ -38,28 +38,31 @@ WITH DistinctBets AS (
     FROM bets
     WHERE WhichFund = 'GreenAleph'
       AND WLCA = 'Active'
+),
+EventTypeSums AS (
+    SELECT 
+        l.EventType,
+        ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
+    FROM 
+        DistinctBets db
+    JOIN 
+        (SELECT DISTINCT WagerID, EventType, LeagueName FROM legs) l ON db.WagerID = l.WagerID
+    WHERE
+        l.LeagueName = 'MLB'
+    GROUP BY 
+        l.EventType
 )
-SELECT 
-    l.EventType,
-    SUM(b.DollarsAtStake) AS TotalDollarsAtStake
-FROM 
-    DistinctBets b
-JOIN 
-    legs l ON b.WagerID = l.WagerID
-WHERE
-    l.LeagueName = 'MLB'
-GROUP BY 
-    l.EventType
+SELECT * FROM EventTypeSums
 
 UNION ALL
 
 SELECT 
     'Total' AS EventType,
-    SUM(b.DollarsAtStake) AS TotalDollarsAtStake
+    ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
 FROM 
-    DistinctBets b
+    DistinctBets db
 JOIN 
-    legs l ON b.WagerID = l.WagerID
+    (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
 WHERE
     l.LeagueName = 'MLB';
 """
