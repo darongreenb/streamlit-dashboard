@@ -78,7 +78,10 @@ else:
     st.subheader('Total Dollars At Stake by EventType (GreenAleph Fund)')
     
     # Create data for visualization
-    main_df['TotalDollarsAtStake'] = main_df['TotalDollarsAtStake'].astype(float)
+    main_df['TotalDollarsAtStake'] = main_df['TotalDollarsAtStake'].astype(float).round(0)
+
+    # Sort the DataFrame by 'TotalDollarsAtStake' in ascending order
+    main_df = main_df.sort_values('TotalDollarsAtStake', ascending=True)
 
     # Define pastel colors
     pastel_colors = ['#a0d8f1', '#f4a261', '#e76f51', '#8ecae6', '#219ebc', '#023047', '#ffb703', '#fb8500', '#d4a5a5', '#9ab0a8']
@@ -94,7 +97,7 @@ else:
     # Annotate each bar with the value
     for bar in bars:
         height = bar.get_height()
-        ax.annotate(f'${height:,.2f}', xy=(bar.get_x() + bar.get_width() / 2, height),
+        ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
                     xytext=(0, 3), textcoords="offset points",
                     ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
 
@@ -157,7 +160,10 @@ else:
         st.subheader(f'Total Dollars At Stake by ParticipantName for {event_type_option} (GreenAleph Fund)')
 
         # Create data for visualization
-        filtered_df['TotalDollarsAtStake'] = filtered_df['TotalDollarsAtStake'].astype(float)
+        filtered_df['TotalDollarsAtStake'] = filtered_df['TotalDollarsAtStake'].astype(float).round(0)
+
+        # Sort the DataFrame by 'TotalDollarsAtStake' in ascending order
+        filtered_df = filtered_df.sort_values('TotalDollarsAtStake', ascending=True)
 
         # Plot the filtered bar chart
         fig, ax = plt.subplots(figsize=(12, 8))
@@ -170,7 +176,7 @@ else:
         # Annotate each bar with the value
         for bar in bars:
             height = bar.get_height()
-            ax.annotate(f'${height:,.2f}', xy=(bar.get_x() + bar.get_width() / 2, height),
+            ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
                         xytext=(0, 3), textcoords="offset points",
                         ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
 
