@@ -292,7 +292,3 @@ if parlay_bets_data:
     parlay_bets_df = pd.DataFrame(parlay_bets_data)
     st.subheader('Active Parlay Bets in GreenAleph Fund')
     st.table(parlay_bets_df)
-
-    # Adjust the table width to fit the view
-    st.dataframe(parlay_bets_df.style.set_table_styles([{'selector': 'th, td', 'props': [('max-width', '300px')]}]), width=1200)
-
