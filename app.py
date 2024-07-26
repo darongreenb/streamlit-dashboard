@@ -42,7 +42,7 @@ WITH DistinctBets AS (
 
 SELECT 
     l.LeagueName,
-    SUM(db.DollarsAtStake) AS TotalDollarsAtStake
+    ROUND(SUM(db.DollarsAtStake)) AS TotalDollarsAtStake
 FROM 
     DistinctBets db
 JOIN 
@@ -54,7 +54,7 @@ UNION ALL
 
 SELECT 
     'Total' AS LeagueName,
-    SUM(DollarsAtStake) AS TotalDollarsAtStake
+    ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake
 FROM 
     DistinctBets;
 """
