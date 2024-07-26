@@ -74,19 +74,18 @@ else:
     # Create a DataFrame from the fetched data
     main_df = pd.DataFrame(main_data)
 
-    # Remove the "Total" filter option
-    main_df = main_df[main_df['EventType'] != 'Total']
-
     # Display the fetched data
     st.subheader('Total Dollars At Stake by EventType (GreenAleph Fund)')
     
     # Create data for visualization
     main_df['TotalDollarsAtStake'] = main_df['TotalDollarsAtStake'].astype(float)
 
+    # Define pastel colors
+    pastel_colors = ['#a0d8f1', '#f4a261', '#e76f51', '#8ecae6', '#219ebc', '#023047', '#ffb703', '#fb8500', '#d4a5a5', '#9ab0a8']
+
     # Plot the main bar chart
     fig, ax = plt.subplots(figsize=(12, 8))
-    pastel_colors = ['#a0d8f1', '#f4a261', '#e76f51', '#8ecae6', '#219ebc', '#023047', '#ffb703', '#fb8500']
-    bars = ax.bar(main_df['EventType'], main_df['TotalDollarsAtStake'], color=pastel_colors, width=0.6, edgecolor='black')
+    bars = ax.bar(main_df['EventType'], main_df['TotalDollarsAtStake'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(main_df['EventType']))], width=0.6, edgecolor='black')
 
     # Add labels and title
     ax.set_title('GreenAleph Fund: Total Active Principal', fontsize=18, fontweight='bold')
@@ -119,8 +118,8 @@ else:
     # Use Streamlit to display the chart
     st.pyplot(fig)
 
-    # Add filter for EventType
-    event_type_option = st.selectbox('Select EventType', main_df['EventType'].unique())
+    # Add filter for EventType, excluding "Total"
+    event_type_option = st.selectbox('Select EventType', main_df[main_df['EventType'] != 'Total']['EventType'].unique())
 
     # SQL query to fetch data for the filtered bar chart
     filtered_query = f"""
@@ -162,7 +161,7 @@ else:
 
         # Plot the filtered bar chart
         fig, ax = plt.subplots(figsize=(12, 8))
-        bars = ax.bar(filtered_df['ParticipantName'], filtered_df['TotalDollarsAtStake'], color=pastel_colors, width=0.6, edgecolor='black')
+        bars = ax.bar(filtered_df['ParticipantName'], filtered_df['TotalDollarsAtStake'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(filtered_df['ParticipantName']))], width=0.6, edgecolor='black')
 
         # Add labels and title
         ax.set_title(f'Total Active Principal by ParticipantName for {event_type_option}', fontsize=18, fontweight='bold')
@@ -234,7 +233,8 @@ WITH BaseQuery AS (
            NULL AS TotalPotentialPayout,
            (SUM(b.DollarsAtStake) / SUM(b.PotentialPayout)) * 100 AS ImpliedProbability
     FROM bets b
-    JOIN legs l ON b.WagerID = l.WagerID
+
+     JOIN legs l ON b.WagerID = l.WagerID
     WHERE b.LegCount = 1
       AND l.LeagueName = 'MLB'
       AND b.WhichFund = 'GreenAleph'
@@ -292,26 +292,3 @@ if parlay_bets_data:
     parlay_bets_df = pd.DataFrame(parlay_bets_data)
     st.subheader('Active Parlay Bets in GreenAleph Fund')
     st.table(parlay_bets_df)
-```
-
-### Requirements File
-
-Ensure your `requirements.txt` includes the necessary packages:
-
-```
-streamlit
-mysql-connector-python
-pandas
-matplotlib
-```
-
-### Streamlit Secrets
-
-Update your Streamlit secrets with the following:
-
-```plaintext
-DB_HOST: "your_database_host"
-DB_USER: "your_database_user"
-DB_PASSWORD: "your_database_password"
-DB_NAME: "your_database_name"
-```
