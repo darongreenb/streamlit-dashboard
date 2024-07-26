@@ -233,8 +233,7 @@ WITH BaseQuery AS (
            NULL AS TotalPotentialPayout,
            (SUM(b.DollarsAtStake) / SUM(b.PotentialPayout)) * 100 AS ImpliedProbability
     FROM bets b
-
-     JOIN legs l ON b.WagerID = l.WagerID
+    JOIN legs l ON b.WagerID = l.WagerID
     WHERE b.LegCount = 1
       AND l.LeagueName = 'MLB'
       AND b.WhichFund = 'GreenAleph'
@@ -292,3 +291,4 @@ if parlay_bets_data:
     parlay_bets_df = pd.DataFrame(parlay_bets_data)
     st.subheader('Active Parlay Bets in GreenAleph Fund')
     st.table(parlay_bets_df)
+```
