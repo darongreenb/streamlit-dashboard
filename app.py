@@ -99,7 +99,7 @@ else:
     # Annotate each bar with the value
     for bar in bars:
         height = bar.get_height()
-        ax.annotate(f'${height:,.2f}', xy=(bar.get_x() + bar.get_width() / 2, height),
+        ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
                     xytext=(0, 3), textcoords="offset points",
                     ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
 
@@ -111,7 +111,7 @@ else:
 
     # Add border around the plot
     for spine in ax.spines.values():
-        spine.set_edgecolor('black')
+        spine.setedgecolor('black')
         spine.set_linewidth(1.2)
 
     # Adjust layout
