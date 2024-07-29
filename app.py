@@ -407,5 +407,3 @@ elif page == "MLB Principal Tables":
         st.subheader('Active Parlay Bets in GreenAleph Fund')
         st.table(parlay_bets_df)
 
-'''
-
