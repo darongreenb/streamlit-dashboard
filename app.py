@@ -119,8 +119,8 @@ if page == "GreenAleph Active Principal":
 
         # Add border around the plot
         for spine in ax.spines.values():
-            spine.set_edgecolor='black'
-            spine.set_line_width(1.2)
+            spine.set_edgecolor('black')
+            spine.set_linewidth(1.2)
 
         # Adjust layout
         plt.tight_layout()
@@ -216,8 +216,8 @@ elif page == "MLB Principal Charts":
 
         # Add border around the plot
         for spine in ax.spines.values():
-            spine.set_edgecolor='black'
-            spine.set_line_width(1.2)
+            spine.set_edgecolor('black')
+            spine.set_linewidth(1.2)
 
         # Adjust layout
         plt.tight_layout()
@@ -294,8 +294,8 @@ elif page == "MLB Principal Charts":
 
             # Add border around the plot
             for spine in ax.spines.values():
-                spine.set_edgecolor='black'
-                spine.set_line width(1.2)
+                spine.set_edgecolor('black')
+                spine.set_linewidth(1.2)
 
             # Adjust layout
             plt.tight_layout()
@@ -405,4 +405,3 @@ elif page == "MLB Principal Tables":
         parlay_bets_df = pd.DataFrame(parlay_bets_data)
         st.subheader('Active Parlay Bets in GreenAleph Fund')
         st.table(parlay_bets_df)
-       
