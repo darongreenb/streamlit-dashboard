@@ -30,10 +30,10 @@ def get_data_from_db(query):
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Principal Dashboard", "MLB Dashboard"])
+page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "MLB Principal Charts", "MLB Principal Tables"])
 
-if page == "Principal Dashboard":
-    # Principal Dashboard
+if page == "GreenAleph Active Principal":
+    # GreenAleph Active Principal
     st.title('GreenAleph Principal Dashboard')
 
     # SQL query to fetch data
@@ -128,8 +128,8 @@ if page == "Principal Dashboard":
         # Use Streamlit to display the chart
         st.pyplot(fig)
 
-elif page == "MLB Dashboard":
-    # MLB Dashboard
+elif page == "MLB Principal Charts":
+    # MLB Principal Charts
     st.title('MLB Active Principal in GreenAleph Fund')
 
     # SQL query to fetch data for the main bar chart
@@ -185,7 +185,7 @@ elif page == "MLB Dashboard":
         main_df['TotalDollarsAtStake'] = main_df['TotalDollarsAtStake'].astype(float).round(0)
 
         # Sort the DataFrame by 'TotalDollarsAtStake' in ascending order
-        main_df = main_df.sort_values('TotalDollarsAtStake', ascending=True)
+        main_df = main_df.sort_values('EventType', ascending=True)
 
         # Define pastel colors
         pastel_colors = ['#a0d8f1', '#f4a261', '#e76f51', '#8ecae6', '#219ebc', '#023047', '#ffb703', '#fb8500', '#d4a5a5', '#9ab0a8']
@@ -226,7 +226,7 @@ elif page == "MLB Dashboard":
         st.pyplot(fig)
 
         # Add filter for EventType, excluding "Total"
-        event_type_option = st.selectbox('Select EventType', main_df[main_df['EventType'] != 'Total']['EventType'].unique())
+        event_type_option = st.selectbox('Select EventType', sorted(main_df[main_df['EventType'] != 'Total']['EventType'].unique()))
 
         # SQL query to fetch data for the filtered bar chart
         filtered_query = f"""
@@ -303,6 +303,10 @@ elif page == "MLB Dashboard":
 
             # Use Streamlit to display the chart
             st.pyplot(fig)
+
+elif page == "MLB Principal Tables":
+    # MLB Principal Tables
+    st.title('MLB Principal Tables in GreenAleph Fund')
 
     # SQL query to fetch the data for Active Straight Bets
     straight_bets_query = """
