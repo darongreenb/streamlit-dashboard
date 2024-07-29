@@ -119,8 +119,8 @@ if page == "GreenAleph Active Principal":
 
         # Add border around the plot
         for spine in ax.spines.values():
-            spine.set_edgecolor('black')
-            spine.set_linewidth(1.2)
+            spine.set edgecolor='black'
+            spine.set line_width(1.2)
 
         # Adjust layout
         plt.tight_layout()
@@ -216,8 +216,8 @@ elif page == "MLB Principal Charts":
 
         # Add border around the plot
         for spine in ax.spines.values():
-            spine.set_edgecolor('black')
-            spine.set_linewidth(1.2)
+            spine.set edgecolor='black'
+            spine.set line_width(1.2)
 
         # Adjust layout
         plt.tight_layout()
@@ -236,72 +236,7 @@ elif page == "MLB Principal Charts":
             WHERE WhichFund = 'GreenAleph'
               AND WLCA = 'Active'
         )
-        SELECT        l.ParticipantName,
-        SUM(b.DollarsAtStake) AS TotalDollarsAtStake
-    FROM 
-        DistinctBets b
-    JOIN 
-        legs l ON b.WagerID = l.WagerID
-    WHERE
-        l.LeagueName = 'MLB'
-        AND l.EventType = '{event_type_option}'
-    GROUP BY 
-        l.ParticipantName;
-    """
-
-    # Fetch the filtered data
-    filtered_data = get_data_from_db(filtered_query)
-
-    # Check if data is fetched successfully
-    if filtered_data is None:
-        st.error("Failed to fetch data from the database.")
-    else:
-        # Create a DataFrame from the fetched data
-        filtered_df = pd.DataFrame(filtered_data)
-
-        # Display the fetched data
-        st.subheader(f'Total Dollars At Stake by ParticipantName for {event_type_option} (GreenAleph Fund)')
-
-        # Create data for visualization
-        filtered_df['TotalDollarsAtStake'] = filtered_df['TotalDollarsAtStake'].astype(float).round(0)
-
-        # Sort the DataFrame by 'TotalDollarsAtStake' in ascending order
-        filtered_df = filtered_df.sort_values('TotalDollarsAtStake', ascending=True)
-
-        # Plot the filtered bar chart
-        fig, ax = plt.subplots(figsize=(12, 8))
-        bars = ax.bar(filtered_df['ParticipantName'], filtered_df['TotalDollarsAtStake'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(filtered_df['ParticipantName']))], width=0.6, edgecolor='black')
-
-        # Add labels and title
-        ax.set_title(f'Total Active Principal by ParticipantName for {event_type_option}', fontsize=18, fontweight='bold')
-        ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
-
-        # Annotate each bar with the value
-        for bar in bars:
-            height = bar.get_height()
-            ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
-                        xytext=(0, 3), textcoords="offset points",
-                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
-
-        # Rotate the x-axis labels to 45 degrees
-        plt.xticks(rotation=45, ha='right')
-
-        # Add horizontal line at y=0 for reference
-        ax.axhline(0, color='black', linewidth=0.8)
-
-        # Set background color to white
-        ax.set_facecolor('white')
-
-        # Add border around the plot
-        for spine in ax.spines.values():
-            spine.set_edgecolor('black')
-            spine.set lineWidth(1.2)
-
-        # Adjust layout
-        plt.tight_layout()
-
-        # Use Streamlit to display the chart
-        st.pyplot(fig) 
+       SELECT 
             l.ParticipantName,
             SUM(b.DollarsAtStake) AS TotalDollarsAtStake
         FROM 
@@ -360,8 +295,8 @@ elif page == "MLB Principal Charts":
 
             # Add border around the plot
             for spine in ax.spines.values():
-                spine.set_edgecolor('black')
-                spine.set lineWidth(1.2)
+                spine.set edgecolor='black'
+                spine.set line width(1.2)
 
             # Adjust layout
             plt.tight_layout()
