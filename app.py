@@ -119,8 +119,8 @@ if page == "GreenAleph Active Principal":
 
         # Add border around the plot
         for spine in ax.spines.values():
-            spine.set edgecolor='black'
-            spine.set line_width(1.2)
+            spine.set_edgecolor='black'
+            spine.set_line_width(1.2)
 
         # Adjust layout
         plt.tight_layout()
@@ -216,8 +216,8 @@ elif page == "MLB Principal Charts":
 
         # Add border around the plot
         for spine in ax.spines.values():
-            spine.set edgecolor='black'
-            spine.set line_width(1.2)
+            spine.set_edgecolor='black'
+            spine.set_line_width(1.2)
 
         # Adjust layout
         plt.tight_layout()
@@ -294,8 +294,8 @@ elif page == "MLB Principal Charts":
 
             # Add border around the plot
             for spine in ax.spines.values():
-                spine.set edgecolor='black'
-                spine.set line width(1.2)
+                spine.set_edgecolor='black'
+                spine.set_line width(1.2)
 
             # Adjust layout
             plt.tight_layout()
