@@ -10,7 +10,7 @@ db_password = st.secrets["DB_PASSWORD"]
 db_name = st.secrets["DB_NAME"]
 
 # Function to get data from MySQL database
-def get_data_from_db(query):
+def get_data_from_db(query, params=None):
     try:
         conn = mysql.connector.connect(
             host=db_host,
@@ -19,7 +19,7 @@ def get_data_from_db(query):
             database=db_name
         )
         cursor = conn.cursor(dictionary=True)
-        cursor.execute(query)
+        cursor.execute(query, params)
         data = cursor.fetchall()
         cursor.close()
         conn.close()
@@ -30,7 +30,7 @@ def get_data_from_db(query):
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "MLB Principal Charts", "MLB Principal Tables"])
+page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "MLB Principal Charts", "MLB Principal Tables", "MLB Participant Positions"])
 
 if page == "GreenAleph Active Principal":
     # GreenAleph Active Principal
@@ -405,3 +405,69 @@ elif page == "MLB Principal Tables":
         parlay_bets_df = pd.DataFrame(parlay_bets_data)
         st.subheader('Active Parlay Bets in GreenAleph Fund')
         st.table(parlay_bets_df)
+
+elif page == "MLB Participant Positions":
+    # MLB Participant Positions
+    st.title('MLB Participant Positions in GreenAleph Fund')
+
+    # Fetch the list of participant names for the dropdown
+    participants_query = """
+    SELECT DISTINCT ParticipantName 
+    FROM legs 
+    WHERE LeagueName = 'MLB'
+    ORDER BY ParticipantName ASC;
+    """
+    participants = get_data_from_db(participants_query)
+
+    if participants is not None:
+        participant_names = [participant['ParticipantName'] for participant in participants]
+        participant_selected = st.selectbox('Select Participant', participant_names)
+
+        if participant_selected:
+            wlca_filter = st.selectbox('Select WLCA', ['All', 'Win', 'Loss', 'Cashout', 'Active'])
+            legcount_filter = st.selectbox('Select Bet Type', ['All', 'Straight', 'Parlay'])
+
+            # SQL query to fetch data for the selected participant
+            query = """
+            SELECT 
+                l.LegID,
+                l.EventType,
+                b.DollarsAtStake,
+                b.PotentialPayout,
+                b.NetProfit,
+                b.ImpliedOdds,
+                l.EventLabel,
+                l.LegDescription,
+                b.Sportsbook,
+                b.DateTimePlaced,
+                b.LegCount
+            FROM 
+                bets b
+            JOIN 
+                legs l ON b.WagerID = l.WagerID
+            WHERE 
+                l.ParticipantName = %s
+                AND b.WhichFund = 'GreenAleph'
+                AND l.LeagueName = 'MLB'
+            """
+            params = [participant_selected]
+
+            if wlca_filter != 'All':
+                query += " AND b.WLCA = %s"
+                params.append(wlca_filter)
+            
+            if legcount_filter == 'Straight':
+                query += " AND b.LegCount = 1"
+            elif legcount_filter == 'Parlay':
+                query += " AND b.LegCount > 1"
+
+            # Fetch the data for the selected participant
+            data = get_data_from_db(query, params)
+
+            # Display the data
+            if data:
+                df = pd.DataFrame(data)
+                st.subheader(f'Bets and Legs for {participant_selected}')
+                st.table(df)
+            else:
+                st.warning('No data found for the selected filters.')
