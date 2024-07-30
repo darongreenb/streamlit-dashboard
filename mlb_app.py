@@ -35,7 +35,7 @@ participant_query = """
 SELECT DISTINCT l.ParticipantName
 FROM bets b
 JOIN legs l ON b.WagerID = l.WagerID
-WHERE b.WhichFund = 'GreenAleph' AND l.LeagueName = 'MLB'
+WHERE b.WhichFund = 'Beta' AND l.LeagueName = 'MLB'
 """
 participants = [item['ParticipantName'] for item in get_data_from_db(participant_query)]
 
@@ -58,8 +58,17 @@ else:
 # SQL query to fetch the filtered data
 filtered_query = f"""
 SELECT 
-    b.*, 
-    l.*
+    l.LegID,
+    l.EventType,
+    b.DollarsAtStake,
+    b.PotentialPayout,
+    b.NetProfit,
+    b.ImpliedOdds,
+    l.EventLabel,
+    l.LegDescription,
+    b.Sportsbook,
+    b.DateTimePlaced,
+    b.LegCount
 FROM 
     bets b
 JOIN 
@@ -68,7 +77,7 @@ WHERE
     l.ParticipantName = %s
     AND b.WLCA = %s
     AND {leg_count_condition}
-    AND b.WhichFund = 'GreenAleph'
+    AND b.WhichFund = 'Beta'
     AND l.LeagueName = 'MLB'
 """
 
@@ -86,4 +95,16 @@ else:
 
     # Display the fetched data
     st.subheader(f'Bets and Legs for {participant_name} ({wlca_filter} - {bet_type})')
-    st.dataframe(filtered_df)
+    st.dataframe(filtered_df[[
+        'LegID', 
+        'EventType', 
+        'DollarsAtStake', 
+        'PotentialPayout', 
+        'NetProfit', 
+        'ImpliedOdds', 
+        'EventLabel', 
+        'LegDescription', 
+        'Sportsbook', 
+        'DateTimePlaced', 
+        'LegCount'
+    ]])
