@@ -30,7 +30,7 @@ def get_data_from_db(query, params=None):
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "MLB Principal Charts", "MLB Principal Tables", "MLB Participant Viewer"])
+page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "MLB Principal Charts", "MLB Principal Tables", "MLB Participant Positions"])
 
 if page == "GreenAleph Active Principal":
     # GreenAleph Active Principal
@@ -406,9 +406,9 @@ elif page == "MLB Principal Tables":
         st.subheader('Active Parlay Bets in GreenAleph Fund')
         st.table(parlay_bets_df)
 
-elif page == "MLB Participant Viewer":
-    # MLB Participant Viewer
-    st.title('MLB Participant Viewer in GreenAleph Fund')
+elif page == "MLB Participant Positions":
+    # MLB Participant Positions
+    st.title('MLB Participant Positions in GreenAleph Fund')
 
     # Fetch the list of participant names for the dropdown
     participants_query = """
