@@ -35,7 +35,7 @@ participant_query = """
 SELECT DISTINCT l.ParticipantName
 FROM bets b
 JOIN legs l ON b.WagerID = l.WagerID
-WHERE b.WhichFund = 'Beta' AND l.LeagueName = 'MLB'
+WHERE b.WhichFund = 'GreenAleph' AND l.LeagueName = 'MLB'
 """
 participants = [item['ParticipantName'] for item in get_data_from_db(participant_query)]
 
@@ -68,7 +68,7 @@ WHERE
     l.ParticipantName = %s
     AND b.WLCA = %s
     AND {leg_count_condition}
-    AND b.WhichFund = 'Beta'
+    AND b.WhichFund = 'GreenAleph'
     AND l.LeagueName = 'MLB'
 """
 
