@@ -48,7 +48,12 @@ wlca_filter = st.selectbox('Select WLCA Status', wlca_options)
 
 # Straight or Parlay sub-filter
 bet_type = st.selectbox('Select Bet Type', ['Straight', 'Parlay'])
-leg_count = 1 if bet_type == 'Straight' else '> 1'
+
+# Determine LegCount condition based on bet type
+if bet_type == 'Straight':
+    leg_count_condition = "b.LegCount = 1"
+else:
+    leg_count_condition = "b.LegCount > 1"
 
 # SQL query to fetch the filtered data
 filtered_query = f"""
@@ -62,7 +67,7 @@ JOIN
 WHERE 
     l.ParticipantName = %s
     AND b.WLCA = %s
-    AND b.LegCount {leg_count}
+    AND {leg_count_condition}
     AND b.WhichFund = 'Beta'
     AND l.LeagueName = 'MLB'
 """
