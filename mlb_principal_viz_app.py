@@ -30,7 +30,7 @@ def get_data_from_db(query, params=None):
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "MLB Principal Charts", "MLB Principal Tables", "MLB Participants Tables"])
+page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "MLB Principal Charts", "MLB Principal Tables", "MLB Participant Viewer"])
 
 if page == "GreenAleph Active Principal":
     # GreenAleph Active Principal
