@@ -406,9 +406,9 @@ elif page == "MLB Principal Tables":
         st.subheader('Active Parlay Bets in GreenAleph Fund')
         st.table(parlay_bets_df)
 
-elif page == "MLB Participants Tables":
-    # MLB Participants Tables
-    st.title('MLB Participants Tables in GreenAleph Fund')
+elif page == "MLB Participant Viewer":
+    # MLB Participant Viewer
+    st.title('MLB Participant Viewer in GreenAleph Fund')
 
     # Fetch the list of participant names for the dropdown
     participants_query = """
