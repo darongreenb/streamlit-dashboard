@@ -47,7 +47,7 @@ if page == "GreenAleph Active Principal":
 
     SELECT 
         l.LeagueName,
-        CAST(ROUND(SUM(DollarsAtStake) AS INT) AS TotalDollarsAtStake
+        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake
     FROM 
         DistinctBets db
     JOIN 
@@ -59,7 +59,7 @@ if page == "GreenAleph Active Principal":
 
     SELECT 
         'Total' AS LeagueName,
-        CAST(ROUND(SUM(DollarsAtStake) AS INT) AS TotalDollarsAtStake
+        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake
     FROM 
         DistinctBets;
     """
