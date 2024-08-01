@@ -81,7 +81,7 @@ if page == "GreenAleph Active Principal":
         df = df.sort_values(by='TotalDollarsAtStake')
 
         # Display the fetched data
-        st.subheader(f'Total Dollars At Stake for GreenAleph Fund (Active)')
+        st.subheader(f'Total Dollars At Stake for GreenAleph Bankroll (Active)')
 
         # Display raw data in a table
         st.table(df)
@@ -98,7 +98,7 @@ if page == "GreenAleph Active Principal":
         bars = ax.bar(df['LeagueName'], df['TotalDollarsAtStake'], color=bar_colors, width=0.6, edgecolor='black')
 
         # Add labels and title
-        ax.set_title('GreenAleph Fund: Total Active Principal', fontsize=18, fontweight='bold')
+        ax.set_title('GreenAleph Bankroll: Total Active Principal', fontsize=18, fontweight='bold')
         ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
 
         # Annotate each bar with the value
@@ -130,7 +130,7 @@ if page == "GreenAleph Active Principal":
 
 elif page == "MLB Principal Charts":
     # MLB Principal Charts
-    st.title('MLB Active Principal in GreenAleph Fund')
+    st.title('MLB Active Principal in GreenAleph Bankroll')
 
     # SQL query to fetch data for the main bar chart
     main_query = """
@@ -179,7 +179,7 @@ elif page == "MLB Principal Charts":
         main_df = pd.DataFrame(main_data)
 
         # Display the fetched data
-        st.subheader('Total Dollars At Stake by EventType (GreenAleph Fund)')
+        st.subheader('Total Dollars At Stake by EventType (GreenAleph Bankroll)')
         
         # Create data for visualization
         main_df['TotalDollarsAtStake'] = main_df['TotalDollarsAtStake'].astype(float).round(0)
@@ -195,7 +195,7 @@ elif page == "MLB Principal Charts":
         bars = ax.bar(main_df['EventType'], main_df['TotalDollarsAtStake'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(main_df['EventType']))], width=0.6, edgecolor='black')
 
         # Add labels and title
-        ax.set_title('GreenAleph Fund: Total Active Principal', fontsize=18, fontweight='bold')
+        ax.set_title('GreenAleph Bankroll: Total Active Principal', fontsize=18, fontweight='bold')
         ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
 
         # Annotate each bar with the value
@@ -286,7 +286,7 @@ elif page == "MLB Principal Charts":
                         filtered_df = pd.DataFrame(filtered_data)
 
                         # Display the fetched data
-                        st.subheader(f'Total Dollars At Stake by ParticipantName for {event_type_option} - {event_label_option} (GreenAleph Fund)')
+                        st.subheader(f'Total Dollars At Stake by ParticipantName for {event_type_option} - {event_label_option} (GreenAleph Bankroll)')
 
                         # Create data for visualization
                         filtered_df['TotalDollarsAtStake'] = filtered_df['TotalDollarsAtStake'].astype(float).round(0)
@@ -333,7 +333,7 @@ elif page == "MLB Principal Charts":
   
 elif page == "MLB Principal Tables":
     # MLB Principal Tables
-    st.title('MLB Principal Tables in GreenAleph Fund')
+    st.title('MLB Principal Tables in GreenAleph Bankroll')
 
     # SQL query to fetch the data for Active Straight Bets
     straight_bets_query = """
@@ -426,17 +426,17 @@ elif page == "MLB Principal Tables":
     # Display the data
     if straight_bets_data:
         straight_bets_df = pd.DataFrame(straight_bets_data)
-        st.subheader('Active Straight Bets in GreenAleph Fund')
+        st.subheader('Active Straight Bets in GreenAleph Bankroll')
         st.table(straight_bets_df)
 
     if parlay_bets_data:
         parlay_bets_df = pd.DataFrame(parlay_bets_data)
-        st.subheader('Active Parlay Bets in GreenAleph Fund')
+        st.subheader('Active Parlay Bets in GreenAleph Bankroll')
         st.table(parlay_bets_df)
 
 elif page == "MLB Participant Positions":
     # MLB Participant Positions
-    st.title('MLB Participant Positions in GreenAleph Fund')
+    st.title('MLB Participant Positions in GreenAleph Bankroll')
 
     # Fetch the list of participant names for the dropdown
     participants_query = """
