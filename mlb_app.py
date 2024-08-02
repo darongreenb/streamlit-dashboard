@@ -46,7 +46,7 @@ if page == "GreenAleph Active Principal":
     st.title('Principal Dashboard - GreenAleph I')
 
     # Display last update time in the corner
-    st.markdown(f"**Last Update:** {last_update_time}", unsafe_allow_html=True)
+    st.markdown(f"**Most Recent Wager:** {last_update_time}", unsafe_allow_html=True)
 
     # SQL query to fetch data
     data_query = """
