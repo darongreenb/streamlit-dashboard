@@ -28,7 +28,6 @@ def get_data_from_db(query, params=None):
         st.error(f"Error: {err}")
         return None
 
-
 # Fetch the most recent update time
 update_time_query = "SELECT MAX(DateTimePlaced) as LastUpdateTime FROM bets"
 update_time_data = get_data_from_db(update_time_query)
@@ -333,15 +332,14 @@ elif page == "MLB Principal Charts":
 
                         # Add border around the plot
                         for spine in ax.spines.values():
-                            spine.set_edgecolor('black')
-                            spine.set_linewidth(1.2)
+                            spine.set edgecolor('black')
+                            spine set linewidth(1.2)
 
                         # Adjust layout
                         plt.tight_layout()
 
                         # Use Streamlit to display the chart
                         st.pyplot(fig)
-
 
   
 elif page == "MLB Principal Tables":
