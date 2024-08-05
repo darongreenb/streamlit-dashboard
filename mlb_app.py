@@ -41,6 +41,12 @@ else:
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions"])
 
+
+
+
+
+
+
 if page == "GreenAleph Active Principal":
     # GreenAleph Active Principal
     st.title('Principal Dashboard - GreenAleph I')
@@ -95,9 +101,6 @@ if page == "GreenAleph Active Principal":
         # Display the fetched data
         st.subheader(f'Total Dollars At Stake for GA1 (Active)')
 
-        # Display raw data in a table
-        st.table(df)
-
         # Define colors for bars
         colors = ['#77dd77', '#89cff0', '#fdfd96', '#ffb347', '#aec6cf', '#cfcfc4', '#ffb6c1', '#b39eb5']
         total_color = '#006400'  # Dark green for the Total bar
@@ -132,13 +135,22 @@ if page == "GreenAleph Active Principal":
         # Add border around the plot
         for spine in ax.spines.values():
             spine.set_edgecolor('black')
-            spine.set_linewidth(1.2)
+            spine.set line-width(1.2)
 
         # Adjust layout
         plt.tight_layout()
 
         # Use Streamlit to display the chart
         st.pyplot(fig)
+
+        # Display raw data in a table
+        st.table(df)
+
+
+
+
+
+
 
 
 
