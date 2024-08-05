@@ -39,7 +39,7 @@ else:
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "MLB Principal Charts", "MLB Principal Tables", "MLB Participant Positions"])
+page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions"])
 
 if page == "GreenAleph Active Principal":
     # GreenAleph Active Principal
@@ -147,8 +147,8 @@ if page == "GreenAleph Active Principal":
 
 
 
-elif page == "MLB Principal Charts":
-    # MLB Principal Charts
+elif page == "MLB Charts":
+    # MLB Charts
     st.title('MLB Active Principal - GA1')
 
     # SQL query to fetch data for the main bar chart
