@@ -414,8 +414,8 @@ elif page == "MLB Principal Charts":
 
                 # Add border around the plot
                 for spine in ax.spines.values():
-                    spine.set edgecolor('black')
-                    spine.set linewidth(1.2)
+                    spine.set_edgecolor('black')
+                    spine.set_linewidth(1.2)
 
                 # Adjust layout
                 plt.tight_layout()
