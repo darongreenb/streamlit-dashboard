@@ -378,50 +378,48 @@ elif page == "MLB Principal Charts":
                         payout_df = pd.DataFrame(payout_data)
 
                         # Display the fetched data
-                        st.subheader(f'Total Potential Payout by ParticipantName for {                    # Create data for visualization
-                    payout_df['TotalPotentialPayout'] = payout_df['TotalPotentialPayout'].astype(float).round(0)
+                        st.subheader(f'Total Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (Straight Bets Only)')
 
-                    # Sort the DataFrame by 'TotalPotentialPayout' in ascending order
-                    payout_df = payout_df.sort_values('TotalPotentialPayout', ascending=True)
+                        # Create data for visualization
+                        payout_df['TotalPotentialPayout'] = payout_df['TotalPotentialPayout'].astype(float).round(0)
 
-                    # Plot the stacked bar chart
-                    fig, ax = plt.subplots(figsize=(12, 8))
-                    bars = ax.bar(payout_df['ParticipantName'], payout_df['TotalPotentialPayout'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(payout_df['ParticipantName']))], width=0.6, edgecolor='black')
+                        # Sort the DataFrame by 'TotalPotentialPayout' in ascending order
+                        payout_df = payout_df.sort_values('TotalPotentialPayout', ascending=True)
 
-                    # Add labels and title
-                    ax.set_title(f'Total Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (Straight Bets Only)', fontsize=18, fontweight='bold')
-                    ax.set_ylabel('Total Potential Payout ($)', fontsize=14, fontweight='bold')
+                        # Plot the stacked bar chart
+                        fig, ax = plt.subplots(figsize=(12, 8))
+                        bars = ax.bar(payout_df['ParticipantName'], payout_df['TotalPotentialPayout'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(payout_df['ParticipantName']))], width=0.6, edgecolor='black')
 
-                    # Annotate each bar with the value
-                    for bar in bars:
-                        height = bar.get_height()
-                        ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
-                                    xytext=(0, 3), textcoords="offset points",
-                                    ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
+                        # Add labels and title
+                        ax.set_title(f'Total Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (Straight Bets Only)', fontsize=18, fontweight='bold')
+                        ax.set_ylabel('Total Potential Payout ($)', fontsize=14, fontweight='bold')
 
-                    # Rotate the x-axis labels to 45 degrees
-                    plt.xticks(rotation=45, ha='right')
+                        # Annotate each bar with the value
+                        for bar in bars:
+                            height = bar.get_height()
+                            ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                                        xytext=(0, 3), textcoords="offset points",
+                                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
 
-                    # Add horizontal line at y=0 for reference
-                    ax.axhline(0, color='black', linewidth=0.8)
+                        # Rotate the x-axis labels to 45 degrees
+                        plt.xticks(rotation=45, ha='right')
 
-                    # Set background color to white
-                    ax.set_facecolor('white')
+                        # Add horizontal line at y=0 for reference
+                        ax.axhline(0, color='black', linewidth=0.8)
 
-                    # Add border around the plot
-                    for spine in ax.spines.values():
-                        spine.set_edgecolor('black')
-                        spine.setlinewidth(1.2)
+                        # Set background color to white
+                        ax.set_facecolor('white')
 
-                    # Adjust layout
-                    plt.tight_layout()
+                        # Add border around the plot
+                        for spine in ax.spines.values():
+                            spine.set_edgecolor('black')
+                            spine.setlinewidth(1.2)
 
-                    # Use Streamlit to display the chart
-                    st.pyplot(fig)
+                        # Adjust layout
+                        plt.tight_layout()
 
-
-
-
+                        # Use Streamlit to display the chart
+                        st.pyplot(fig)
 
 
 
