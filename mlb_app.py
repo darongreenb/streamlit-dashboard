@@ -135,7 +135,7 @@ if page == "GreenAleph Active Principal":
         # Add border around the plot
         for spine in ax.spines.values():
             spine.set_edgecolor('black')
-            spine.set line-width(1.2)
+            spine.set_linewidth(1.2)
 
         # Adjust layout
         plt.tight_layout()
