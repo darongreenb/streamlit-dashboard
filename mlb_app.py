@@ -149,7 +149,7 @@ if page == "GreenAleph Active Principal":
 
 elif page == "MLB Charts":
     # MLB Charts
-    st.title('MLB Active Principal - GA1')
+    st.title('MLB Active Bets - GA1')
 
     # SQL query to fetch data for the main bar chart
     main_query = """
