@@ -143,10 +143,6 @@ if page == "GreenAleph Active Principal":
         # Use Streamlit to display the chart
         st.pyplot(fig)
 
-        # Display raw data in a table
-        st.table(df)
-
-
 
 
 
