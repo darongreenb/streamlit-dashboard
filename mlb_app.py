@@ -318,7 +318,7 @@ if page == "MLB Charts":
                         combined_df = combined_df.sort_values('TotalDollarsAtStake', ascending=True)
 
                         # Define colors for DollarsAtStake and PotentialPayout
-                        color_dollars_at_stake = '#a0d8f1'  # Light blue
+                        color_dollars_at_stake = '#219ebc'  # Blue color
                         color_potential_payout = '#f4a261'  # Light orange
 
                         # Plot the combined bar chart
@@ -348,13 +348,13 @@ if page == "MLB Charts":
                         ax.axhline(0, color='black', linewidth=0.8)
 
                         # Set background color to white
-                        ax.set_facecolor('white')  
+                        ax.set_facecolor('white')
 
                         # Add border around the plot
-                        for spine in ax.spines.values():
+                        for spine in ax.spines.values():                        
                             spine.set_edgecolor('black')
                             spine.set_linewidth(1.2)
-
+    
                         # Add legend
                         ax.legend()
     
