@@ -351,20 +351,19 @@ elif page == "MLB Charts":
                         ax.set_facecolor('white')
 
                         # Add border around the plot
-                        for spine in ax.spines.values():                        
+                        for spine in ax.spines.values():
                             spine.set_edgecolor('black')
                             spine.set_linewidth(1.2)
-    
+
                         # Add legend
                         ax.legend()
-    
+
                         # Adjust layout
                         plt.tight_layout()
-    
+
                         # Use Streamlit to display the chart
                         st.pyplot(fig)
 
-                       
 
 
 
