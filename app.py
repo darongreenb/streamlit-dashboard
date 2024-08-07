@@ -308,7 +308,7 @@ elif page == "MLB Charts":
                         combined_df = pd.DataFrame(combined_data)
                         
                         # Display the fetched data
-                       # st.subheader(f'Total Dollars At Stake and Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)')
+                       # st.subheader(f'Total Dollars At Stake and Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (Straight Bets Only)')
                         
                         # Create data for visualization
                         combined_df['TotalDollarsAtStake'] = combined_df['TotalDollarsAtStake'].astype(float).round(0)
