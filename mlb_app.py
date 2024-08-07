@@ -306,34 +306,33 @@ elif page == "MLB Charts":
                     else:
                         # Create a DataFrame from the fetched data
                         combined_df = pd.DataFrame(combined_data)
-
+                        
                         # Display the fetched data
                         st.subheader(f'Total Dollars At Stake and Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)')
-
+                        
                         # Create data for visualization
                         combined_df['TotalDollarsAtStake'] = combined_df['TotalDollarsAtStake'].astype(float).round(0)
                         combined_df['TotalPotentialPayout'] = combined_df['TotalPotentialPayout'].astype(float).round(0)
-
+                        
                         # Sort the DataFrame by 'TotalDollarsAtStake' in ascending order
                         combined_df = combined_df.sort_values('TotalDollarsAtStake', ascending=True)
-
+                        
                         # Define colors for DollarsAtStake and PotentialPayout
                         color_dollars_at_stake = '#219ebc'  # Blue color
                         color_potential_payout = '#f4a261'  # Light orange
-
+                        
                         # Plot the combined bar chart
                         fig, ax = plt.subplots(figsize=(18, 12))
                         bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], color=color_potential_payout, width=0.4, edgecolor='black', label='Total Potential Payout', alpha=0.6, bottom=combined_df['TotalDollarsAtStake'])
                         bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], color=color_dollars_at_stake, width=0.4, edgecolor='black', label='Total Dollars At Stake')
                         
-
                         # Add labels and title
                         ax.set_title(f'Total Active Principal and Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
-                        ax.set_ylabel('Total Amount ($)', fontsize=14, fontweight='bold')
-
+                        ax.set_ylabel('Total Amount ($)', fontsize=16, fontweight='bold')  # Enlarge y-axis label
+                        
                         # Annotate each bar with the value (no dollar sign)
                         for bar1, bar2 in zip(bars1, bars2):
-                            height1 = bar1.get_height()
+                            height1 = bar1.get_height() + bar2.get_height()
                             height2 = bar2.get_height()
                             ax.annotate(f'{height1:,.0f}', xy=(bar1.get_x() + bar1.get_width() / 2, height1),
                                         xytext=(0, 3), textcoords="offset points",
@@ -341,27 +340,27 @@ elif page == "MLB Charts":
                             ax.annotate(f'{height2:,.0f}', xy=(bar2.get_x() + bar2.get_width() / 2, height2),
                                         xytext=(0, 3), textcoords="offset points",
                                         ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
-
-                        # Rotate the x-axis labels to 45 degrees
-                        plt.xticks(rotation=45, ha='right')
-
+                        
+                        # Rotate the x-axis labels to 45 degrees and enlarge them
+                        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+                        
                         # Add horizontal line at y=0 for reference
                         ax.axhline(0, color='black', linewidth=0.8)
-
+                        
                         # Set background color to white
                         ax.set_facecolor('white')
-
+                        
                         # Add border around the plot
                         for spine in ax.spines.values():
                             spine.set_edgecolor('black')
                             spine.set_linewidth(1.2)
-
+                        
                         # Add legend
                         ax.legend()
-
+                        
                         # Adjust layout
                         plt.tight_layout()
-
+                        
                         # Use Streamlit to display the chart
                         st.pyplot(fig)
 
