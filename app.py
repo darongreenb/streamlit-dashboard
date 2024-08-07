@@ -308,7 +308,7 @@ elif page == "MLB Charts":
                         combined_df = pd.DataFrame(combined_data)
                         
                         # Display the fetched data
-                        st.subheader(f'Total Dollars At Stake and Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)')
+                       # st.subheader(f'Total Dollars At Stake and Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)')
                         
                         # Create data for visualization
                         combined_df['TotalDollarsAtStake'] = combined_df['TotalDollarsAtStake'].astype(float).round(0)
@@ -329,7 +329,7 @@ elif page == "MLB Charts":
                         # Add labels and title
                        
                         ax.set_ylabel('Total Amount ($)', fontsize=16, fontweight='bold')  # Enlarge y-axis label
-                        
+                        ax.set_title(f'Total Active Principal and Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
                         # Annotate each bar with the value (no dollar sign)
                         for bar1, bar2 in zip(bars1, bars2):
                             height1 = bar1.get_height() + bar2.get_height()
