@@ -147,7 +147,7 @@ if page == "GreenAleph Active Principal":
 
 
 
-elif page == "MLB Charts":
+if page == "MLB Charts":
     # MLB Charts
     st.title('MLB Active Bets - GA1')
 
@@ -235,7 +235,7 @@ elif page == "MLB Charts":
 
         # Add border around the plot
         for spine in ax.spines.values():
-            spine.set_edgecolor='black'
+            spine.set_edgecolor('black')
             spine.set_linewidth(1.2)
 
         # Adjust layout
@@ -348,13 +348,13 @@ elif page == "MLB Charts":
                         ax.axhline(0, color='black', linewidth=0.8)
 
                         # Set background color to white
-                        ax.set_facecolor                    
-                        
+                        ax.set_facecolor('white')  
+
                         # Add border around the plot
                         for spine in ax.spines.values():
                             spine.set_edgecolor('black')
                             spine.set_linewidth(1.2)
-    
+
                         # Add legend
                         ax.legend()
     
@@ -363,6 +363,8 @@ elif page == "MLB Charts":
     
                         # Use Streamlit to display the chart
                         st.pyplot(fig)
+
+                       
 
 
 
