@@ -147,7 +147,7 @@ if page == "GreenAleph Active Principal":
 
 
 
-elif page == "MLB Charts":
+if page == "MLB Charts":
     # MLB Charts
     st.title('MLB Active Bets - GA1')
 
@@ -210,7 +210,7 @@ elif page == "MLB Charts":
         pastel_colors = ['#a0d8f1', '#f4a261', '#e76f51', '#8ecae6', '#219ebc', '#023047', '#ffb703', '#fb8500', '#d4a5a5', '#9ab0a8']
 
         # Plot the main bar chart
-        fig, ax = plt.subplots(figsize=(12, 8))
+        fig, ax = plt.subplots(figsize=(15, 10))
         bars = ax.bar(main_df['EventType'], main_df['TotalDollarsAtStake'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(main_df['EventType']))], width=0.6, edgecolor='black')
 
         # Add labels and title
@@ -322,9 +322,9 @@ elif page == "MLB Charts":
                         color_potential_payout = '#f4a261'  # Light orange
 
                         # Plot the combined bar chart
-                        fig, ax = plt.subplots(figsize=(12, 8))
+                        fig, ax = plt.subplots(figsize=(15, 10))
                         bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], color=color_dollars_at_stake, width=0.4, edgecolor='black', label='Total Dollars At Stake')
-                        bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], color=color_potential_payout, width=0.4, edgecolor='black', label='Total Potential Payout', alpha=0.6)
+                        bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], color=color_potential_payout, width=0.4, edgecolor='black', label='Total Potential Payout', alpha=0.6, bottom=combined_df['TotalDollarsAtStake'])
 
                         # Add labels and title
                         ax.set_title(f'Total Active Principal and Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
@@ -363,6 +363,7 @@ elif page == "MLB Charts":
 
                         # Use Streamlit to display the chart
                         st.pyplot(fig)
+
 
 
 
