@@ -147,7 +147,7 @@ if page == "GreenAleph Active Principal":
 
 
 
-if page == "MLB Charts":
+elif page == "MLB Charts":
     # MLB Charts
     st.title('MLB Active Bets - GA1')
 
