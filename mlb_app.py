@@ -322,7 +322,7 @@ elif page == "MLB Charts":
                         color_potential_payout = '#f4a261'  # Light orange
 
                         # Plot the combined bar chart
-                        fig, ax = plt.subplots(figsize=(15, 10))
+                        fig, ax = plt.subplots(figsize=(18, 12))
                         bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], color=color_potential_payout, width=0.4, edgecolor='black', label='Total Potential Payout', alpha=0.6, bottom=combined_df['TotalDollarsAtStake'])
                         bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], color=color_dollars_at_stake, width=0.4, edgecolor='black', label='Total Dollars At Stake')
                         
