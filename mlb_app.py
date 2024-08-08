@@ -566,75 +566,82 @@ elif page == "Profit":
     if data is None:
         st.error("Failed to fetch data from the database.")
     else:
-        # Ensure DateTimePlaced is a datetime object
-        data['DateTimePlaced'] = pd.to_datetime(data['DateTimePlaced'])
+        if 'DateTimePlaced' not in data.columns:
+            st.error("The 'DateTimePlaced' column is missing from the data.")
+        else:
+            try:
+                # Ensure DateTimePlaced is a datetime object
+                data['DateTimePlaced'] = pd.to_datetime(data['DateTimePlaced'])
 
-        # Sort by DateTimePlaced
-        data.sort_values(by='DateTimePlaced', inplace=True)
+                # Sort by DateTimePlaced
+                data.sort_values(by='DateTimePlaced', inplace=True)
 
-        # Resample to monthly periods
-        data.set_index('DateTimePlaced', inplace=True)
-        data = data.resample('M').sum().reset_index()
+                # Resample to monthly periods
+                data.set_index('DateTimePlaced', inplace=True)
+                data = data.resample('M').sum().reset_index()
 
-        # Calculate the cumulative net profit
-        data['Cumulative Net Profit'] = data['NetProfit'].cumsum()
+                # Calculate the cumulative net profit
+                data['Cumulative Net Profit'] = data['NetProfit'].cumsum()
 
-        # Calculate the % cumulative return
-        data['% Cumulative Return'] = (data['Cumulative Net Profit'] / 325000) * 100
+                # Calculate the % cumulative return
+                data['% Cumulative Return'] = (data['Cumulative Net Profit'] / 325000) * 100
 
-        # Create the bar graph
-        fig, ax = plt.subplots(figsize=(14, 7))
+                # Create the bar graph
+                fig, ax = plt.subplots(figsize=(14, 7))
 
-        # Color bars based on positive or negative values
-        bar_colors = data['% Cumulative Return'].apply(lambda x: 'gray' if x < 0 else 'green')
+                # Color bars based on positive or negative values
+                bar_colors = data['% Cumulative Return'].apply(lambda x: 'gray' if x < 0 else 'green')
 
-        bars = ax.bar(data['DateTimePlaced'].dt.strftime('%Y-%m'), data['% Cumulative Return'], color=bar_colors)
+                bars = ax.bar(data['DateTimePlaced'].dt.strftime('%Y-%m'), data['% Cumulative Return'], color=bar_colors)
 
-        # Adding titles and labels
-        ax.set_title('GreenAleph Cumulative Returns Over Time', fontsize=16, fontweight='bold')
-        ax.set_xlabel('Month of Bet Placed', fontsize=14, fontweight='bold')
-        ax.set_ylabel('% Cumulative Return', fontsize=14, fontweight='bold')
+                # Adding titles and labels
+                ax.set_title('GreenAleph Cumulative Returns Over Time', fontsize=16, fontweight='bold')
+                ax.set_xlabel('Month of Bet Placed', fontsize=14, fontweight='bold')
+                ax.set_ylabel('% Cumulative Return', fontsize=14, fontweight='bold')
 
-        # Remove horizontal grid lines
-        ax.grid(False, axis='y')
+                # Remove horizontal grid lines
+                ax.grid(False, axis='y')
 
-        # Adding a label in the top right corner
-        ax.text(0.98, 0.9, 'GreenAleph Sports', verticalalignment='bottom', horizontalalignment='right',
-                transform=ax.transAxes, color='green', fontsize=12, fontstyle='italic')
+                # Adding a label in the top right corner
+                ax.text(0.98, 0.9, 'GreenAleph Sports', verticalalignment='bottom', horizontalalignment='right',
+                        transform=ax.transAxes, color='green', fontsize=12, fontstyle='italic')
 
-        # Adding net profit label
-        ax.text(0.02, 0.9, 'Gross Profit: $54,090', verticalalignment='bottom', horizontalalignment='left',
-                transform=ax.transAxes, color='black', fontsize=12, fontweight='bold')
+                # Adding net profit label
+                ax.text(0.02, 0.9, 'Gross Profit: $54,090', verticalalignment='bottom', horizontalalignment='left',
+                        transform=ax.transAxes, color='black', fontsize=12, fontweight='bold')
 
-        # Adding investor capital label
-        ax.text(0.02, 0.85, 'Investor Capital: $325k', verticalalignment='bottom', horizontalalignment='left',
-                transform=ax.transAxes, color='black', fontsize=12, fontweight='bold')
+                # Adding investor capital label
+                ax.text(0.02, 0.85, 'Investor Capital: $325k', verticalalignment='bottom', horizontalalignment='left',
+                        transform=ax.transAxes, color='black', fontsize=12, fontweight='bold')
 
-        # Adding some aesthetic improvements
-        plt.xticks(rotation=45)
-        plt.tight_layout()
+                # Adding some aesthetic improvements
+                plt.xticks(rotation=45)
+                plt.tight_layout()
 
-        # Set y-axis limits to include negative values and reach up to 30
-        ax.set_ylim(-3, 30)
+                # Set y-axis limits to include negative values and reach up to 30
+                ax.set_ylim(-3, 30)
 
-        # Add a horizontal black line at y = 0
-        ax.axhline(0, color='black', linewidth=1.5)
+                # Add a horizontal black line at y = 0
+                ax.axhline(0, color='black', linewidth=1.5)
 
-        # Set background color to white
-        ax.set_facecolor('white')
-        plt.gcf().set_facecolor('white')
+                # Set background color to white
+                ax.set_facecolor('white')
+                plt.gcf().set_facecolor('white')
 
-        # Add a border around the plot
-        for spine in ax.spines.values():
-            spine.set_edgecolor('black')
-            spine.set_linewidth(1.5)
+                # Add a border around the plot
+                for spine in ax.spines.values():
+                    spine.set_edgecolor('black')
+                    spine.set_linewidth(1.5)
 
-        # Add a percent label to the last bar in the graph
-        last_bar = bars[-1]
-        height = last_bar.get_height()
-        ax.annotate(f'{height:.2f}%', xy=(last_bar.get_x() + last_bar.get_width() / 2, height),
-                    xytext=(0, 3 if height >= 0 else -3), textcoords="offset points",
-                    ha='center', va='bottom' if height >= 0 else 'top', fontsize=12, fontweight='bold', color='black')
+                # Add a percent label to the last bar in the graph
+                last_bar = bars[-1]
+                height = last_bar.get_height()
+                ax.annotate(f'{height:.2f}%', xy=(last_bar.get_x() + last_bar.get_width() / 2, height),
+                            xytext=(0, 3 if height >= 0 else -3), textcoords="offset points",
+                            ha='center', va='bottom' if height >= 0 else 'top', fontsize=12, fontweight='bold', color='black')
 
-        # Use Streamlit to display the chart
-        st.pyplot(fig)
+                # Use Streamlit to display the chart
+                st.pyplot(fig)
+            except Exception as e:
+                st.error(f"Error processing data: {e}")
+
