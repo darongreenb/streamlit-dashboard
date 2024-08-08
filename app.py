@@ -570,7 +570,7 @@ elif page == "Profit":
                 bars = ax.bar(df['DateTimePlaced'].dt.strftime('%Y-%m'), df['Cumulative Net Profit'], color=bar_colors, width=0.6, edgecolor='black')
 
                 # Adding titles and labels
-                ax.set_title('Absolute Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
+                ax.set_title('Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
                 ax.set_xlabel('Month of Bet Placed', fontsize=14, fontweight='bold')
                 ax.set_ylabel('USD ($)', fontsize=14, fontweight='bold')
 
