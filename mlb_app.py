@@ -598,7 +598,7 @@ elif page == "Profit":
 
                  # Set y-axis limit to include positive territory and go a few hundred dollars below the lowest bar
                 ymin = df['Cumulative Net Profit'].min() - 500
-                ymax = df['Cumulative Net Profit'].max()
+                ymax = df['Cumulative Net Profit'].max() + 500
                 ax.set_ylim(ymin, ymax + 500)
 
 
