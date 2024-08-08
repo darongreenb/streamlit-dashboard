@@ -523,7 +523,7 @@ elif page == "MLB Participant Positions":
 
 elif page == "Profit":
     # Profit Page
-    st.title('Profit Dashboard - GreenAleph I')
+    st.title('Realized Profit Over Time - GA1')
 
     # SQL query to fetch data
     profit_query = """
@@ -569,9 +569,9 @@ elif page == "Profit":
                 bars = ax.bar(df['DateTimePlaced'].dt.strftime('%Y-%m'), df['Cumulative Net Profit'], color=bar_colors, width=0.6, edgecolor='black')
 
                 # Adding titles and labels
-                ax.set_title('GreenAleph Nominal Cumulative Returns Over Time', fontsize=18, fontweight='bold')
+                ax.set_title('Absolute Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
                 ax.set_xlabel('Month of Bet Placed', fontsize=14, fontweight='bold')
-                ax.set_ylabel('Nominal Cumulative Return ($)', fontsize=14, fontweight='bold')
+                ax.set_ylabel('Absolute Cumulative Realized Profit ($)', fontsize=14, fontweight='bold')
 
                 # Annotate each bar with the value, excluding the zero value labels
                 for bar in bars:
