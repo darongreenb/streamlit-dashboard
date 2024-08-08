@@ -442,7 +442,8 @@ elif page == "MLB Principal Tables":
     # Fetch the data for Active Straight Bets
     straight_bets_data = get_data_from_db(straight_bets_query)
 
-    # Fetch the data for Active Parlay Bets parlay_bets_data = get_data_from_db(parlay_bets_query)
+    # Fetch the data for Active Parlay Bets 
+    parlay_bets_data = get_data_from_db(parlay_bets_query)
 
     # Display the data
     if straight_bets_data:
