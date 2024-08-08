@@ -573,12 +573,13 @@ elif page == "Profit":
                 ax.set_xlabel('Month of Bet Placed', fontsize=14, fontweight='bold')
                 ax.set_ylabel('Nominal Cumulative Return ($)', fontsize=14, fontweight='bold')
 
-                # Annotate each bar with the value
+                # Annotate each bar with the value, excluding the zero value labels
                 for bar in bars:
                     height = bar.get_height()
-                    ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
-                                xytext=(0, 3 if height >= 0 else -3), textcoords="offset points",
-                                ha='center', va='bottom' if height >= 0 else 'top', fontsize=12, fontweight='bold', color='black')
+                    if height != 0:
+                        ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                                    xytext=(0, 3 if height >= 0 else -3), textcoords="offset points",
+                                    ha='center', va='bottom' if height >= 0 else 'top', fontsize=12, fontweight='bold', color='black')
 
                 # Rotate the x-axis labels to 45 degrees
                 plt.xticks(rotation=45, ha='right')
