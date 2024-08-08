@@ -596,6 +596,9 @@ elif page == "Profit":
                     spine.set_edgecolor('black')
                     spine.set_linewidth(1.2)
 
+                 # Set y-axis limit to include positive territory
+                ax.set_ylim(-max(df['Cumulative Net Profit'].max(), abs(df['Cumulative Net Profit'].min())), max(df['Cumulative Net Profit'].max(), abs(df['Cumulative Net Profit'].min())))
+
                 # Adjust layout
                 plt.tight_layout()
 
