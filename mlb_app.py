@@ -41,12 +41,6 @@ else:
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions", "Profit"])
 
-
-
-
-
-
-
 if page == "GreenAleph Active Principal":
     # GreenAleph Active Principal
     st.title('Principal Dashboard - GreenAleph I')
@@ -142,10 +136,6 @@ if page == "GreenAleph Active Principal":
 
         # Use Streamlit to display the chart
         st.pyplot(fig)
-
-
-
-
 
 elif page == "MLB Charts":
     # MLB Charts
@@ -308,7 +298,7 @@ elif page == "MLB Charts":
                         combined_df = pd.DataFrame(combined_data)
                         
                         # Display the fetched data
-                       # st.subheader(f'Total Dollars At Stake and Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (Straight Bets Only)')
+                        st.subheader(f'Total Dollars At Stake and Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (Straight Bets Only)')
                         
                         # Create data for visualization
                         combined_df['TotalDollarsAtStake'] = combined_df['TotalDollarsAtStake'].astype(float).round(0)
@@ -327,9 +317,9 @@ elif page == "MLB Charts":
                         bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], color=color_dollars_at_stake, width=0.4, edgecolor='black', label='Total Dollars At Stake')
                         
                         # Add labels and title
-                       
                         ax.set_ylabel('Total Amount ($)', fontsize=16, fontweight='bold')  # Enlarge y-axis label
                         ax.set_title(f'Total Active Principal and Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
+                        
                         # Annotate each bar with the value (no dollar sign)
                         for bar1, bar2 in zip(bars1, bars2):
                             height1 = bar1.get_height() + bar2.get_height()
@@ -352,8 +342,8 @@ elif page == "MLB Charts":
                         
                         # Add border around the plot
                         for spine in ax.spines.values():
-                            spine.set_edgecolor('black')
-                            spine.set_linewidth(1.2)
+                            spine.set edgecolor('black')
+                            spine.set linewidth(1.2)
                         
                         # Add legend
                         ax.legend()
@@ -363,21 +353,6 @@ elif page == "MLB Charts":
                         
                         # Use Streamlit to display the chart
                         st.pyplot(fig)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 elif page == "MLB Principal Tables":
     # MLB Principal Tables
@@ -422,8 +397,7 @@ elif page == "MLB Principal Tables":
                NULL AS TotalPotentialPayout,
                (SUM(b.DollarsAtStake) / SUM(b.PotentialPayout)) * 100 AS ImpliedProbability
         FROM bets b
-        JOIN legs
-         l ON b.WagerID = l.WagerID
+        JOIN legs l ON b.WagerID = l.WagerID
         WHERE b.LegCount = 1
           AND l.LeagueName = 'MLB'
           AND b.WhichFund = 'GreenAleph'
@@ -468,8 +442,7 @@ elif page == "MLB Principal Tables":
     # Fetch the data for Active Straight Bets
     straight_bets_data = get_data_from_db(straight_bets_query)
 
-    # Fetch the data for Active Parlay Bets
-    parlay_bets_data = get_data_from_db(parlay_bets_query)
+    # Fetch the data for Active Parlay Bets parlay_bets_data = get_data_from_db(parlay_bets_query)
 
     # Display the data
     if straight_bets_data:
@@ -566,33 +539,34 @@ elif page == "Profit":
     if data is None:
         st.error("Failed to fetch data from the database.")
     else:
-        if 'DateTimePlaced' not in data.columns:
+        df = pd.DataFrame(data)
+        if 'DateTimePlaced' not in df.columns:
             st.error("The 'DateTimePlaced' column is missing from the data.")
         else:
             try:
                 # Ensure DateTimePlaced is a datetime object
-                data['DateTimePlaced'] = pd.to_datetime(data['DateTimePlaced'])
+                df['DateTimePlaced'] = pd.to_datetime(df['DateTimePlaced'])
 
                 # Sort by DateTimePlaced
-                data.sort_values(by='DateTimePlaced', inplace=True)
+                df.sort_values(by='DateTimePlaced', inplace=True)
 
                 # Resample to monthly periods
-                data.set_index('DateTimePlaced', inplace=True)
-                data = data.resample('M').sum().reset_index()
+                df.set_index('DateTimePlaced', inplace=True)
+                df = df.resample('M').sum().reset_index()
 
                 # Calculate the cumulative net profit
-                data['Cumulative Net Profit'] = data['NetProfit'].cumsum()
+                df['Cumulative Net Profit'] = df['NetProfit'].cumsum()
 
                 # Calculate the % cumulative return
-                data['% Cumulative Return'] = (data['Cumulative Net Profit'] / 325000) * 100
+                df['% Cumulative Return'] = (df['Cumulative Net Profit'] / 325000) * 100
 
                 # Create the bar graph
                 fig, ax = plt.subplots(figsize=(14, 7))
 
                 # Color bars based on positive or negative values
-                bar_colors = data['% Cumulative Return'].apply(lambda x: 'gray' if x < 0 else 'green')
+                bar_colors = df['% Cumulative Return'].apply(lambda x: 'gray' if x < 0 else 'green')
 
-                bars = ax.bar(data['DateTimePlaced'].dt.strftime('%Y-%m'), data['% Cumulative Return'], color=bar_colors)
+                bars = ax.bar(df['DateTimePlaced'].dt.strftime('%Y-%m'), df['% Cumulative Return'], color=bar_colors)
 
                 # Adding titles and labels
                 ax.set_title('GreenAleph Cumulative Returns Over Time', fontsize=16, fontweight='bold')
@@ -644,4 +618,3 @@ elif page == "Profit":
                 st.pyplot(fig)
             except Exception as e:
                 st.error(f"Error processing data: {e}")
-
