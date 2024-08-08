@@ -547,6 +547,9 @@ elif page == "Profit":
                 # Ensure DateTimePlaced is a datetime object
                 df['DateTimePlaced'] = pd.to_datetime(df['DateTimePlaced'])
 
+                # Filter data to start from March 2024
+                df = df[df['DateTimePlaced'] >= '2024-03-01']
+
                 # Sort by DateTimePlaced
                 df.sort_values(by='DateTimePlaced', inplace=True)
 
@@ -557,26 +560,23 @@ elif page == "Profit":
                 # Calculate the cumulative net profit
                 df['Cumulative Net Profit'] = df['NetProfit'].cumsum()
 
-                # Calculate the % cumulative return
-                df['% Cumulative Return'] = (df['Cumulative Net Profit'] / 325000) * 100
-
                 # Create the bar graph
                 fig, ax = plt.subplots(figsize=(15, 10))
 
                 # Color bars based on positive or negative values
-                bar_colors = df['% Cumulative Return'].apply(lambda x: 'gray' if x < 0 else 'green')
+                bar_colors = df['Cumulative Net Profit'].apply(lambda x: 'gray' if x < 0 else 'green')
 
-                bars = ax.bar(df['DateTimePlaced'].dt.strftime('%Y-%m'), df['% Cumulative Return'], color=bar_colors, width=0.6, edgecolor='black')
+                bars = ax.bar(df['DateTimePlaced'].dt.strftime('%Y-%m'), df['Cumulative Net Profit'], color=bar_colors, width=0.6, edgecolor='black')
 
                 # Adding titles and labels
-                ax.set_title('GreenAleph Cumulative Returns Over Time', fontsize=18, fontweight='bold')
+                ax.set_title('GreenAleph Nominal Cumulative Returns Over Time', fontsize=18, fontweight='bold')
                 ax.set_xlabel('Month of Bet Placed', fontsize=14, fontweight='bold')
-                ax.set_ylabel('% Cumulative Return', fontsize=14, fontweight='bold')
+                ax.set_ylabel('Nominal Cumulative Return ($)', fontsize=14, fontweight='bold')
 
                 # Annotate each bar with the value
                 for bar in bars:
                     height = bar.get_height()
-                    ax.annotate(f'{height:.2f}%', xy=(bar.get_x() + bar.get_width() / 2, height),
+                    ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
                                 xytext=(0, 3 if height >= 0 else -3), textcoords="offset points",
                                 ha='center', va='bottom' if height >= 0 else 'top', fontsize=12, fontweight='bold', color='black')
 
@@ -594,14 +594,6 @@ elif page == "Profit":
                 for spine in ax.spines.values():
                     spine.set_edgecolor('black')
                     spine.set_linewidth(1.2)
-
-                # Adding net profit label
-                ax.text(0.02, 0.9, 'Gross Profit: $54,090', verticalalignment='bottom', horizontalalignment='left',
-                        transform=ax.transAxes, color='black', fontsize=12, fontweight='bold')
-
-                # Adding investor capital label
-                ax.text(0.02, 0.85, 'Investor Capital: $325k', verticalalignment='bottom', horizontalalignment='left',
-                        transform=ax.transAxes, color='black', fontsize=12, fontweight='bold')
 
                 # Adjust layout
                 plt.tight_layout()
