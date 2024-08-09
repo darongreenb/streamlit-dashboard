@@ -527,7 +527,7 @@ elif page == "Profit":
     st.title('Realized Profit Over Time - GA1')
 
     # Fetch the distinct EventType for the dropdown
-    event_type_query = "SELECT DISTINCT EventType FROM bets ORDER BY EventType ASC;"
+    event_type_query = "SELECT DISTINCT EventType FROM legs ORDER BY EventType ASC;"
     event_types = get_data_from_db(event_type_query)
 
     if event_types is None:
@@ -550,8 +550,9 @@ elif page == "Profit":
             profit_query = """
             SELECT DateTimePlaced, NetProfit 
             FROM bets 
+            JOIN legs ON bets.WagerID = legs.WagerID
             WHERE WhichFund = 'GreenAleph' 
-              AND EventType = %s
+              AND legs.EventType = %s
             """
             params = [selected_event_type]
 
@@ -630,4 +631,3 @@ elif page == "Profit":
                     st.pyplot(fig)
                 except Exception as e:
                     st.error(f"Error processing data: {e}")
-
