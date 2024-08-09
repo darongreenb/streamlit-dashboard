@@ -526,21 +526,21 @@ elif page == "Profit":
     # Profit Page
     st.title('Realized Profit Over Time - GA1')
 
-    # Fetch the distinct LeagueNames for the dropdown
-    league_query = "SELECT DISTINCT LeagueName FROM bets ORDER BY LeagueName ASC;"
-    leagues = get_data_from_db(league_query)
+    # Fetch the distinct EventType for the dropdown
+    event_type_query = "SELECT DISTINCT EventType FROM bets ORDER BY EventType ASC;"
+    event_types = get_data_from_db(event_type_query)
 
-    if leagues is None:
-        st.error("Failed to fetch league names from the database.")
+    if event_types is None:
+        st.error("Failed to fetch event types from the database.")
     else:
-        league_names = [league['LeagueName'] for league in leagues]
-        league_names.insert(0, "All")  # Add "All" to the beginning of the list
+        event_type_names = [event['EventType'] for event in event_types]
+        event_type_names.insert(0, "All")  # Add "All" to the beginning of the list
 
-        # Dropdown menu for selecting LeagueName
-        selected_league = st.selectbox('Select LeagueName', league_names)
+        # Dropdown menu for selecting EventType
+        selected_event_type = st.selectbox('Select EventType', event_type_names)
 
-        # SQL query to fetch data, filter by LeagueName if not "All"
-        if selected_league == "All":
+        # SQL query to fetch data, filter by EventType if not "All"
+        if selected_event_type == "All":
             profit_query = """
             SELECT DateTimePlaced, NetProfit 
             FROM bets 
@@ -551,12 +551,12 @@ elif page == "Profit":
             SELECT DateTimePlaced, NetProfit 
             FROM bets 
             WHERE WhichFund = 'GreenAleph' 
-              AND LeagueName = %s
+              AND EventType = %s
             """
-            params = [selected_league]
+            params = [selected_event_type]
 
         # Fetch the data
-        data = get_data_from_db(profit_query, params if selected_league != "All" else None)
+        data = get_data_from_db(profit_query, params if selected_event_type != "All" else None)
 
         if data is None:
             st.error("Failed to fetch data from the database.")
@@ -630,4 +630,3 @@ elif page == "Profit":
                     st.pyplot(fig)
                 except Exception as e:
                     st.error(f"Error processing data: {e}")
-
