@@ -527,7 +527,7 @@ elif page == "Profit":
     st.title('Realized Profit Over Time - GA1')
 
     # Fetch unique LeagueNames for the dropdown filter
-    league_query = "SELECT DISTINCT LeagueName FROM bets WHERE WhichFund = 'GreenAleph' ORDER BY LeagueName ASC"
+    league_query = "SELECT DISTINCT LeagueName FROM legs ORDER BY LeagueName ASC"
     leagues = get_data_from_db(league_query)
 
     if leagues:
@@ -536,9 +536,10 @@ elif page == "Profit":
 
         # SQL query to fetch data with the selected LeagueName filter
         profit_query = """
-        SELECT DateTimePlaced, NetProfit 
-        FROM bets 
-        WHERE WhichFund = 'GreenAleph' AND LeagueName = %s
+        SELECT b.DateTimePlaced, b.NetProfit 
+        FROM bets b
+        JOIN legs l ON b.WagerID = l.WagerID
+        WHERE b.WhichFund = 'GreenAleph' AND l.LeagueName = %s
         """
 
         # Fetch the data
@@ -559,7 +560,7 @@ elif page == "Profit":
                     df = df[df['DateTimePlaced'] >= '2024-03-01']
 
                     # Sort by DateTimePlaced
-                    df.sort_values(by='DateTimePlaced', inplace=True)
+                    df.sort_values(by 'DateTimePlaced', inplace=True)
 
                     # Resample to monthly periods
                     df.set_index('DateTimePlaced', inplace=True)
