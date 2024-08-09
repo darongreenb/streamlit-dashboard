@@ -594,7 +594,7 @@ elif page == "Profit":
                     # Adding titles and labels
                     ax.set_title('Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
                     ax.set_xlabel('Month of Bet Placed', fontsize=16, fontweight='bold')
-                    ax.set_ylabel('USD ($)', fontsize=14, fontweight='bold')
+                    ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
 
                     # Annotate each bar with the value, excluding the zero value labels
                     for bar in bars:
