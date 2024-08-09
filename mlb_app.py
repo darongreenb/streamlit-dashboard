@@ -526,87 +526,93 @@ elif page == "Profit":
     # Profit Page
     st.title('Realized Profit Over Time - GA1')
 
-    # SQL query to fetch data
-    profit_query = """
-    SELECT DateTimePlaced, NetProfit 
-    FROM bets 
-    WHERE WhichFund = 'GreenAleph'
-    """
+    # Fetch unique LeagueNames for the dropdown filter
+    league_query = "SELECT DISTINCT LeagueName FROM bets WHERE WhichFund = 'GreenAleph' ORDER BY LeagueName ASC"
+    leagues = get_data_from_db(league_query)
 
-    # Fetch the data
-    data = get_data_from_db(profit_query)
+    if leagues:
+        league_names = [league['LeagueName'] for league in leagues]
+        selected_league = st.selectbox('Select LeagueName', league_names)
 
-    # Check if data is fetched successfully
-    if data is None:
-        st.error("Failed to fetch data from the database.")
-    else:
-        df = pd.DataFrame(data)
-        if 'DateTimePlaced' not in df.columns:
-            st.error("The 'DateTimePlaced' column is missing from the data.")
+        # SQL query to fetch data with the selected LeagueName filter
+        profit_query = """
+        SELECT DateTimePlaced, NetProfit 
+        FROM bets 
+        WHERE WhichFund = 'GreenAleph' AND LeagueName = %s
+        """
+
+        # Fetch the data
+        data = get_data_from_db(profit_query, (selected_league,))
+
+        if data is None:
+            st.error("Failed to fetch data from the database.")
         else:
-            try:
-                # Ensure DateTimePlaced is a datetime object
-                df['DateTimePlaced'] = pd.to_datetime(df['DateTimePlaced'])
+            df = pd.DataFrame(data)
+            if 'DateTimePlaced' not in df.columns:
+                st.error("The 'DateTimePlaced' column is missing from the data.")
+            else:
+                try:
+                    # Ensure DateTimePlaced is a datetime object
+                    df['DateTimePlaced'] = pd.to_datetime(df['DateTimePlaced'])
 
-                # Filter data to start from March 2024
-                df = df[df['DateTimePlaced'] >= '2024-03-01']
+                    # Filter data to start from March 2024
+                    df = df[df['DateTimePlaced'] >= '2024-03-01']
 
-                # Sort by DateTimePlaced
-                df.sort_values(by='DateTimePlaced', inplace=True)
+                    # Sort by DateTimePlaced
+                    df.sort_values(by='DateTimePlaced', inplace=True)
 
-                # Resample to monthly periods
-                df.set_index('DateTimePlaced', inplace=True)
-                df = df.resample('M').sum().reset_index()
+                    # Resample to monthly periods
+                    df.set_index('DateTimePlaced', inplace=True)
+                    df = df.resample('M').sum().reset_index()
 
-                # Calculate the cumulative net profit
-                df['Cumulative Net Profit'] = df['NetProfit'].cumsum()
+                    # Calculate the cumulative net profit
+                    df['Cumulative Net Profit'] = df['NetProfit'].cumsum()
 
-                # Create the bar graph
-                fig, ax = plt.subplots(figsize=(15, 10))
+                    # Create the bar graph
+                    fig, ax = plt.subplots(figsize=(15, 10))
 
-                # Color bars based on positive or negative values
-                bar_colors = df['Cumulative Net Profit'].apply(lambda x: 'gray' if x < 0 else 'green')
+                    # Color bars based on positive or negative values
+                    bar_colors = df['Cumulative Net Profit'].apply(lambda x: 'gray' if x < 0 else 'green')
 
-                bars = ax.bar(df['DateTimePlaced'].dt.strftime('%Y-%m'), df['Cumulative Net Profit'], color=bar_colors, width=0.6, edgecolor='black')
+                    bars = ax.bar(df['DateTimePlaced'].dt.strftime('%Y-%m'), df['Cumulative Net Profit'], color=bar_colors, width=0.6, edgecolor='black')
 
-                # Adding titles and labels
-                ax.set_title('Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
-                ax.set_xlabel('Month of Bet Placed', fontsize=14, fontweight='bold')
-                ax.set_ylabel('USD ($)', fontsize=14, fontweight='bold')
+                    # Adding titles and labels
+                    ax.set_title('Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
+                    ax.set_xlabel('Month of Bet Placed', fontsize=14, fontweight='bold')
+                    ax.set_ylabel('USD ($)', fontsize=14, fontweight='bold')
 
-                # Annotate each bar with the value, excluding the zero value labels
-                for bar in bars:
-                    height = bar.get_height()
-                    if height != 0:
-                        ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
-                                    xytext=(0, 3 if height >= 0 else -3), textcoords="offset points",
-                                    ha='center', va='bottom' if height >= 0 else 'top', fontsize=12, fontweight='bold', color='black')
+                    # Annotate each bar with the value, excluding the zero value labels
+                    for bar in bars:
+                        height = bar.get_height()
+                        if height != 0:
+                            ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                                        xytext=(0, 3 if height >= 0 else -3), textcoords="offset points",
+                                        ha='center', va='bottom' if height >= 0 else 'top', fontsize=12, fontweight='bold', color='black')
 
-                # Rotate the x-axis labels to 45 degrees
-                plt.xticks(rotation=45, ha='right')
+                    # Rotate the x-axis labels to 45 degrees
+                    plt.xticks(rotation=45, ha='right')
 
-                # Add horizontal line at y=0 for reference
-                ax.axhline(0, color='black', linewidth=1.5)
+                    # Add horizontal line at y=0 for reference
+                    ax.axhline(0, color='black', linewidth=1.5)
 
-                # Set background color to white
-                ax.set_facecolor('white')
-                plt.gcf().set_facecolor('white')
+                    # Set background color to white
+                    ax.set_facecolor('white')
+                    plt.gcf().set_facecolor('white')
 
-                # Add border around the plot
-                for spine in ax.spines.values():
-                    spine.set_edgecolor('black')
-                    spine.set_linewidth(1.2)
+                    # Add border around the plot
+                    for spine in ax.spines.values():
+                        spine.set_edgecolor('black')
+                        spine.set_linewidth(1.2)
 
-                 # Set y-axis limit to include positive territory and go a few hundred dollars below the lowest bar
-                ymin = df['Cumulative Net Profit'].min() - 500
-                ymax = df['Cumulative Net Profit'].max() + 500
-                ax.set_ylim(ymin, ymax + 500)
+                    # Set y-axis limit to include positive territory and go a few hundred dollars below the lowest bar
+                    ymin = df['Cumulative Net Profit'].min() - 500
+                    ymax = df['Cumulative Net Profit'].max() + 500
+                    ax.set_ylim(ymin, ymax + 500)
 
+                    # Adjust layout
+                    plt.tight_layout()
 
-                # Adjust layout
-                plt.tight_layout()
-
-                # Use Streamlit to display the chart
-                st.pyplot(fig)
-            except Exception as e:
-                st.error(f"Error processing data: {e}")
+                    # Use Streamlit to display the chart
+                    st.pyplot(fig)
+                except Exception as e:
+                    st.error(f"Error processing data: {e}")
