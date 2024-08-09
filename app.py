@@ -605,7 +605,7 @@ elif page == "Profit":
                                         ha='center', va='bottom' if height >= 0 else 'top', fontsize=12, fontweight='bold', color='black')
 
                     # Rotate the x-axis labels to 45 degrees
-                    plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+                    plt.xticks(rotation=45, ha='right', fontsize=12, fontweight='bold')
 
                     # Add horizontal line at y=0 for reference
                     ax.axhline(0, color='black', linewidth=1.5)
