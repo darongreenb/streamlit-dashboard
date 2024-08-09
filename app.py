@@ -543,18 +543,19 @@ elif page == "Profit":
         if selected_event_type == "All":
             profit_query = """
             WITH DistinctBets AS (
-            SELECT DISTINCT WagerID, NetProfit
-            FROM bets
-            WHERE WhichFund = 'GreenAleph'
+                SELECT DISTINCT WagerID, NetProfit, DateTimePlaced
+                FROM bets
+                WHERE WhichFund = 'GreenAleph'
             )
             SELECT DateTimePlaced, SUM(NetProfit) AS NetProfit
             FROM DistinctBets
-            GROUP BY DateTimePlaced;
+            GROUP BY DateTimePlaced
+            ORDER BY DateTimePlaced;
             """
         else:
             profit_query = """
             WITH DistinctBets AS (
-                SELECT DISTINCT b.WagerID, b.NetProfit, l.LeagueName
+                SELECT DISTINCT b.WagerID, b.NetProfit, b.DateTimePlaced
                 FROM bets b
                 JOIN legs l ON b.WagerID = l.WagerID
                 WHERE b.WhichFund = 'GreenAleph'
@@ -562,7 +563,8 @@ elif page == "Profit":
             )
             SELECT DateTimePlaced, SUM(NetProfit) AS NetProfit
             FROM DistinctBets
-            GROUP BY DateTimePlaced;
+            GROUP BY DateTimePlaced
+            ORDER BY DateTimePlaced;
             """
             params = [selected_event_type]
 
