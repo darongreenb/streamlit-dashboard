@@ -560,7 +560,7 @@ elif page == "Profit":
                     df = df[df['DateTimePlaced'] >= '2024-03-01']
 
                     # Sort by DateTimePlaced
-                    df.sort_values(by 'DateTimePlaced', inplace=True)
+                    df.sort_values(by = 'DateTimePlaced', inplace=True)
 
                     # Resample to monthly periods
                     df.set_index('DateTimePlaced', inplace=True)
