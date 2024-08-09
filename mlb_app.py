@@ -526,24 +526,37 @@ elif page == "Profit":
     # Profit Page
     st.title('Realized Profit Over Time - GA1')
 
-    # Fetch unique LeagueNames for the dropdown filter
-    league_query = "SELECT DISTINCT LeagueName FROM legs ORDER BY LeagueName ASC"
+    # Fetch the distinct LeagueNames for the dropdown
+    league_query = "SELECT DISTINCT LeagueName FROM bets ORDER BY LeagueName ASC;"
     leagues = get_data_from_db(league_query)
 
-    if leagues:
+    if leagues is None:
+        st.error("Failed to fetch league names from the database.")
+    else:
         league_names = [league['LeagueName'] for league in leagues]
+        league_names.insert(0, "All")  # Add "All" to the beginning of the list
+
+        # Dropdown menu for selecting LeagueName
         selected_league = st.selectbox('Select LeagueName', league_names)
 
-        # SQL query to fetch data with the selected LeagueName filter
-        profit_query = """
-        SELECT b.DateTimePlaced, b.NetProfit 
-        FROM bets b
-        JOIN legs l ON b.WagerID = l.WagerID
-        WHERE b.WhichFund = 'GreenAleph' AND l.LeagueName = %s
-        """
+        # SQL query to fetch data, filter by LeagueName if not "All"
+        if selected_league == "All":
+            profit_query = """
+            SELECT DateTimePlaced, NetProfit 
+            FROM bets 
+            WHERE WhichFund = 'GreenAleph'
+            """
+        else:
+            profit_query = """
+            SELECT DateTimePlaced, NetProfit 
+            FROM bets 
+            WHERE WhichFund = 'GreenAleph' 
+              AND LeagueName = %s
+            """
+            params = [selected_league]
 
         # Fetch the data
-        data = get_data_from_db(profit_query, (selected_league,))
+        data = get_data_from_db(profit_query, params if selected_league != "All" else None)
 
         if data is None:
             st.error("Failed to fetch data from the database.")
@@ -560,7 +573,7 @@ elif page == "Profit":
                     df = df[df['DateTimePlaced'] >= '2024-03-01']
 
                     # Sort by DateTimePlaced
-                    df.sort_values(by = 'DateTimePlaced', inplace=True)
+                    df.sort_values(by='DateTimePlaced', inplace=True)
 
                     # Resample to monthly periods
                     df.set_index('DateTimePlaced', inplace=True)
