@@ -542,17 +542,27 @@ elif page == "Profit":
         # SQL query to fetch data, filter by LeagueName if not "All"
         if selected_event_type == "All":
             profit_query = """
-            SELECT DateTimePlaced, NetProfit 
-            FROM bets 
+            WITH DistinctBets AS (
+            SELECT DISTINCT WagerID, NetProfit
+            FROM bets
             WHERE WhichFund = 'GreenAleph'
+            )
+            SELECT DateTimePlaced, SUM(NetProfit) AS NetProfit
+            FROM DistinctBets
+            GROUP BY DateTimePlaced;
             """
         else:
             profit_query = """
-            SELECT DateTimePlaced, NetProfit 
-            FROM bets 
-            JOIN legs ON bets.WagerID = legs.WagerID
-            WHERE WhichFund = 'GreenAleph' 
-              AND legs.LeagueName = %s
+            WITH DistinctBets AS (
+                SELECT DISTINCT b.WagerID, b.NetProfit, l.LeagueName
+                FROM bets b
+                JOIN legs l ON b.WagerID = l.WagerID
+                WHERE b.WhichFund = 'GreenAleph'
+                  AND l.LeagueName = %s
+            )
+            SELECT DateTimePlaced, SUM(NetProfit) AS NetProfit
+            FROM DistinctBets
+            GROUP BY DateTimePlaced;
             """
             params = [selected_event_type]
 
