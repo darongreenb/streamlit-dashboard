@@ -526,20 +526,20 @@ elif page == "Profit":
     # Profit Page
     st.title('Realized Profit Over Time - GA1')
 
-    # Fetch the distinct EventType for the dropdown
-    event_type_query = "SELECT DISTINCT EventType FROM legs ORDER BY EventType ASC;"
+    # Fetch the distinct LeagueName for the dropdown
+    event_type_query = "SELECT DISTINCT LeagueName FROM legs ORDER BY LeagueName ASC;"
     event_types = get_data_from_db(event_type_query)
 
     if event_types is None:
         st.error("Failed to fetch event types from the database.")
     else:
-        event_type_names = [event['EventType'] for event in event_types]
+        event_type_names = [event['LeagueName'] for event in event_types]
         event_type_names.insert(0, "All")  # Add "All" to the beginning of the list
 
-        # Dropdown menu for selecting EventType
-        selected_event_type = st.selectbox('Select EventType', event_type_names)
+        # Dropdown menu for selecting LeagueName
+        selected_event_type = st.selectbox('Select LeagueName', event_type_names)
 
-        # SQL query to fetch data, filter by EventType if not "All"
+        # SQL query to fetch data, filter by LeagueName if not "All"
         if selected_event_type == "All":
             profit_query = """
             SELECT DateTimePlaced, NetProfit 
@@ -552,7 +552,7 @@ elif page == "Profit":
             FROM bets 
             JOIN legs ON bets.WagerID = legs.WagerID
             WHERE WhichFund = 'GreenAleph' 
-              AND legs.EventType = %s
+              AND legs.LeagueName = %s
             """
             params = [selected_event_type]
 
