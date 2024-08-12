@@ -328,9 +328,12 @@ elif page == "MLB Charts":
                                         ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
                         
                         # Annotate each bar with the TotalPotentialPayout value above the stacked bar
-                        for bar2 in bars2:
-                            height = bar2.get_height() + bar2.get_bottom()  # Top of the stacked bar
-                            ax.annotate(f'{height:,.0f}', xy=(bar2.get_x() + bar2.get_width() / 2, height),
+                        for bar1, bar2 in zip(bars1, bars2):
+                            height1 = bar1.get_height()  # Height of the blue bar
+                            height2 = bar2.get_height()  # Height of the orange bar
+                            total_height = height1 + height2  # Total height of the stacked bar
+                            ax.annotate(f'{height2:,.0f}', 
+                                        xy=(bar2.get_x() + bar2.get_width() / 2, total_height),
                                         xytext=(0, 3), textcoords="offset points",
                                         ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
                         
