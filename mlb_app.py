@@ -320,9 +320,16 @@ elif page == "MLB Charts":
                         ax.set_ylabel('Total Amount ($)', fontsize=16, fontweight='bold')
                         ax.set_title(f'Total Active Principal and Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
                         
-                        # Annotate each bar with the TotalPotentialPayout value
+                        # Annotate each bar with the TotalDollarsAtStake value above the blue bar
+                        for bar1 in bars1:
+                            height = bar1.get_height()
+                            ax.annotate(f'{height:,.0f}', xy=(bar1.get_x() + bar1.get_width() / 2, height),
+                                        xytext=(0, 3), textcoords="offset points",
+                                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
+                        
+                        # Annotate each bar with the TotalPotentialPayout value above the stacked bar
                         for bar2 in bars2:
-                            height = bar2.get_height()
+                            height = bar2.get_height() + bar2.get_bottom()  # Top of the stacked bar
                             ax.annotate(f'{height:,.0f}', xy=(bar2.get_x() + bar2.get_width() / 2, height),
                                         xytext=(0, 3), textcoords="offset points",
                                         ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
@@ -349,6 +356,14 @@ elif page == "MLB Charts":
                         
                         # Use Streamlit to display the chart
                         st.pyplot(fig)
+
+
+
+
+
+
+
+
                         
 elif page == "MLB Principal Tables":
     # MLB Principal Tables
