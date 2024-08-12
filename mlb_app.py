@@ -318,7 +318,7 @@ elif page == "MLB Charts":
                         
                         # Add labels and title
                         ax.set_ylabel('Total Amount ($)', fontsize=16, fontweight='bold')
-                        ax.set_title(f'Total Active Principal and Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
+                        ax.set_title(f'Total Active Principal (Overlaid) and Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
                         
                         # Annotate each bar with the TotalDollarsAtStake value above the blue bar
                         for bar1 in bars1:
