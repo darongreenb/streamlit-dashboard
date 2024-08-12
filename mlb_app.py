@@ -351,172 +351,172 @@ elif page == "MLB Charts":
                         st.pyplot(fig)
                         
 elif page == "MLB Principal Tables":
-# MLB Principal Tables
-st.title('MLB Principal Tables - GA1')
-
-# SQL query to fetch the data for Active Straight Bets
-straight_bets_query = """
-WITH BaseQuery AS (
-    SELECT l.EventType, 
-           l.ParticipantName, 
-           ROUND(SUM(b.DollarsAtStake)) AS TotalDollarsAtStake, 
-           ROUND(SUM(b.PotentialPayout)) AS TotalPotentialPayout,
-           (SUM(b.DollarsAtStake) / SUM(b.PotentialPayout)) * 100 AS ImpliedProbability
-    FROM bets b    
-    JOIN legs l ON b.WagerID = l.WagerID
-    WHERE b.LegCount = 1
-      AND l.LeagueName = 'MLB'
-      AND b.WhichFund = 'GreenAleph'
-      AND b.WLCA = 'Active'
-    GROUP BY l.EventType, l.ParticipantName
+    # MLB Principal Tables
+    st.title('MLB Principal Tables - GA1')
     
-    UNION ALL
+    # SQL query to fetch the data for Active Straight Bets
+    straight_bets_query = """
+    WITH BaseQuery AS (
+        SELECT l.EventType, 
+               l.ParticipantName, 
+               ROUND(SUM(b.DollarsAtStake)) AS TotalDollarsAtStake, 
+               ROUND(SUM(b.PotentialPayout)) AS TotalPotentialPayout,
+               (SUM(b.DollarsAtStake) / SUM(b.PotentialPayout)) * 100 AS ImpliedProbability
+        FROM bets b    
+        JOIN legs l ON b.WagerID = l.WagerID
+        WHERE b.LegCount = 1
+          AND l.LeagueName = 'MLB'
+          AND b.WhichFund = 'GreenAleph'
+          AND b.WLCA = 'Active'
+        GROUP BY l.EventType, l.ParticipantName
+        
+        UNION ALL
+        
+        SELECT l.EventType, 
+               'Total by EventType' AS ParticipantName, 
+               ROUND(SUM(b.DollarsAtStake)) AS TotalDollarsAtStake, 
+               NULL AS TotalPotentialPayout,
+               (SUM(b.DollarsAtStake) / SUM(b.PotentialPayout)) * 100 AS ImpliedProbability
+        FROM bets b
+        JOIN legs l ON b.WagerID = l.WagerID
+        WHERE b.LegCount = 1
+          AND l.LeagueName = 'MLB'
+          AND b.WhichFund = 'GreenAleph'
+          AND b.WLCA = 'Active'
+        GROUP BY l.EventType
     
-    SELECT l.EventType, 
-           'Total by EventType' AS ParticipantName, 
-           ROUND(SUM(b.DollarsAtStake)) AS TotalDollarsAtStake, 
-           NULL AS TotalPotentialPayout,
-           (SUM(b.DollarsAtStake) / SUM(b.PotentialPayout)) * 100 AS ImpliedProbability
-    FROM bets b
-    JOIN legs l ON b.WagerID = l.WagerID
-    WHERE b.LegCount = 1
-      AND l.LeagueName = 'MLB'
-      AND b.WhichFund = 'GreenAleph'
-      AND b.WLCA = 'Active'
-    GROUP BY l.EventType
-
-    UNION ALL
-
-    SELECT NULL AS EventType, 
-           'Cumulative Total' AS ParticipantName, 
-           ROUND(SUM(b.DollarsAtStake)) AS TotalDollarsAtStake, 
-           NULL AS TotalPotentialPayout,
-           (SUM(b.DollarsAtStake) / SUM(b.PotentialPayout)) * 100 AS ImpliedProbability
-    FROM bets b
-    JOIN legs l ON b.WagerID = l.WagerID
-    WHERE b.LegCount = 1
-      AND l.LeagueName = 'MLB'
-      AND b.WhichFund = 'GreenAleph'
-      AND b.WLCA = 'Active'
-)
-
-SELECT EventType, 
-       ParticipantName, 
-       FORMAT(TotalDollarsAtStake, 0) AS TotalDollarsAtStake, 
-       FORMAT(TotalPotentialPayout, 0) AS TotalPotentialPayout,
-       CONCAT(FORMAT(ImpliedProbability, 2), '%') AS ImpliedProbability
-FROM (
-    SELECT *, 
-           ROW_NUMBER() OVER (PARTITION BY EventType ORDER BY (ParticipantName = 'Total by EventType') ASC, ParticipantName) AS RowNum
-    FROM BaseQuery
-) AS SubQuery
-ORDER BY EventType, RowNum;
-"""
-
-# SQL query to fetch the data for Active Parlay Bets
-parlay_bets_query = """
-SELECT 
-    l.LegID,
-    l.EventType,
-    l.ParticipantName,
-    b.DollarsAtStake,
-    b.PotentialPayout,
-    b.ImpliedOdds,
-    l.EventLabel,
-    l.LegDescription
-FROM 
-    bets b
-JOIN 
-    legs l ON b.WagerID = l.WagerID
-WHERE 
-    l.LeagueName = 'MLB'
-    AND b.WhichFund = 'GreenAleph'
-    AND b.WLCA = 'Active'
-    AND b.LegCount > 1;
-"""
-
-# Fetch the data for Active Straight Bets
-straight_bets_data = get_data_from_db(straight_bets_query)
-
-# Fetch the data for Active Parlay Bets 
-parlay_bets_data = get_data_from_db(parlay_bets_query)
-
-# Display the data
-if straight_bets_data:
-    straight_bets_df = pd.DataFrame(straight_bets_data)
-    st.subheader('Active Straight Bets in GA1')
-    st.table(straight_bets_df)
-
-if parlay_bets_data:
-    parlay_bets_df = pd.DataFrame(parlay_bets_data)
-    st.subheader('Active Parlay Bets in GA1')
-    st.table(parlay_bets_df)
-
-elif page == "MLB Participant Positions":
-    # MLB Participant Positions
-    st.title('MLB Participant Positions - GA1')
-
-    # Fetch the list of participant names for the dropdown
-    participants_query = """
-    SELECT DISTINCT ParticipantName 
-    FROM legs 
-    WHERE LeagueName = 'MLB'
-    ORDER BY ParticipantName ASC;
+        UNION ALL
+    
+        SELECT NULL AS EventType, 
+               'Cumulative Total' AS ParticipantName, 
+               ROUND(SUM(b.DollarsAtStake)) AS TotalDollarsAtStake, 
+               NULL AS TotalPotentialPayout,
+               (SUM(b.DollarsAtStake) / SUM(b.PotentialPayout)) * 100 AS ImpliedProbability
+        FROM bets b
+        JOIN legs l ON b.WagerID = l.WagerID
+        WHERE b.LegCount = 1
+          AND l.LeagueName = 'MLB'
+          AND b.WhichFund = 'GreenAleph'
+          AND b.WLCA = 'Active'
+    )
+    
+    SELECT EventType, 
+           ParticipantName, 
+           FORMAT(TotalDollarsAtStake, 0) AS TotalDollarsAtStake, 
+           FORMAT(TotalPotentialPayout, 0) AS TotalPotentialPayout,
+           CONCAT(FORMAT(ImpliedProbability, 2), '%') AS ImpliedProbability
+    FROM (
+        SELECT *, 
+               ROW_NUMBER() OVER (PARTITION BY EventType ORDER BY (ParticipantName = 'Total by EventType') ASC, ParticipantName) AS RowNum
+        FROM BaseQuery
+    ) AS SubQuery
+    ORDER BY EventType, RowNum;
     """
-    participants = get_data_from_db(participants_query)
-
-    if participants is not None:
-        participant_names = [participant['ParticipantName'] for participant in participants]
-        participant_selected = st.selectbox('Select Participant', participant_names)
-
-        if participant_selected:
-            wlca_filter = st.selectbox('Select WLCA', ['All', 'Win', 'Loss', 'Cashout', 'Active'])
-            legcount_filter = st.selectbox('Select Bet Type', ['All', 'Straight', 'Parlay'])
-
-            # SQL query to fetch data for the selected participant
-            query = """
-            SELECT 
-                l.LegID,
-                l.EventType,
-                b.DollarsAtStake,
-                b.PotentialPayout,
-                b.NetProfit,
-                b.ImpliedOdds,
-                l.EventLabel,
-                l.LegDescription,
-                b.Sportsbook,
-                b.DateTimePlaced,
-                b.LegCount
-            FROM 
-                bets b
-            JOIN 
-                legs l ON b.WagerID = l.WagerID
-            WHERE 
-                l.ParticipantName = %s
-                AND b.WhichFund = 'GreenAleph'
-                AND l.LeagueName = 'MLB'
-            """
-            params = [participant_selected]
-
-            if wlca_filter != 'All':
-                query += " AND b.WLCA = %s"
-                params.append(wlca_filter)
-            
-            if legcount_filter == 'Straight':
-                query += " AND b.LegCount = 1"
-            elif legcount_filter == 'Parlay':
-                query += " AND b.LegCount > 1"
-
-            # Fetch the data for the selected participant
-            data = get_data_from_db(query, params)
-
-            # Display the data
-            if data:
-                df = pd.DataFrame(data)
-                st.subheader(f'Bets and Legs for {participant_selected}')
-                st.table(df)
-            else:
-                st.warning('No data found for the selected filters.')
+    
+    # SQL query to fetch the data for Active Parlay Bets
+    parlay_bets_query = """
+    SELECT 
+        l.LegID,
+        l.EventType,
+        l.ParticipantName,
+        b.DollarsAtStake,
+        b.PotentialPayout,
+        b.ImpliedOdds,
+        l.EventLabel,
+        l.LegDescription
+    FROM 
+        bets b
+    JOIN 
+        legs l ON b.WagerID = l.WagerID
+    WHERE 
+        l.LeagueName = 'MLB'
+        AND b.WhichFund = 'GreenAleph'
+        AND b.WLCA = 'Active'
+        AND b.LegCount > 1;
+    """
+    
+    # Fetch the data for Active Straight Bets
+    straight_bets_data = get_data_from_db(straight_bets_query)
+    
+    # Fetch the data for Active Parlay Bets 
+    parlay_bets_data = get_data_from_db(parlay_bets_query)
+    
+    # Display the data
+    if straight_bets_data:
+        straight_bets_df = pd.DataFrame(straight_bets_data)
+        st.subheader('Active Straight Bets in GA1')
+        st.table(straight_bets_df)
+    
+    if parlay_bets_data:
+        parlay_bets_df = pd.DataFrame(parlay_bets_data)
+        st.subheader('Active Parlay Bets in GA1')
+        st.table(parlay_bets_df)
+    
+    elif page == "MLB Participant Positions":
+        # MLB Participant Positions
+        st.title('MLB Participant Positions - GA1')
+    
+        # Fetch the list of participant names for the dropdown
+        participants_query = """
+        SELECT DISTINCT ParticipantName 
+        FROM legs 
+        WHERE LeagueName = 'MLB'
+        ORDER BY ParticipantName ASC;
+        """
+        participants = get_data_from_db(participants_query)
+    
+        if participants is not None:
+            participant_names = [participant['ParticipantName'] for participant in participants]
+            participant_selected = st.selectbox('Select Participant', participant_names)
+    
+            if participant_selected:
+                wlca_filter = st.selectbox('Select WLCA', ['All', 'Win', 'Loss', 'Cashout', 'Active'])
+                legcount_filter = st.selectbox('Select Bet Type', ['All', 'Straight', 'Parlay'])
+    
+                # SQL query to fetch data for the selected participant
+                query = """
+                SELECT 
+                    l.LegID,
+                    l.EventType,
+                    b.DollarsAtStake,
+                    b.PotentialPayout,
+                    b.NetProfit,
+                    b.ImpliedOdds,
+                    l.EventLabel,
+                    l.LegDescription,
+                    b.Sportsbook,
+                    b.DateTimePlaced,
+                    b.LegCount
+                FROM 
+                    bets b
+                JOIN 
+                    legs l ON b.WagerID = l.WagerID
+                WHERE 
+                    l.ParticipantName = %s
+                    AND b.WhichFund = 'GreenAleph'
+                    AND l.LeagueName = 'MLB'
+                """
+                params = [participant_selected]
+    
+                if wlca_filter != 'All':
+                    query += " AND b.WLCA = %s"
+                    params.append(wlca_filter)
+                
+                if legcount_filter == 'Straight':
+                    query += " AND b.LegCount = 1"
+                elif legcount_filter == 'Parlay':
+                    query += " AND b.LegCount > 1"
+    
+                # Fetch the data for the selected participant
+                data = get_data_from_db(query, params)
+    
+                # Display the data
+                if data:
+                    df = pd.DataFrame(data)
+                    st.subheader(f'Bets and Legs for {participant_selected}')
+                    st.table(df)
+                else:
+                    st.warning('No data found for the selected filters.')
 
 elif page == "Profit":
     # Profit Page
