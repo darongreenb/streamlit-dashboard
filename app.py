@@ -53,7 +53,7 @@ if page == "GreenAleph Active Principal":
     WITH DistinctBets AS (
         SELECT DISTINCT WagerID, DollarsAtStake
         FROM bets
-        WHERE WhichFund = 'GreenAleph'
+        WHERE WhichBankroll = 'GreenAleph'
           AND WLCA = 'Active'
     )
 
@@ -146,7 +146,7 @@ elif page == "MLB Charts":
     WITH DistinctBets AS (
         SELECT DISTINCT WagerID, DollarsAtStake
         FROM bets
-        WHERE WhichFund = 'GreenAleph'
+        WHERE WhichBankroll = 'GreenAleph'
           AND WLCA = 'Active'
     ),
     EventTypeSums AS (
@@ -248,7 +248,7 @@ elif page == "MLB Charts":
             WHERE
                 l.LeagueName = 'MLB'
                 AND l.EventType = '{event_type_option}'
-                AND b.WhichFund = 'GreenAleph'
+                AND b.WhichBankroll = 'GreenAleph'
                 AND b.WLCA = 'Active';
             """
             
@@ -267,7 +267,7 @@ elif page == "MLB Charts":
                     WITH DistinctBets AS (
                         SELECT DISTINCT WagerID, DollarsAtStake, PotentialPayout
                         FROM bets
-                        WHERE WhichFund = 'GreenAleph'
+                        WHERE WhichBankroll = 'GreenAleph'
                           AND WLCA = 'Active'
                           AND LegCount = 1
                     )
@@ -384,7 +384,7 @@ elif page == "MLB Principal Tables":
         JOIN legs l ON b.WagerID = l.WagerID
         WHERE b.LegCount = 1
           AND l.LeagueName = 'MLB'
-          AND b.WhichFund = 'GreenAleph'
+          AND b.WhichBankroll = 'GreenAleph'
           AND b.WLCA = 'Active'
         GROUP BY l.EventType, l.ParticipantName
         
@@ -399,7 +399,7 @@ elif page == "MLB Principal Tables":
         JOIN legs l ON b.WagerID = l.WagerID
         WHERE b.LegCount = 1
           AND l.LeagueName = 'MLB'
-          AND b.WhichFund = 'GreenAleph'
+          AND b.WhichBankroll = 'GreenAleph'
           AND b.WLCA = 'Active'
         GROUP BY l.EventType
     
@@ -414,7 +414,7 @@ elif page == "MLB Principal Tables":
         JOIN legs l ON b.WagerID = l.WagerID
         WHERE b.LegCount = 1
           AND l.LeagueName = 'MLB'
-          AND b.WhichFund = 'GreenAleph'
+          AND b.WhichBankroll = 'GreenAleph'
           AND b.WLCA = 'Active'
     )
     
@@ -448,7 +448,7 @@ elif page == "MLB Principal Tables":
         legs l ON b.WagerID = l.WagerID
     WHERE 
         l.LeagueName = 'MLB'
-        AND b.WhichFund = 'GreenAleph'
+        AND b.WhichBankroll = 'GreenAleph'
         AND b.WLCA = 'Active'
         AND b.LegCount > 1;
     """
@@ -512,7 +512,7 @@ elif page == "MLB Participant Positions":
                 legs l ON b.WagerID = l.WagerID
             WHERE 
                 l.ParticipantName = %s
-                AND b.WhichFund = 'GreenAleph'
+                AND b.WhichBankroll = 'GreenAleph'
                 AND l.LeagueName = 'MLB'
             """
             params = [participant_selected]
@@ -560,7 +560,7 @@ elif page == "Profit":
             WITH DistinctBets AS (
                 SELECT DISTINCT WagerID, NetProfit, DateTimePlaced
                 FROM bets
-                WHERE WhichFund = 'GreenAleph'
+                WHERE WhichBankroll = 'GreenAleph'
             )
             SELECT DateTimePlaced, SUM(NetProfit) AS NetProfit
             FROM DistinctBets
@@ -573,7 +573,7 @@ elif page == "Profit":
                 SELECT DISTINCT b.WagerID, b.NetProfit, b.DateTimePlaced
                 FROM bets b
                 JOIN legs l ON b.WagerID = l.WagerID
-                WHERE b.WhichFund = 'GreenAleph'
+                WHERE b.WhichBankroll = 'GreenAleph'
                   AND l.LeagueName = %s
             )
             SELECT DateTimePlaced, SUM(NetProfit) AS NetProfit
