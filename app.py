@@ -298,7 +298,7 @@ elif page == "MLB Charts":
                         combined_df = pd.DataFrame(combined_data)
                         
                         # Display the fetched data
-                       # st.subheader(f'Total Dollars At Stake (Overlaid) and Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (Straight Bets Only)')
+                       # st.subheader(f'Total Dollars At Stake Overlaid on Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (Straight Bets Only)')
                         
                         # Create data for visualization
                         combined_df['TotalDollarsAtStake'] = combined_df['TotalDollarsAtStake'].astype(float).round(0)
@@ -318,7 +318,7 @@ elif page == "MLB Charts":
                         
                         # Add labels and title
                         ax.set_ylabel('Total Amount ($)', fontsize=16, fontweight='bold')
-                        ax.set_title(f'Total Active Principal (Overlaid) and Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=24, fontweight='bold')
+                        ax.set_title(f'Total Active Principal Overlaid on Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
                         
                         # Annotate each bar with the TotalDollarsAtStake value above the blue bar
                         for bar1 in bars1:
