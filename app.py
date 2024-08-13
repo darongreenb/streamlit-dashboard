@@ -188,7 +188,7 @@ elif page == "MLB Charts":
         main_df = pd.DataFrame(main_data)
 
         # Display the fetched data
-        st.subheader('Total Dollars At Stake by EventType (GA1)')
+       # st.subheader('Total Dollars At Stake by EventType (GA1)')
         
         # Create data for visualization
         main_df['TotalDollarsAtStake'] = main_df['TotalDollarsAtStake'].astype(float).round(0)
