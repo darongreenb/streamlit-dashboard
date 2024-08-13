@@ -93,7 +93,7 @@ if page == "GreenAleph Active Principal":
         df = df.sort_values(by='TotalDollarsAtStake')
 
         # Display the fetched data
-        st.subheader(f'Total Dollars At Stake for GA1 (Active)')
+        # st.subheader(f'Total Dollars At Stake for GA1 (Active)')
 
         # Define colors for bars
         colors = ['#77dd77', '#89cff0', '#fdfd96', '#ffb347', '#aec6cf', '#cfcfc4', '#ffb6c1', '#b39eb5']
@@ -204,7 +204,7 @@ elif page == "MLB Charts":
         bars = ax.bar(main_df['EventType'], main_df['TotalDollarsAtStake'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(main_df['EventType']))], width=0.6, edgecolor='black')
 
         # Add labels and title
-        ax.set_title('GA1: Total Active Principal', fontsize=18, fontweight='bold')
+        ax.set_title('Total Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
         ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
 
         # Annotate each bar with the value (no dollar sign)
