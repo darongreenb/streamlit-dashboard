@@ -541,121 +541,201 @@ elif page == "Profit":
     # Profit Page
     st.title('Realized Profit Over Time - GA1')
 
-    # Fetch the distinct LeagueName for the dropdown
-    event_type_query = "SELECT DISTINCT LeagueName FROM legs ORDER BY LeagueName ASC;"
-    event_types = get_data_from_db(event_type_query)
+    # SQL query to fetch data for the new bar chart
+    league_profit_query = """
+    WITH DistinctBets AS (
+        SELECT DISTINCT WagerID, NetProfit, LeagueName
+        FROM bets
+        JOIN legs ON bets.WagerID = legs.WagerID
+        WHERE WhichBankroll = 'GreenAleph'
+    )
+    SELECT 
+        LeagueName,
+        ROUND(SUM(NetProfit), 0) AS NetProfit
+    FROM DistinctBets
+    GROUP BY LeagueName
+    
+    UNION ALL
 
-    if event_types is None:
-        st.error("Failed to fetch event types from the database.")
+    SELECT 
+        'Total' AS LeagueName,
+        ROUND(SUM(NetProfit), 0) AS NetProfit
+    FROM DistinctBets;
+    """
+
+    # Fetch the data for the new bar chart
+    league_profit_data = get_data_from_db(league_profit_query)
+
+    # Check if data is fetched successfully
+    if league_profit_data is None:
+        st.error("Failed to fetch league profit data from the database.")
     else:
-        event_type_names = [event['LeagueName'] for event in event_types]
-        event_type_names.insert(0, "All")  # Add "All" to the beginning of the list
+        # Create a DataFrame from the fetched data
+        league_profit_df = pd.DataFrame(league_profit_data)
 
-        # Dropdown menu for selecting LeagueName
-        selected_event_type = st.selectbox('Select LeagueName', event_type_names)
+        # Display the fetched data
+        st.subheader('Current Realized Profit by League (GA1)')
 
-        # SQL query to fetch data, filter by LeagueName if not "All"
-        if selected_event_type == "All":
-            profit_query = """
-            WITH DistinctBets AS (
-                SELECT DISTINCT WagerID, NetProfit, DateTimePlaced
-                FROM bets
-                WHERE WhichBankroll = 'GreenAleph'
-            )
-            SELECT DateTimePlaced, SUM(NetProfit) AS NetProfit
-            FROM DistinctBets
-            GROUP BY DateTimePlaced
-            ORDER BY DateTimePlaced;
-            """
+        # Create data for visualization
+        league_profit_df['NetProfit'] = league_profit_df['NetProfit'].astype(float).round(0)
+
+        # Sort the DataFrame by 'NetProfit' in ascending order
+        league_profit_df = league_profit_df.sort_values('NetProfit', ascending=True)
+
+        # Define pastel colors for the new chart
+        pastel_colors = ['#a0d8f1', '#f4a261', '#e76f51', '#8ecae6', '#219ebc', '#023047', '#ffb703', '#fb8500', '#d4a5a5', '#9ab0a8']
+
+        # Plot the new bar chart
+        fig, ax = plt.subplots(figsize=(15, 10))
+        bars = ax.bar(league_profit_df['LeagueName'], league_profit_df['NetProfit'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(league_profit_df['LeagueName']))], width=0.6, edgecolor='black')
+
+        # Add labels and title
+        ax.set_title('Current Realized Profit by League', fontsize=18, fontweight='bold')
+        ax.set_ylabel('Net Profit ($)', fontsize=16, fontweight='bold')
+
+        # Annotate each bar with the value
+        for bar in bars:
+            height = bar.get_height()
+            ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                        xytext=(0, 3), textcoords="offset points",
+                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
+
+        # Rotate the x-axis labels to 45 degrees
+        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+
+        # Add horizontal line at y=0 for reference
+        ax.axhline(0, color='black', linewidth=0.8)
+
+        # Set background color to white
+        ax.set_facecolor('white')
+
+        # Add border around the plot
+        for spine in ax.spines.values():
+            spine.set_edgecolor('black')
+            spine.set_linewidth(1.2)
+
+        # Adjust layout
+        plt.tight_layout()
+
+        # Use Streamlit to display the new chart
+        st.pyplot(fig)
+
+        # Fetch the distinct LeagueName for the dropdown
+        event_type_query = "SELECT DISTINCT LeagueName FROM legs ORDER BY LeagueName ASC;"
+        event_types = get_data_from_db(event_type_query)
+
+        if event_types is None:
+            st.error("Failed to fetch event types from the database.")
         else:
-            profit_query = """
-            WITH DistinctBets AS (
-                SELECT DISTINCT b.WagerID, b.NetProfit, b.DateTimePlaced
-                FROM bets b
-                JOIN legs l ON b.WagerID = l.WagerID
-                WHERE b.WhichBankroll = 'GreenAleph'
-                  AND l.LeagueName = %s
-            )
-            SELECT DateTimePlaced, SUM(NetProfit) AS NetProfit
-            FROM DistinctBets
-            GROUP BY DateTimePlaced
-            ORDER BY DateTimePlaced;
-            """
-            params = [selected_event_type]
+            event_type_names = [event['LeagueName'] for event in event_types]
+            event_type_names.insert(0, "All")  # Add "All" to the beginning of the list
 
-        # Fetch the data
-        data = get_data_from_db(profit_query, params if selected_event_type != "All" else None)
+            # Dropdown menu for selecting LeagueName
+            selected_event_type = st.selectbox('Select LeagueName', event_type_names)
 
-        if data is None:
-            st.error("Failed to fetch data from the database.")
-        else:
-            df = pd.DataFrame(data)
-            if 'DateTimePlaced' not in df.columns:
-                st.error("The 'DateTimePlaced' column is missing from the data.")
+            # SQL query to fetch data, filter by LeagueName if not "All"
+            if selected_event_type == "All":
+                profit_query = """
+                WITH DistinctBets AS (
+                    SELECT DISTINCT WagerID, NetProfit, DateTimePlaced
+                    FROM bets
+                    WHERE WhichBankroll = 'GreenAleph'
+                )
+                SELECT DateTimePlaced, SUM(NetProfit) AS NetProfit
+                FROM DistinctBets
+                GROUP BY DateTimePlaced
+                ORDER BY DateTimePlaced;
+                """
             else:
-                try:
-                    # Ensure DateTimePlaced is a datetime object
-                    df['DateTimePlaced'] = pd.to_datetime(df['DateTimePlaced'])
+                profit_query = """
+                WITH DistinctBets AS (
+                    SELECT DISTINCT b.WagerID, b.NetProfit, b.DateTimePlaced
+                    FROM bets b
+                    JOIN legs l ON b.WagerID = l.WagerID
+                    WHERE b.WhichBankroll = 'GreenAleph'
+                      AND l.LeagueName = %s
+                )
+                SELECT DateTimePlaced, SUM(NetProfit) AS NetProfit
+                FROM DistinctBets
+                GROUP BY DateTimePlaced
+                ORDER BY DateTimePlaced;
+                """
+                params = [selected_event_type]
 
-                    # Filter data to start from March 2024
-                    df = df[df['DateTimePlaced'] >= '2024-03-01']
+            # Fetch the data
+            data = get_data_from_db(profit_query, params if selected_event_type != "All" else None)
 
-                    # Sort by DateTimePlaced
-                    df.sort_values(by='DateTimePlaced', inplace=True)
+            if data is None:
+                st.error("Failed to fetch data from the database.")
+            else:
+                df = pd.DataFrame(data)
+                if 'DateTimePlaced' not in df.columns:
+                    st.error("The 'DateTimePlaced' column is missing from the data.")
+                else:
+                    try:
+                        # Ensure DateTimePlaced is a datetime object
+                        df['DateTimePlaced'] = pd.to_datetime(df['DateTimePlaced'])
 
-                    # Resample to monthly periods
-                    df.set_index('DateTimePlaced', inplace=True)
-                    df = df.resample('M').sum().reset_index()
+                        # Filter data to start from March 2024
+                        df = df[df['DateTimePlaced'] >= '2024-03-01']
 
-                    # Calculate the cumulative net profit
-                    df['Cumulative Net Profit'] = df['NetProfit'].cumsum()
+                        # Sort by DateTimePlaced
+                        df.sort_values(by='DateTimePlaced', inplace=True)
 
-                    # Create the bar graph
-                    fig, ax = plt.subplots(figsize=(15, 10))
+                        # Resample to monthly periods
+                        df.set_index('DateTimePlaced', inplace=True)
+                        df = df.resample('M').sum().reset_index()
 
-                    # Color bars based on positive or negative values
-                    bar_colors = df['Cumulative Net Profit'].apply(lambda x: 'gray' if x < 0 else 'green')
+                        # Calculate the cumulative net profit
+                        df['Cumulative Net Profit'] = df['NetProfit'].cumsum()
 
-                    bars = ax.bar(df['DateTimePlaced'].dt.strftime('%Y-%m'), df['Cumulative Net Profit'], color=bar_colors, width=0.6, edgecolor='black')
+                        # Create the bar graph
+                        fig, ax = plt.subplots(figsize=(15, 10))
 
-                    # Adding titles and labels
-                    ax.set_title('Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
-                    ax.set_xlabel('Month of Bet Placed', fontsize=16, fontweight='bold')
-                    ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
+                        # Color bars based on positive or negative values
+                        bar_colors = df['Cumulative Net Profit'].apply(lambda x: 'gray' if x < 0 else 'green')
 
-                    # Annotate each bar with the value, excluding the zero value labels
-                    for bar in bars:
-                        height = bar.get_height()
-                        if height != 0:
-                            ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
-                                        xytext=(0, 3 if height >= 0 else -3), textcoords="offset points",
-                                        ha='center', va='bottom' if height >= 0 else 'top', fontsize=12, fontweight='bold', color='black')
+                        bars = ax.bar(df['DateTimePlaced'].dt.strftime('%Y-%m'), df['Cumulative Net Profit'], color=bar_colors, width=0.6, edgecolor='black')
 
-                    # Rotate the x-axis labels to 45 degrees
-                    plt.xticks(rotation=30, ha='right', fontsize=14, fontweight='bold')
+                        # Adding titles and labels
+                        ax.set_title('Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
+                        ax.set_xlabel('Month of Bet Placed', fontsize=16, fontweight='bold')
+                        ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
 
-                    # Add horizontal line at y=0 for reference
-                    ax.axhline(0, color='black', linewidth=1.5)
+                        # Annotate each bar with the value, excluding the zero value labels
+                        for bar in bars:
+                            height = bar.get_height()
+                            if height != 0:
+                                ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                                            xytext=(0, 3 if height >= 0 else -3), textcoords="offset points",
+                                            ha='center', va='bottom' if height >= 0 else 'top', fontsize=12, fontweight='bold', color='black')
 
-                    # Set background color to white
-                    ax.set_facecolor('white')
-                    plt.gcf().set_facecolor('white')
+                        # Rotate the x-axis labels to 45 degrees
+                        plt.xticks(rotation=30, ha='right', fontsize=14, fontweight='bold')
 
-                    # Add border around the plot
-                    for spine in ax.spines.values():
-                        spine.set_edgecolor('black')
-                        spine.set_linewidth(1.2)
+                        # Add horizontal line at y=0 for reference
+                        ax.axhline(0, color='black', linewidth=1.5)
 
-                    # Set y-axis limit to include positive territory and go a few hundred dollars below the lowest bar
-                    ymin = df['Cumulative Net Profit'].min() - 500
-                    ymax = df['Cumulative Net Profit'].max() + 500
-                    ax.set_ylim(ymin, ymax + 500)
+                        # Set background color to white
+                        ax.set_facecolor('white')
+                        plt.gcf().set_facecolor('white')
 
-                    # Adjust layout
-                    plt.tight_layout()
+                        # Add border around the plot
+                        for spine in ax.spines.values():
+                            spine.set_edgecolor('black')
+                            spine.set_linewidth(1.2)
 
-                    # Use Streamlit to display the chart
-                    st.pyplot(fig)
-                except Exception as e:
-                    st.error(f"Error processing data: {e}")
+                        # Set y-axis limit to include positive territory and go a few hundred dollars below the lowest bar
+                        ymin = df['Cumulative Net Profit'].min() - 500
+                        ymax = df['Cumulative Net Profit'].max() + 500
+                        ax.set_ylim(ymin, ymax + 500)
+
+                        # Adjust layout
+                        plt.tight_layout()
+
+                        # Use Streamlit to display the chart
+                        st.pyplot(fig)
+                    except Exception as e:
+                        st.error(f"Error processing data: {e}")
+
 
