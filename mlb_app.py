@@ -585,7 +585,7 @@ elif page == "Profit":
         
         # Create the bar chart
         fig, ax = plt.subplots(figsize=(15, 8))
-        bar_colors = league_profit_df['NetProfit'].apply(lambda x: '#00FF00' if x > 0 else '#808080')  # Green for positive, Gray for negative
+        bar_colors = league_profit_df['NetProfit'].apply(lambda x: 'green' if x > 0 else 'gray')  # Green for positive, Gray for negative
         bars = ax.bar(league_profit_df['LeagueName'], league_profit_df['NetProfit'], color=bar_colors, edgecolor='black')
 
         # Adding titles and labels
