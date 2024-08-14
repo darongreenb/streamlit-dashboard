@@ -585,7 +585,7 @@ elif page == "Profit":
         
         # Create the bar chart
         fig, ax = plt.subplots(figsize=(15, 8))
-        bar_colors = league_profit_df['NetProfit'].apply(lambda x: '#219ebc' if x >= 0 else '#fb8500')
+        bar_colors = league_profit_df['NetProfit'].apply(lambda x: '#219ebc' if x > 0 else '#fb8500')
         bars = ax.bar(league_profit_df['LeagueName'], league_profit_df['NetProfit'], color=bar_colors, edgecolor='black')
 
         # Adding titles and labels
@@ -740,6 +740,3 @@ elif page == "Profit":
                     st.pyplot(fig)
                 except Exception as e:
                     st.error(f"Error processing data: {e}")
-
-
-
