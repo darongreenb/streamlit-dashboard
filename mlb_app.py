@@ -743,229 +743,168 @@ elif page == "Profit":
 
 
 elif page == "Tennis Charts":
-    # Tennis Charts
+    
     st.title('Tennis Active Bets - GA1')
 
-    # Function to fetch data for the EventLabel dropdown
-    def fetch_event_labels(league_name):
-        query = f"""
-        SELECT DISTINCT l.EventLabel
-        FROM bets b
-        JOIN legs l ON b.WagerID = l.WagerID
-        WHERE l.LeagueName = '{league_name}'
-          AND b.WhichBankroll = 'GreenAleph'
-          AND b.WLCA = 'Active';
-        """
-        return get_data_from_db(query)
+    # Function to fetch and plot bar charts
+    def plot_bar_chart(data, title, ylabel):
+        df = pd.DataFrame(data)
+        df['TotalDollarsAtStake'] = df['TotalDollarsAtStake'].astype(float).round(0)
+        df = df.sort_values('TotalDollarsAtStake', ascending=True)
 
-    # Function to fetch data for the EventType dropdown
-    def fetch_event_types(league_name):
-        query = f"""
-        SELECT DISTINCT l.EventType
-        FROM bets b
-        JOIN legs l ON b.WagerID = l.WagerID
-        WHERE l.LeagueName = '{league_name}'
-          AND b.WhichBankroll = 'GreenAleph'
-          AND b.WLCA = 'Active';
-        """
-        return get_data_from_db(query)
+        # Define pastel colors
+        pastel_colors = ['#a0d8f1', '#f4a261', '#e76f51', '#8ecae6', '#219ebc', '#023047', '#ffb703', '#fb8500', '#d4a5a5', '#9ab0a8']
 
-    # Function to fetch total active principal by EventLabel
-    def fetch_total_active_principal(league_name, event_label=None):
-        if event_label:
-            query = f"""
-            WITH DistinctBets AS (
-                SELECT DISTINCT WagerID, DollarsAtStake
-                FROM bets
-                WHERE WhichBankroll = 'GreenAleph'
-                  AND WLCA = 'Active'
-            ),
-            EventLabelSums AS (
-                SELECT 
-                    l.EventLabel,
-                    ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
-                FROM 
-                    DistinctBets db
-                JOIN 
-                    (SELECT DISTINCT WagerID, EventLabel, LeagueName FROM legs) l ON db.WagerID = l.WagerID
-                WHERE
-                    l.LeagueName = '{league_name}'
-                    AND l.EventLabel = '{event_label}'
-                GROUP BY 
-                    l.EventLabel
-            )
-            SELECT * FROM EventLabelSums
-            UNION ALL
-            SELECT 
-                'Total' AS EventLabel,
-                ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
+        fig, ax = plt.subplots(figsize=(15, 10))
+        bars = ax.bar(df['EventLabel'], df['TotalDollarsAtStake'],
+                      color=[pastel_colors[i % len(pastel_colors)] for i in range(len(df['EventLabel']))],
+                      width=0.6, edgecolor='black')
+
+        ax.set_title(title, fontsize=18, fontweight='bold')
+        ax.set_ylabel(ylabel, fontsize=14, fontweight='bold')
+
+        # Annotate each bar with the value
+        for bar in bars:
+            height = bar.get_height()
+            ax.annotate(f'{height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                        xytext=(0, 3), textcoords="offset points",
+                        ha='center', va='bottom', fontsize=14, fontweight='bold', color='black')
+
+        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+        ax.axhline(0, color='black', linewidth=0.8)
+        ax.set_facecolor('white')
+        for spine in ax.spines.values():
+            spine.set_edgecolor('black')
+            spine.set_linewidth(1.2)
+        plt.tight_layout()
+        st.pyplot(fig)
+
+    # Filter for LeagueName
+    league_name = st.selectbox('Select League', ['ATP', 'WTA'])
+
+    # SQL query for EventLabel breakdown
+    event_label_query = f"""
+    WITH DistinctBets AS (
+        SELECT DISTINCT WagerID, DollarsAtStake
+        FROM bets
+        WHERE WhichBankroll = 'GreenAleph'
+          AND WLCA = 'Active'
+    )
+    SELECT 
+        l.EventLabel,
+        ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
+    FROM 
+        DistinctBets db
+    JOIN 
+        legs l ON db.WagerID = l.WagerID
+    WHERE
+        l.LeagueName = '{league_name}'
+    GROUP BY 
+        l.EventLabel;
+    """
+
+    event_label_data = get_data_from_db(event_label_query)
+    if event_label_data is None:
+        st.error("Failed to fetch EventLabel data.")
+    else:
+        plot_bar_chart(event_label_data, f'Total Active Principal by EventLabel ({league_name})', 'Total Dollars At Stake ($)')
+
+        # Filter for EventLabel
+        event_labels = sorted(set(row['EventLabel'] for row in event_label_data))
+        event_label_option = st.selectbox('Select EventLabel', event_labels)
+
+        if event_label_option:
+            # Filter for EventType
+            event_type_query = f"""
+            SELECT DISTINCT l.EventType
             FROM 
-                DistinctBets db
+                bets b
             JOIN 
-                (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
+                legs l ON b.WagerID = l.WagerID
             WHERE
-                l.LeagueName = '{league_name}';
+                l.LeagueName = '{league_name}'
+                AND l.EventLabel = '{event_label_option}'
+                AND b.WhichBankroll = 'GreenAleph'
+                AND b.WLCA = 'Active';
             """
-        else:
-            query = f"""
-            WITH DistinctBets AS (
-                SELECT DISTINCT WagerID, DollarsAtStake
-                FROM bets
-                WHERE WhichBankroll = 'GreenAleph'
-                  AND WLCA = 'Active'
-            ),
-            EventLabelSums AS (
-                SELECT 
-                    l.EventLabel,
-                    ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
-                FROM 
-                    DistinctBets db
-                JOIN 
-                    (SELECT DISTINCT WagerID, EventLabel, LeagueName FROM legs) l ON db.WagerID = l.WagerID
-                WHERE
-                    l.LeagueName = '{league_name}'
-                GROUP BY 
-                    l.EventLabel
-            )
-            SELECT * FROM EventLabelSums
-            UNION ALL
-            SELECT 
-                'Total' AS EventLabel,
-                ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
-            FROM 
-                DistinctBets db
-            JOIN 
-                (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
-            WHERE
-                l.LeagueName = '{league_name}';
-            """
-        return get_data_from_db(query)
-
-    # Function to fetch total active principal and potential payout by ParticipantName
-    def fetch_total_active_principal_potential_payout(league_name, event_label, event_type):
-        query = f"""
-        WITH DistinctBets AS (
-            SELECT DISTINCT WagerID, DollarsAtStake, PotentialPayout
-            FROM bets
-            WHERE WhichBankroll = 'GreenAleph'
-              AND WLCA = 'Active'
-              AND LegCount = 1
-        )
-        SELECT 
-            l.ParticipantName,
-            SUM(db.DollarsAtStake) AS TotalDollarsAtStake,
-            SUM(db.PotentialPayout) AS TotalPotentialPayout
-        FROM 
-            DistinctBets db
-        JOIN 
-            legs l ON db.WagerID = l.WagerID
-        WHERE
-            l.LeagueName = '{league_name}'
-            AND l.EventLabel = '{event_label}'
-            AND l.EventType = '{event_type}'
-        GROUP BY 
-            l.ParticipantName;
-        """
-        return get_data_from_db(query)
-
-    # Create dropdown menus for LeagueName, EventLabel, and EventType
-    league_names = ['ATP', 'WTA']
-    
-    for league in league_names:
-        st.subheader(f'Total Active Principal by EventLabel - {league}')
-        
-        event_label_data = fetch_event_labels(league)
-        event_labels = [row['EventLabel'] for row in event_label_data]
-        event_labels.insert(0, "All")
-        selected_event_label = st.selectbox(f'Select EventLabel for {league}', sorted(event_labels))
-
-        total_active_principal_data = fetch_total_active_principal(league, None if selected_event_label == "All" else selected_event_label)
-        if total_active_principal_data is None:
-            st.error(f"Failed to fetch total active principal data for {league}.")
-        else:
-            total_active_principal_df = pd.DataFrame(total_active_principal_data)
-            total_active_principal_df['TotalDollarsAtStake'] = total_active_principal_df['TotalDollarsAtStake'].astype(float).round(0)
-            total_active_principal_df = total_active_principal_df.sort_values('TotalDollarsAtStake', ascending=True)
-
-            # Define pastel colors
-            pastel_colors = ['#a0d8f1', '#f4a261', '#e76f51', '#8ecae6', '#219ebc', '#023047', '#ffb703', '#fb8500', '#d4a5a5', '#9ab0a8']
-
-            fig, ax = plt.subplots(figsize=(15, 10))
-            bars = ax.bar(total_active_principal_df['EventLabel'], total_active_principal_df['TotalDollarsAtStake'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(total_active_principal_df['EventLabel']))], width=0.6, edgecolor='black')
-
-            ax.set_title(f'Total Active Principal by EventLabel - {league}', fontsize=18, fontweight='bold')
-            ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
-
-            for bar in bars:
-                height = bar.get_height()
-                ax.annotate(f'{height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
-                            xytext=(0, 3), textcoords="offset points",
-                            ha='center', va='bottom', fontsize=14, fontweight='bold', color='black')
-
-            plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
-            ax.axhline(0, color='black', linewidth=0.8)
-            ax.set_facecolor('white')
-            for spine in ax.spines.values():
-                spine.set_edgecolor('black')
-                spine.set_linewidth(1.2)
-            plt.tight_layout()
-            st.pyplot(fig)
-
-    for league in league_names:
-        st.subheader(f'Total Active Principal Overlaid on Potential Payout - {league}')
-        
-        event_type_data = fetch_event_types(league)
-        event_types = [row['EventType'] for row in event_type_data]
-        event_types.insert(0, "All")
-        selected_event_type = st.selectbox(f'Select EventType for {league}', sorted(event_types))
-
-        if selected_event_type:
-            event_label_data = fetch_event_labels(league)
-            event_labels = [row['EventLabel'] for row in event_label_data]
-            selected_event_label = st.selectbox(f'Select EventLabel for {league}', sorted(event_labels))
-
-            combined_data = fetch_total_active_principal_potential_payout(league, selected_event_label, selected_event_type)
-            if combined_data is None:
-                st.error(f"Failed to fetch combined data for {league}.")
+            event_type_data = get_data_from_db(event_type_query)
+            if event_type_data is None:
+                st.error("Failed to fetch EventType data.")
             else:
-                combined_df = pd.DataFrame(combined_data)
-                combined_df['TotalDollarsAtStake'] = combined_df['TotalDollarsAtStake'].astype(float).round(0)
-                combined_df['TotalPotentialPayout'] = combined_df['TotalPotentialPayout'].astype(float).round(0)
-                combined_df = combined_df.sort_values('TotalDollarsAtStake', ascending=True)
+                event_types = sorted(set(row['EventType'] for row in event_type_data))
+                event_type_option = st.selectbox('Select EventType', event_types)
 
-                color_dollars_at_stake = '#219ebc'
-                color_potential_payout = '#f4a261'
+                if event_type_option:
+                    # Query for combined chart (DollarsAtStake and PotentialPayout)
+                    combined_query = f"""
+                    WITH DistinctBets AS (
+                        SELECT DISTINCT WagerID, DollarsAtStake, PotentialPayout
+                        FROM bets
+                        WHERE WhichBankroll = 'GreenAleph'
+                          AND WLCA = 'Active'
+                          AND LegCount = 1
+                    )
+                    SELECT 
+                        l.ParticipantName,
+                        SUM(db.DollarsAtStake) AS TotalDollarsAtStake,
+                        SUM(db.PotentialPayout) AS TotalPotentialPayout
+                    FROM 
+                        DistinctBets db
+                    JOIN 
+                        legs l ON db.WagerID = l.WagerID
+                    WHERE
+                        l.LeagueName = '{league_name}'
+                        AND l.EventLabel = '{event_label_option}'
+                        AND l.EventType = '{event_type_option}'
+                    GROUP BY 
+                        l.ParticipantName;
+                    """
 
-                fig, ax = plt.subplots(figsize=(18, 12))
-                bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], color=color_dollars_at_stake, width=0.4, edgecolor='black', label='Total Dollars At Stake')
-                bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], color=color_potential_payout, width=0.4, edgecolor='black', label='Total Potential Payout', alpha=0.6, bottom=combined_df['TotalDollarsAtStake'])
+                    combined_data = get_data_from_db(combined_query)
+                    if combined_data is None:
+                        st.error("Failed to fetch combined data.")
+                    else:
+                        df = pd.DataFrame(combined_data)
+                        if not df.empty:
+                            df['TotalDollarsAtStake'] = df['TotalDollarsAtStake'].astype(float).round(0)
+                            df['TotalPotentialPayout'] = df['TotalPotentialPayout'].astype(float).round(0)
+                            df = df.sort_values('TotalDollarsAtStake', ascending=True)
 
-                ax.set_ylabel('Total Amount ($)', fontsize=16, fontweight='bold')
-                ax.set_title(f'Total Active Principal Overlaid on Potential Payout by ParticipantName for {league} - {selected_event_label} ({selected_event_type})', fontsize=18, fontweight='bold')
+                            color_dollars_at_stake = '#219ebc'
+                            color_potential_payout = '#f4a261'
 
-                for bar1 in bars1:
-                    height = bar1.get_height()
-                    ax.annotate(f'{height:,.0f}', xy=(bar1.get_x() + bar1.get_width() / 2, height),
-                                xytext=(0, 3), textcoords="offset points",
-                                ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
+                            fig, ax = plt.subplots(figsize=(18, 12))
+                            bars1 = ax.bar(df['ParticipantName'], df['TotalDollarsAtStake'], color=color_dollars_at_stake, width=0.4, edgecolor='black', label='Total Dollars At Stake')
+                            bars2 = ax.bar(df['ParticipantName'], df['TotalPotentialPayout'], color=color_potential_payout, width=0.4, edgecolor='black', label='Total Potential Payout', alpha=0.6, bottom=df['TotalDollarsAtStake'])
 
-                for bar1, bar2 in zip(bars1, bars2):
-                    height1 = bar1.get_height()
-                    height2 = bar2.get_height()
-                    total_height = height1 + height2
-                    ax.annotate(f'{height2:,.0f}', 
-                                xy=(bar2.get_x() + bar2.get_width() / 2, total_height),
-                                xytext=(0, 3), textcoords="offset points",
-                                ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
+                            ax.set_ylabel('Total Amount ($)', fontsize=16, fontweight='bold')
+                            ax.set_title(f'Total Active Principal Overlaid on Potential Payout by ParticipantName for {event_type_option} - {event_label_option} ({league_name})', fontsize=18, fontweight='bold')
 
-                plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
-                ax.axhline(0, color='black', linewidth=0.8)
-                ax.set_facecolor('white')
-                for spine in ax.spines.values():
-                    spine.set_edgecolor('black')
-                    spine.set_linewidth(1.2)
-                ax.legend()
-                plt.tight_layout()
-                st.pyplot(fig)
+                            for bar1 in bars1:
+                                height = bar1.get_height()
+                                ax.annotate(f'{height:,.0f}', xy=(bar1.get_x() + bar1.get_width() / 2, height),
+                                            xytext=(0, 3), textcoords="offset points",
+                                            ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
 
+                            for bar1, bar2 in zip(bars1, bars2):
+                                height1 = bar1.get_height()
+                                height2 = bar2.get_height()
+                                total_height = height1 + height2
+                                ax.annotate(f'{height2:,.0f}', 
+                                            xy=(bar2.get_x() + bar2.get_width() / 2, total_height),
+                                            xytext=(0, 3), textcoords="offset points",
+                                            ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
 
+                            plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+                            ax.axhline(0, color='black', linewidth=0.8)
+                            ax.set_facecolor('white')
+                            for spine in ax.spines.values():
+                                spine.set_edgecolor('black')
+                                spine.set_linewidth(1.2)
+                            ax.legend()
+                            plt.tight_layout()
+                            st.pyplot(fig)
+                        else:
+                            st.error("No data available for the selected filters.")
+
+ 
