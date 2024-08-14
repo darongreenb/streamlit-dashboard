@@ -318,7 +318,7 @@ elif page == "MLB Charts":
                         
                         # Add labels and title
                         ax.set_ylabel('Total Amount ($)', fontsize=16, fontweight='bold')
-                        ax.set_title(f'Total Active Principal Overlaid on Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
+                        ax.set_title(f'Total Active Principal Overlaid on Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (Straight Bets Only)', fontsize=18, fontweight='bold')
                         
                         # Annotate each bar with the TotalDollarsAtStake value above the blue bar
                         for bar1 in bars1:
@@ -878,7 +878,7 @@ elif page == "Tennis Charts":
                             bars2 = ax.bar(df['ParticipantName'], df['TotalPotentialPayout'], color=color_potential_payout, width=0.4, edgecolor='black', label='Total Potential Payout', alpha=0.6, bottom=df['TotalDollarsAtStake'])
 
                             ax.set_ylabel('Total Amount ($)', fontsize=16, fontweight='bold')
-                            ax.set_title(f'Total Active Principal Overlaid on Potential Payout by ParticipantName for {event_type_option} - {event_label_option} ({league_name})', fontsize=18, fontweight='bold')
+                            ax.set_title(f'Total Active Principal Overlaid on Potential Payout by ParticipantName for {event_type_option} - {event_label_option} ({league_name}, Straight Bets Only)', fontsize=18, fontweight='bold')
 
                             for bar1 in bars1:
                                 height = bar1.get_height()
