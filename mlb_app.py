@@ -537,6 +537,7 @@ elif page == "MLB Participant Positions":
             else:
                 st.warning('No data found for the selected filters.')
 
+
 elif page == "Profit":
     # Profit Page
     st.title('Realized Profit Over Time - GA1')
@@ -584,12 +585,13 @@ elif page == "Profit":
         
         # Create the bar chart
         fig, ax = plt.subplots(figsize=(15, 8))
-        bars = ax.bar(league_profit_df['LeagueName'], league_profit_df['NetProfit'], color=['#219ebc' if x != 'Total' else '#fb8500' for x in league_profit_df['LeagueName']], edgecolor='black')
+        bar_colors = league_profit_df['NetProfit'].apply(lambda x: '#219ebc' if x >= 0 else '#fb8500')
+        bars = ax.bar(league_profit_df['LeagueName'], league_profit_df['NetProfit'], color=bar_colors, edgecolor='black')
 
         # Adding titles and labels
         ax.set_title('Current Realized Profit by League', fontsize=18, fontweight='bold')
         ax.set_xlabel('League Name', fontsize=16, fontweight='bold')
-        ax.set_ylabel('Net Profit ($)', fontsize=16, fontweight='bold')
+        ax.set_ylabel('Realized Profit ($)', fontsize=16, fontweight='bold')
 
         # Annotate each bar with the value
         for bar in bars:
@@ -609,6 +611,11 @@ elif page == "Profit":
         for spine in ax.spines.values():
             spine.set_edgecolor('black')
             spine.set_linewidth(1.2)
+
+        # Adjust y-axis range
+        ymin = league_profit_df['NetProfit'].min() - 500
+        ymax = league_profit_df['NetProfit'].max() + 500
+        ax.set_ylim(ymin, ymax)
 
         # Adjust layout
         plt.tight_layout()
@@ -733,5 +740,6 @@ elif page == "Profit":
                     st.pyplot(fig)
                 except Exception as e:
                     st.error(f"Error processing data: {e}")
+
 
 
