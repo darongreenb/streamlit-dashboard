@@ -540,7 +540,7 @@ elif page == "MLB Participant Positions":
 
 elif page == "Profit":
     # Profit Page
-    st.title('Realized Profit Over Time - GA1')
+    st.title('Realized Profit - GA1')
 
     # SQL query for the new bar chart (Profit by League)
     league_profit_query = """
@@ -579,9 +579,6 @@ elif page == "Profit":
     else:
         # Create a DataFrame from the fetched data
         league_profit_df = pd.DataFrame(league_profit_data)
-
-        # Display the fetched data
-        st.subheader('Current Realized Profit by League')
         
         # Create the bar chart
         fig, ax = plt.subplots(figsize=(15, 8))
@@ -589,7 +586,7 @@ elif page == "Profit":
         bars = ax.bar(league_profit_df['LeagueName'], league_profit_df['NetProfit'], color=bar_colors, edgecolor='black')
 
         # Adding titles and labels
-        ax.set_title('Current Realized Profit by League', fontsize=18, fontweight='bold')
+        ax.set_title('Realized Profit by League', fontsize=18, fontweight='bold')
         ax.set_xlabel('League Name', fontsize=16, fontweight='bold')
         ax.set_ylabel('Realized Profit ($)', fontsize=16, fontweight='bold')
 
