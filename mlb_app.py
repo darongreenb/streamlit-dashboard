@@ -875,9 +875,12 @@ elif page == "Profit":
                     # Create the line chart
                     fig, ax = plt.subplots(figsize=(15, 10))
 
-                    # Plot the line chart with color depending on the value
-                    line_color = 'green' if df['Cumulative Net Profit'].iloc[-1] > 0 else 'red'
-                    ax.plot(df['DateTimePlaced'], df['Cumulative Net Profit'], color=line_color, linewidth=3, marker='o')
+                    # Plot the segments with different colors
+                    for i in range(len(df) - 1):
+                        x = [df['DateTimePlaced'].iloc[i], df['DateTimePlaced'].iloc[i + 1]]
+                        y = [df['Cumulative Net Profit'].iloc[i], df['Cumulative Net Profit'].iloc[i + 1]]
+                        color = 'green' if y[0] > 0 or y[1] > 0 else 'red'
+                        ax.plot(x, y, color=color, linewidth=3)
 
                     # Adding titles and labels
                     ax.set_title('Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
