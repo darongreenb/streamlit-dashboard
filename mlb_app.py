@@ -861,10 +861,6 @@ elif page == "Profit":
                     # Sort by DateTimePlaced
                     df.sort_values(by='DateTimePlaced', inplace=True)
 
-                    # Resample to monthly periods
-                    df.set_index('DateTimePlaced', inplace=True)
-                    df = df.resample('M').sum().reset_index()
-
                     # Calculate the cumulative net profit
                     df['Cumulative Net Profit'] = df['NetProfit'].cumsum()
 
@@ -872,23 +868,19 @@ elif page == "Profit":
                     non_zero_index = df[df['Cumulative Net Profit'] != 0].index.min()
                     df = df.loc[non_zero_index:]
 
-                    # Determine global x-axis limits for consistency
-                    x_min = df['DateTimePlaced'].min()
-                    x_max = df['DateTimePlaced'].max()
-
                     # Create the line chart
                     fig, ax = plt.subplots(figsize=(15, 10))
 
-                    # Plot the line segments
+                    # Plot the line with segments colored based on value
                     for i in range(len(df) - 1):
                         x = [df['DateTimePlaced'].iloc[i], df['DateTimePlaced'].iloc[i + 1]]
                         y = [df['Cumulative Net Profit'].iloc[i], df['Cumulative Net Profit'].iloc[i + 1]]
                         color = 'green' if min(y) > 0 else 'red'
-                        ax.plot(x, y, color=color, linewidth=3)
+                        ax.plot(x, y, color=color, linewidth=4)  # Thick line
 
                     # Adding titles and labels
                     ax.set_title('Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
-                    ax.set_xlabel('Month of Bet Placed', fontsize=16, fontweight='bold')
+                    ax.set_xlabel('Date of Bet Placed', fontsize=16, fontweight='bold')
                     ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
 
                     # Annotate each data point with the value
@@ -904,10 +896,12 @@ elif page == "Profit":
                     ax.axhline(0, color='black', linewidth=1.5)
 
                     # Set x-axis and y-axis limits to ensure consistency
-                    ax.set_xlim(x_min, x_max)
+                    x_min = df['DateTimePlaced'].min()
+                    x_max = df['DateTimePlaced'].max()
                     ymin = df['Cumulative Net Profit'].min() - 500
                     ymax = df['Cumulative Net Profit'].max() + 500
-                    ax.set_ylim(ymin, ymax + 500)
+                    ax.set_xlim(x_min, x_max)
+                    ax.set_ylim(ymin, ymax)
 
                     # Set background color to white
                     ax.set_facecolor('white')
