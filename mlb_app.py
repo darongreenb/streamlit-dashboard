@@ -824,6 +824,10 @@ elif page == "Profit":
             df = pd.DataFrame(data)
             if 'DateTimePlaced' in df.columns:
                 try:
+                    # Debug print statements
+                    st.write("Initial Data:")
+                    st.write(df.head())
+
                     df['DateTimePlaced'] = pd.to_datetime(df['DateTimePlaced'])
                     df = df[df['DateTimePlaced'] >= '2024-03-01']
                     df.sort_values(by='DateTimePlaced', inplace=True)
@@ -831,9 +835,17 @@ elif page == "Profit":
                     df = df.resample('M').sum().reset_index()
                     df['Cumulative Net Profit'] = df['NetProfit'].cumsum()
 
+                    # Debug print statements
+                    st.write("Processed Data:")
+                    st.write(df.head())
+
                     # Find the first non-zero value
                     first_non_zero_idx = df[df['Cumulative Net Profit'] != 0].index[0]
                     df = df[df.index >= first_non_zero_idx]
+
+                    # Debug print statements
+                    st.write("Filtered Data:")
+                    st.write(df.head())
 
                     fig, ax = plt.subplots(figsize=(15, 10))
 
@@ -841,6 +853,8 @@ elif page == "Profit":
                     for i in range(1, len(df)):
                         x_values = df['DateTimePlaced'].iloc[i-1:i+1]
                         y_values = df['Cumulative Net Profit'].iloc[i-1:i+1]
+                        if len(y_values) < 2:
+                            continue
                         color = 'green' if y_values[0] >= 0 else 'red'
                         
                         if y_values[0] < 0 and y_values[1] >= 0:
