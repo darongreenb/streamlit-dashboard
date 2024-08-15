@@ -868,6 +868,9 @@ elif page == "Profit":
                     non_zero_index = df[df['Cumulative Net Profit'] != 0].index.min()
                     df = df.loc[non_zero_index:]
 
+                    # Convert 'Cumulative Net Profit' to float for calculations
+                    df['Cumulative Net Profit'] = df['Cumulative Net Profit'].astype(float)
+                    
                     # Create the line chart with dynamic colors based on the y-value
                     fig, ax = plt.subplots(figsize=(15, 10))
                     
@@ -938,9 +941,6 @@ elif page == "Profit":
                     
                     # Use Streamlit to display the chart
                     st.pyplot(fig)
-
-
-
                 
                 except Exception as e:
                     st.error(f"Error processing data: {e}")
