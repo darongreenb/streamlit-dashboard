@@ -875,7 +875,26 @@ elif page == "Profit":
                     for i in range(len(df) - 1):
                         x = [df['DateTimePlaced'].iloc[i], df['DateTimePlaced'].iloc[i + 1]]
                         y = [df['Cumulative Net Profit'].iloc[i], df['Cumulative Net Profit'].iloc[i + 1]]
-                        color = 'green' if y[0] >= 0 and y[1] >= 0 else 'red'
+
+                        # Determine color based on whether the segment is above or below zero
+                        if y[0] >= 0 and y[1] >= 0:
+                            color = 'green'
+                        elif y[0] < 0 and y[1] < 0:
+                            color = 'red'
+                        else:
+                            # Determine color of the segment where it crosses zero
+                            zero_cross = [x[0], x[1]]
+                            zero_cross.append((0, 0))
+                            if y[0] >= 0 and y[1] < 0:
+                                zero_cross = [x[0], x[1], df['DateTimePlaced'].iloc[i + 1]]
+                                ax.plot(zero_cross, [y[0], 0], color='green', linewidth=4)
+                                ax.plot([x[1], df['DateTimePlaced'].iloc[i + 1]], [0, y[1]], color='red', linewidth=4)
+                            elif y[0] < 0 and y[1] >= 0:
+                                zero_cross = [x[0], x[1], df['DateTimePlaced'].iloc[i + 1]]
+                                ax.plot(zero_cross, [y[0], 0], color='red', linewidth=4)
+                                ax.plot([x[1], df['DateTimePlaced'].iloc[i + 1]], [0, y[1]], color='green', linewidth=4)
+                            continue
+                        
                         ax.plot(x, y, color=color, linewidth=4)  # Thick line
 
                     # Adding titles and labels
