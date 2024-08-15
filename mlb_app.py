@@ -718,9 +718,10 @@ elif page == "MLB Participant Positions":
 
 
 elif page == "Profit":
+    # Profit Page
     st.title('Realized Profit - GA1')
 
-    # SQL query for profit by league
+    # SQL query for the new bar chart (Profit by League)
     league_profit_query = """
     WITH DistinctBets AS (
         SELECT DISTINCT b.WagerID, b.NetProfit, l.LeagueName
@@ -740,7 +741,9 @@ elif page == "Profit":
             l.LeagueName
     )
     SELECT * FROM LeagueSums
+
     UNION ALL
+
     SELECT 
         'Total' AS LeagueName,
         ROUND(SUM(db.NetProfit), 0) AS NetProfit
@@ -748,47 +751,68 @@ elif page == "Profit":
         DistinctBets db;
     """
 
+    # Fetch the data for the new bar chart
     league_profit_data = get_data_from_db(league_profit_query)
-    if league_profit_data:
+    if league_profit_data is None:
+        st.error("Failed to fetch league profit data from the database.")
+    else:
+        # Create a DataFrame from the fetched data
         league_profit_df = pd.DataFrame(league_profit_data)
         
+        # Create the bar chart
         fig, ax = plt.subplots(figsize=(15, 8))
-        bar_colors = league_profit_df['NetProfit'].apply(lambda x: 'green' if x > 0 else 'red')
+        bar_colors = league_profit_df['NetProfit'].apply(lambda x: 'green' if x > 0 else 'red')  # Green for positive, Red for negative
         bars = ax.bar(league_profit_df['LeagueName'], league_profit_df['NetProfit'], color=bar_colors, edgecolor='black')
 
+        # Adding titles and labels
         ax.set_title('Realized Profit by League', fontsize=18, fontweight='bold')
         ax.set_xlabel('League Name', fontsize=16, fontweight='bold')
         ax.set_ylabel('Realized Profit ($)', fontsize=16, fontweight='bold')
 
+        # Annotate each bar with the value
         for bar in bars:
             height = bar.get_height()
             ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
                         xytext=(0, 3), textcoords="offset points",
                         ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
 
+        # Rotate the x-axis labels to 45 degrees
         plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+
+        # Set background color to white
         ax.set_facecolor('white')
         plt.gcf().set_facecolor('white')
 
+        # Add border around the plot
         for spine in ax.spines.values():
             spine.set_edgecolor('black')
             spine.set_linewidth(1.2)
 
+        # Adjust y-axis range
         ymin = league_profit_df['NetProfit'].min() - 500
         ymax = league_profit_df['NetProfit'].max() + 500
         ax.set_ylim(ymin, ymax)
 
+        # Adjust layout
         plt.tight_layout()
+
+        # Use Streamlit to display the chart
         st.pyplot(fig)
 
+    # Fetch the distinct LeagueName for the dropdown
     event_type_query = "SELECT DISTINCT LeagueName FROM legs ORDER BY LeagueName ASC;"
     event_types = get_data_from_db(event_type_query)
-    
-    if event_types:
+
+    if event_types is None:
+        st.error("Failed to fetch event types from the database.")
+    else:
         event_type_names = [event['LeagueName'] for event in event_types]
-        event_type_names.insert(0, "All")
+        event_type_names.insert(0, "All")  # Add "All" to the beginning of the list
+
+        # Dropdown menu for selecting LeagueName
         selected_event_type = st.selectbox('Select LeagueName', event_type_names)
 
+        # SQL query to fetch data, filter by LeagueName if not "All"
         if selected_event_type == "All":
             profit_query = """
             WITH DistinctBets AS (
@@ -801,7 +825,6 @@ elif page == "Profit":
             GROUP BY DateTimePlaced
             ORDER BY DateTimePlaced;
             """
-            params = None
         else:
             profit_query = """
             WITH DistinctBets AS (
@@ -818,75 +841,79 @@ elif page == "Profit":
             """
             params = [selected_event_type]
 
-        data = get_data_from_db(profit_query, params)
-        
-        if data:
-            df = pd.DataFrame(data)
-            if 'DateTimePlaced' in df.columns:
-                try:
-                    # Debug print statements
-                    st.write("Initial Data:")
-                    st.write(df.head())
+        # Fetch the data
+        data = get_data_from_db(profit_query, params if selected_event_type != "All" else None)
 
+        if data is None:
+            st.error("Failed to fetch data from the database.")
+        else:
+            df = pd.DataFrame(data)
+            if 'DateTimePlaced' not in df.columns:
+                st.error("The 'DateTimePlaced' column is missing from the data.")
+            else:
+                try:
+                    # Ensure DateTimePlaced is a datetime object
                     df['DateTimePlaced'] = pd.to_datetime(df['DateTimePlaced'])
+
+                    # Filter data to start from March 2024
                     df = df[df['DateTimePlaced'] >= '2024-03-01']
+
+                    # Sort by DateTimePlaced
                     df.sort_values(by='DateTimePlaced', inplace=True)
+
+                    # Resample to monthly periods
                     df.set_index('DateTimePlaced', inplace=True)
                     df = df.resample('M').sum().reset_index()
+
+                    # Calculate the cumulative net profit
                     df['Cumulative Net Profit'] = df['NetProfit'].cumsum()
 
-                    # Debug print statements
-                    st.write("Processed Data:")
-                    st.write(df.head())
+                    # Drop initial zero values for line start
+                    non_zero_index = df[df['Cumulative Net Profit'] != 0].index.min()
+                    df = df.loc[non_zero_index:]
 
-                    # Find the first non-zero value
-                    first_non_zero_idx = df[df['Cumulative Net Profit'] != 0].index[0]
-                    df = df[df.index >= first_non_zero_idx]
-
-                    # Debug print statements
-                    st.write("Filtered Data:")
-                    st.write(df.head())
-
+                    # Create the line chart
                     fig, ax = plt.subplots(figsize=(15, 10))
 
-                    # Plot segments based on y-values
-                    for i in range(1, len(df)):
-                        x_values = df['DateTimePlaced'].iloc[i-1:i+1]
-                        y_values = df['Cumulative Net Profit'].iloc[i-1:i+1]
-                        if len(y_values) < 2:
-                            continue
-                        color = 'green' if y_values[0] >= 0 else 'red'
-                        
-                        if y_values[0] < 0 and y_values[1] >= 0:
-                            # Split the segment at y=0
-                            zero_crossing = df[df['Cumulative Net Profit'].between(y_values[0], y_values[1])].iloc[0]
-                            ax.plot([x_values[0], zero_crossing['DateTimePlaced']], [y_values[0], zero_crossing['Cumulative Net Profit']], color='red', linewidth=3)
-                            ax.plot([zero_crossing['DateTimePlaced'], x_values[1]], [zero_crossing['Cumulative Net Profit'], y_values[1]], color='green', linewidth=3)
-                        else:
-                            ax.plot(x_values, y_values, color=color, linewidth=3)
+                    # Plot the line chart with color depending on the value
+                    line_color = 'green' if df['Cumulative Net Profit'].iloc[-1] > 0 else 'red'
+                    ax.plot(df['DateTimePlaced'], df['Cumulative Net Profit'], color=line_color, linewidth=3, marker='o')
 
+                    # Adding titles and labels
                     ax.set_title('Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
                     ax.set_xlabel('Month of Bet Placed', fontsize=16, fontweight='bold')
                     ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
 
+                    # Annotate each data point with the value
                     for i, row in df.iterrows():
-                        ax.annotate(f'${row["Cumulative Net Profit"]:,.0f}', (row['DateTimePlaced'], row['Cumulative Net Profit']),
-                                    textcoords="offset points", xytext=(0,5), ha='center', fontsize=12, fontweight='bold', color='black')
+                        ax.annotate(f'${row["Cumulative Net Profit"]:,.0f}', xy=(row['DateTimePlaced'], row['Cumulative Net Profit']),
+                                    xytext=(5, 5), textcoords="offset points",
+                                    ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
 
+                    # Rotate the x-axis labels to 45 degrees
                     plt.xticks(rotation=30, ha='right', fontsize=14, fontweight='bold')
+
+                    # Add horizontal line at y=0 for reference
                     ax.axhline(0, color='black', linewidth=1.5)
+
+                    # Set background color to white
                     ax.set_facecolor('white')
                     plt.gcf().set_facecolor('white')
 
+                    # Add border around the plot
                     for spine in ax.spines.values():
                         spine.set_edgecolor('black')
                         spine.set_linewidth(1.2)
 
+                    # Set y-axis limit to include positive territory and go a few hundred dollars below the lowest point
                     ymin = df['Cumulative Net Profit'].min() - 500
                     ymax = df['Cumulative Net Profit'].max() + 500
                     ax.set_ylim(ymin, ymax + 500)
 
+                    # Adjust layout
                     plt.tight_layout()
+
+                    # Use Streamlit to display the chart
                     st.pyplot(fig)
                 except Exception as e:
                     st.error(f"Error processing data: {e}")
