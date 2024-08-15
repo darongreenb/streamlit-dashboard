@@ -871,8 +871,17 @@ elif page == "Profit":
                     # Create the line chart
                     fig, ax = plt.subplots(figsize=(15, 10))
 
-                    # Plot the line in black color
-                    ax.plot(df['DateTimePlaced'], df['Cumulative Net Profit'], color='black', linewidth=4)
+                    # Plot the line with color change based on crossing y=0
+                    prev_point = df.iloc[0]
+                    for i in range(1, len(df)):
+                        current_point = df.iloc[i]
+                        if (prev_point['Cumulative Net Profit'] >= 0 and current_point['Cumulative Net Profit'] < 0) or \
+                           (prev_point['Cumulative Net Profit'] < 0 and current_point['Cumulative Net Profit'] >= 0):
+                            # Plot the segment in black
+                            ax.plot([prev_point['DateTimePlaced'], current_point['DateTimePlaced']],
+                                    [prev_point['Cumulative Net Profit'], current_point['Cumulative Net Profit']],
+                                    color='black', linewidth=4)
+                        prev_point = current_point
 
                     # Adding titles and labels
                     ax.set_title('Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
