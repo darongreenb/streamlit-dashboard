@@ -873,12 +873,30 @@ elif page == "Profit":
                     
                     # Plot the line with color changing based on the y-value
                     for i in range(1, len(df)):
-                        if df['Cumulative Net Profit'].iloc[i-1] >= 0 and df['Cumulative Net Profit'].iloc[i] >= 0:
-                            ax.plot(df['DateTimePlaced'].iloc[i-1:i+1], df['Cumulative Net Profit'].iloc[i-1:i+1], color='green', linewidth=4)
-                        elif df['Cumulative Net Profit'].iloc[i-1] < 0 and df['Cumulative Net Profit'].iloc[i] < 0:
-                            ax.plot(df['DateTimePlaced'].iloc[i-1:i+1], df['Cumulative Net Profit'].iloc[i-1:i+1], color='red', linewidth=4)
+                        # Get the start and end points of the current segment
+                        x_values = [df['DateTimePlaced'].iloc[i-1], df['DateTimePlaced'].iloc[i]]
+                        y_values = [df['Cumulative Net Profit'].iloc[i-1], df['Cumulative Net Profit'].iloc[i]]
+                    
+                        # Determine the color based on the sign of the y-values
+                        if y_values[0] >= 0 and y_values[1] >= 0:
+                            color = 'green'
+                        elif y_values[0] < 0 and y_values[1] < 0:
+                            color = 'red'
                         else:
-                            ax.plot(df['DateTimePlaced'].iloc[i-1:i+1], df['Cumulative Net Profit'].iloc[i-1:i+1], color='black', linewidth=4)
+                            # Handle the transition: first part of the segment will be one color, the second part another
+                            if y_values[0] >= 0:
+                                # Interpolate to find where the line crosses y=0
+                                x_cross = x_values[0] + (x_values[1] - x_values[0]) * (0 - y_values[0]) / (y_values[1] - y_values[0])
+                                ax.plot([x_values[0], x_cross], [y_values[0], 0], color='green', linewidth=4)
+                                ax.plot([x_cross, x_values[1]], [0, y_values[1]], color='red', linewidth=4)
+                            else:
+                                x_cross = x_values[0] + (x_values[1] - x_values[0]) * (0 - y_values[0]) / (y_values[1] - y_values[0])
+                                ax.plot([x_values[0], x_cross], [y_values[0], 0], color='red', linewidth=4)
+                                ax.plot([x_cross, x_values[1]], [0, y_values[1]], color='green', linewidth=4)
+                            continue
+                    
+                        # Plot the segment
+                        ax.plot(x_values, y_values, color=color, linewidth=4)
                     
                     # Adding titles and labels
                     ax.set_title('Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
@@ -921,6 +939,9 @@ elif page == "Profit":
                     # Use Streamlit to display the chart
                     st.pyplot(fig)
 
+
+
+                
                 except Exception as e:
                     st.error(f"Error processing data: {e}")
 
