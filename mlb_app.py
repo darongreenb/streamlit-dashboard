@@ -837,12 +837,16 @@ elif page == "Profit":
 
                     fig, ax = plt.subplots(figsize=(15, 10))
 
-                    # Apply color changes based on the y-axis value
-                    line_color = df['Cumulative Net Profit'].apply(lambda x: 'green' if x > 0 else 'red')
+                    # Plot with conditional coloring
+                    colors = df['Cumulative Net Profit'].apply(lambda x: 'green' if x > 0 else 'red')
+                    ax.plot(df['DateTimePlaced'], df['Cumulative Net Profit'], marker='o', linestyle='-', color='black', linewidth=3)
 
-                    for idx, color in line_color.iteritems():
-                        ax.plot(df.loc[idx:idx]['DateTimePlaced'], df.loc[idx:idx]['Cumulative Net Profit'], 
-                                marker='o', linestyle='-', color=color, linewidth=2)
+                    # Highlight positive and negative segments
+                    for i in range(1, len(df)):
+                        if df['Cumulative Net Profit'].iloc[i] > 0:
+                            ax.plot(df['DateTimePlaced'].iloc[i-1:i+1], df['Cumulative Net Profit'].iloc[i-1:i+1], color='green', linewidth=3)
+                        else:
+                            ax.plot(df['DateTimePlaced'].iloc[i-1:i+1], df['Cumulative Net Profit'].iloc[i-1:i+1], color='red', linewidth=3)
 
                     ax.set_title('Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
                     ax.set_xlabel('Month of Bet Placed', fontsize=16, fontweight='bold')
