@@ -718,6 +718,7 @@ elif page == "MLB Participant Positions":
 
 
 
+
 elif page == "Profit":
     st.title('Realized Profit - GA1')
 
@@ -826,38 +827,29 @@ elif page == "Profit":
             if 'DateTimePlaced' in df.columns:
                 try:
                     df['DateTimePlaced'] = pd.to_datetime(df['DateTimePlaced'])
-                    df = df[df['DateTimePlaced'] >= '2024-03-01']
                     df.sort_values(by='DateTimePlaced', inplace=True)
                     df.set_index('DateTimePlaced', inplace=True)
                     df = df.resample('M').sum().reset_index()
                     df['Cumulative Net Profit'] = df['NetProfit'].cumsum()
+                    df['% Cumulative Return'] = (df['Cumulative Net Profit'] / 325000) * 100
+                    df['% Cumulative Return (Smoothed)'] = df['% Cumulative Return'].rolling(window=10, min_periods=1).mean()
 
-                    fig, ax = plt.subplots(figsize=(15, 10))
+                    plt.style.use('ggplot')
+                    fig, ax = plt.subplots(figsize=(14, 7))
+                    ax.plot(df['DateTimePlaced'], df['% Cumulative Return (Smoothed)'], marker='', linestyle='-', color='green', linewidth=3)
 
-                    ax.plot(df['DateTimePlaced'], df['Cumulative Net Profit'], marker='o', linestyle='-', color='b')
+                    ax.set_title('Beta Returns', fontsize=16, fontweight='bold')
+                    ax.set_xlabel('Date', fontsize=14, fontweight='bold')
+                    ax.set_ylabel('% Return', fontsize=14, fontweight='bold')
 
-                    ax.set_title('Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
-                    ax.set_xlabel('Month of Bet Placed', fontsize=16, fontweight='bold')
-                    ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
+                    plt.text(0.17, 0.92, 'GreenAleph Sports', verticalalignment='bottom', horizontalalignment='right', transform=plt.gca().transAxes, color='green', fontsize=16, fontstyle='italic')
 
-                    for i, row in df.iterrows():
-                        ax.annotate(f'${row["Cumulative Net Profit"]:,.0f}', (row['DateTimePlaced'], row['Cumulative Net Profit']),
-                                    textcoords="offset points", xytext=(0,5), ha='center', fontsize=12, fontweight='bold', color='black')
-
-                    plt.xticks(rotation=30, ha='right', fontsize=14, fontweight='bold')
-                    ax.axhline(0, color='black', linewidth=1.5)
-                    ax.set_facecolor('white')
-                    plt.gcf().set_facecolor('white')
-
-                    for spine in ax.spines.values():
-                        spine.set_edgecolor('black')
-                        spine.set_linewidth(1.2)
-
-                    ymin = df['Cumulative Net Profit'].min() - 500
-                    ymax = df['Cumulative Net Profit'].max() + 500
-                    ax.set_ylim(ymin, ymax + 500)
-
+                    plt.xticks(rotation=45)
                     plt.tight_layout()
+
+                    plt.xlim(pd.Timestamp('2023-07-05'), pd.Timestamp('2024-08-01'))
+
                     st.pyplot(fig)
                 except Exception as e:
                     st.error(f"Error processing data: {e}")
+
