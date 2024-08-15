@@ -39,7 +39,7 @@ else:
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions", "Profit"])
+page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions", ""])
 
 if page == "GreenAleph Active Principal":
     # GreenAleph Active Principal
@@ -831,9 +831,18 @@ elif page == "Profit":
                     df = df.resample('M').sum().reset_index()
                     df['Cumulative Net Profit'] = df['NetProfit'].cumsum()
 
+                    # Find the first non-zero value
+                    first_non_zero_idx = df[df['Cumulative Net Profit'] != 0].index[0]
+                    df = df[df.index >= first_non_zero_idx]
+
                     fig, ax = plt.subplots(figsize=(15, 10))
 
-                    ax.plot(df['DateTimePlaced'], df['Cumulative Net Profit'], marker='o', linestyle='-', color='b')
+                    # Apply color changes based on the y-axis value
+                    line_color = df['Cumulative Net Profit'].apply(lambda x: 'green' if x > 0 else 'red')
+
+                    for idx, color in line_color.iteritems():
+                        ax.plot(df.loc[idx:idx]['DateTimePlaced'], df.loc[idx:idx]['Cumulative Net Profit'], 
+                                marker='o', linestyle='-', color=color, linewidth=2)
 
                     ax.set_title('Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
                     ax.set_xlabel('Month of Bet Placed', fontsize=16, fontweight='bold')
@@ -860,4 +869,3 @@ elif page == "Profit":
                     st.pyplot(fig)
                 except Exception as e:
                     st.error(f"Error processing data: {e}")
-
