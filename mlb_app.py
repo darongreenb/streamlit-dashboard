@@ -872,14 +872,18 @@ elif page == "Profit":
                     non_zero_index = df[df['Cumulative Net Profit'] != 0].index.min()
                     df = df.loc[non_zero_index:]
 
+                    # Determine global x-axis limits for consistency
+                    x_min = df['DateTimePlaced'].min()
+                    x_max = df['DateTimePlaced'].max()
+
                     # Create the line chart
                     fig, ax = plt.subplots(figsize=(15, 10))
 
-                    # Plot the segments with different colors
+                    # Plot the line segments
                     for i in range(len(df) - 1):
                         x = [df['DateTimePlaced'].iloc[i], df['DateTimePlaced'].iloc[i + 1]]
                         y = [df['Cumulative Net Profit'].iloc[i], df['Cumulative Net Profit'].iloc[i + 1]]
-                        color = 'green' if y[0] > 0 or y[1] > 0 else 'red'
+                        color = 'green' if min(y) > 0 else 'red'
                         ax.plot(x, y, color=color, linewidth=3)
 
                     # Adding titles and labels
@@ -899,6 +903,12 @@ elif page == "Profit":
                     # Add horizontal line at y=0 for reference
                     ax.axhline(0, color='black', linewidth=1.5)
 
+                    # Set x-axis and y-axis limits to ensure consistency
+                    ax.set_xlim(x_min, x_max)
+                    ymin = df['Cumulative Net Profit'].min() - 500
+                    ymax = df['Cumulative Net Profit'].max() + 500
+                    ax.set_ylim(ymin, ymax + 500)
+
                     # Set background color to white
                     ax.set_facecolor('white')
                     plt.gcf().set_facecolor('white')
@@ -907,11 +917,6 @@ elif page == "Profit":
                     for spine in ax.spines.values():
                         spine.set_edgecolor('black')
                         spine.set_linewidth(1.2)
-
-                    # Set y-axis limit to include positive territory and go a few hundred dollars below the lowest point
-                    ymin = df['Cumulative Net Profit'].min() - 500
-                    ymax = df['Cumulative Net Profit'].max() + 500
-                    ax.set_ylim(ymin, ymax + 500)
 
                     # Adjust layout
                     plt.tight_layout()
