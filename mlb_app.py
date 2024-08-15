@@ -716,6 +716,7 @@ elif page == "MLB Participant Positions":
                 st.warning('No data found for the selected filters.')
 
 
+
 elif page == "Profit":
     # Profit Page
     st.title('Realized Profit - GA1')
@@ -860,39 +861,44 @@ elif page == "Profit":
                     # Sort by DateTimePlaced
                     df.sort_values(by='DateTimePlaced', inplace=True)
 
-                    # Resample to monthly periods
-                    df.set_index('DateTimePlaced', inplace=True)
-                    df = df.resample('M').sum().reset_index()
-
                     # Calculate the cumulative net profit
                     df['Cumulative Net Profit'] = df['NetProfit'].cumsum()
 
-                    # Create the bar graph
+                    # Drop initial zero values for line start
+                    non_zero_index = df[df['Cumulative Net Profit'] != 0].index.min()
+                    df = df.loc[non_zero_index:]
+
+                    # Create the line chart
                     fig, ax = plt.subplots(figsize=(15, 10))
 
-                    # Color bars based on positive or negative values
-                    bar_colors = df['Cumulative Net Profit'].apply(lambda x: 'green' if x > 0 else 'red')
-
-                    bars = ax.bar(df['DateTimePlaced'].dt.strftime('%Y-%m'), df['Cumulative Net Profit'], color=bar_colors, width=0.6, edgecolor='black')
+                    # Plot the line in black color
+                    ax.plot(df['DateTimePlaced'], df['Cumulative Net Profit'], color='black', linewidth=4)
 
                     # Adding titles and labels
                     ax.set_title('Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
-                    ax.set_xlabel('Month of Bet Placed', fontsize=16, fontweight='bold')
+                    ax.set_xlabel('Date of Bet Placed', fontsize=16, fontweight='bold')
                     ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
 
-                    # Annotate each bar with the value, excluding the zero value labels
-                    for bar in bars:
-                        height = bar.get_height()
-                        if height != 0:
-                            ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
-                                        xytext=(0, 3 if height >= 0 else -3), textcoords="offset points",
-                                        ha='center', va='bottom' if height >= 0 else 'top', fontsize=12, fontweight='bold', color='black')
+                    # Annotate only the last data point with the value
+                    last_point = df.iloc[-1]
+                    ax.annotate(f'${last_point["Cumulative Net Profit"]:,.0f}', 
+                                xy=(last_point['DateTimePlaced'], last_point['Cumulative Net Profit']),
+                                xytext=(5, 5), textcoords="offset points",
+                                ha='left', va='bottom', fontsize=12, fontweight='bold', color='black')
 
                     # Rotate the x-axis labels to 45 degrees
                     plt.xticks(rotation=30, ha='right', fontsize=14, fontweight='bold')
 
                     # Add horizontal line at y=0 for reference
                     ax.axhline(0, color='black', linewidth=1.5)
+
+                    # Set x-axis and y-axis limits to ensure consistency
+                    x_min = df['DateTimePlaced'].min()
+                    x_max = df['DateTimePlaced'].max()
+                    ymin = df['Cumulative Net Profit'].min() - 500
+                    ymax = df['Cumulative Net Profit'].max() + 500
+                    ax.set_xlim(x_min, x_max)
+                    ax.set_ylim(ymin, ymax)
 
                     # Set background color to white
                     ax.set_facecolor('white')
@@ -902,11 +908,6 @@ elif page == "Profit":
                     for spine in ax.spines.values():
                         spine.set_edgecolor('black')
                         spine.set_linewidth(1.2)
-
-                    # Set y-axis limit to include positive territory and go a few hundred dollars below the lowest bar
-                    ymin = df['Cumulative Net Profit'].min() - 500
-                    ymax = df['Cumulative Net Profit'].max() + 500
-                    ax.set_ylim(ymin, ymax + 500)
 
                     # Adjust layout
                     plt.tight_layout()
