@@ -875,7 +875,7 @@ elif page == "Profit":
                     for i in range(len(df) - 1):
                         x = [df['DateTimePlaced'].iloc[i], df['DateTimePlaced'].iloc[i + 1]]
                         y = [df['Cumulative Net Profit'].iloc[i], df['Cumulative Net Profit'].iloc[i + 1]]
-                        color = 'green' if min(y) > 0 else 'red'
+                        color = 'green' if y[0] >= 0 and y[1] >= 0 else 'red'
                         ax.plot(x, y, color=color, linewidth=4)  # Thick line
 
                     # Adding titles and labels
@@ -883,11 +883,12 @@ elif page == "Profit":
                     ax.set_xlabel('Date of Bet Placed', fontsize=16, fontweight='bold')
                     ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
 
-                    # Annotate each data point with the value
-                    for i, row in df.iterrows():
-                        ax.annotate(f'${row["Cumulative Net Profit"]:,.0f}', xy=(row['DateTimePlaced'], row['Cumulative Net Profit']),
-                                    xytext=(5, 5), textcoords="offset points",
-                                    ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
+                    # Annotate only the last data point with the value
+                    last_point = df.iloc[-1]
+                    ax.annotate(f'${last_point["Cumulative Net Profit"]:,.0f}', 
+                                xy=(last_point['DateTimePlaced'], last_point['Cumulative Net Profit']),
+                                xytext=(5, 5), textcoords="offset points",
+                                ha='left', va='bottom', fontsize=12, fontweight='bold', color='black')
 
                     # Rotate the x-axis labels to 45 degrees
                     plt.xticks(rotation=30, ha='right', fontsize=14, fontweight='bold')
