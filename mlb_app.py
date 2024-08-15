@@ -837,16 +837,19 @@ elif page == "Profit":
 
                     fig, ax = plt.subplots(figsize=(15, 10))
 
-                    # Plot with conditional coloring
-                    colors = df['Cumulative Net Profit'].apply(lambda x: 'green' if x > 0 else 'red')
-                    ax.plot(df['DateTimePlaced'], df['Cumulative Net Profit'], marker='o', linestyle='-', color='black', linewidth=3)
-
-                    # Highlight positive and negative segments
+                    # Plot segments based on y-values
                     for i in range(1, len(df)):
-                        if df['Cumulative Net Profit'].iloc[i] > 0:
-                            ax.plot(df['DateTimePlaced'].iloc[i-1:i+1], df['Cumulative Net Profit'].iloc[i-1:i+1], color='green', linewidth=3)
+                        x_values = df['DateTimePlaced'].iloc[i-1:i+1]
+                        y_values = df['Cumulative Net Profit'].iloc[i-1:i+1]
+                        color = 'green' if y_values[0] >= 0 else 'red'
+                        
+                        if y_values[0] < 0 and y_values[1] >= 0:
+                            # Split the segment at y=0
+                            zero_crossing = df[df['Cumulative Net Profit'].between(y_values[0], y_values[1])].iloc[0]
+                            ax.plot([x_values[0], zero_crossing['DateTimePlaced']], [y_values[0], zero_crossing['Cumulative Net Profit']], color='red', linewidth=3)
+                            ax.plot([zero_crossing['DateTimePlaced'], x_values[1]], [zero_crossing['Cumulative Net Profit'], y_values[1]], color='green', linewidth=3)
                         else:
-                            ax.plot(df['DateTimePlaced'].iloc[i-1:i+1], df['Cumulative Net Profit'].iloc[i-1:i+1], color='red', linewidth=3)
+                            ax.plot(x_values, y_values, color=color, linewidth=3)
 
                     ax.set_title('Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
                     ax.set_xlabel('Month of Bet Placed', fontsize=16, fontweight='bold')
