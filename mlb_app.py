@@ -753,7 +753,7 @@ elif page == "Profit":
         league_profit_df = pd.DataFrame(league_profit_data)
         
         fig, ax = plt.subplots(figsize=(15, 8))
-        bar_colors = league_profit_df['NetProfit'].apply(lambda x: 'green' if x > 0 else 'gray')
+        bar_colors = league_profit_df['NetProfit'].apply(lambda x: 'green' if x > 0 else 'red')
         bars = ax.bar(league_profit_df['LeagueName'], league_profit_df['NetProfit'], color=bar_colors, edgecolor='black')
 
         ax.set_title('Realized Profit by League', fontsize=18, fontweight='bold')
