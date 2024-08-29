@@ -44,8 +44,6 @@ page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "Tennis Charts"
 
 
 
-
-
 if page == "GreenAleph Active Principal":
     # GreenAleph Active Principal
     st.title('Principal Dashboard - GreenAleph I')
@@ -157,7 +155,7 @@ if page == "GreenAleph Active Principal":
             width: 100%;
             max-width: 800px;
             background-color: #d3d3d3;
-            border-radius: 20px;
+            border-radius: 30px;
             overflow: hidden;
             position: relative;
             height: 50px;
@@ -167,7 +165,7 @@ if page == "GreenAleph Active Principal":
             height: 100%;
             background-color: #77dd77;
             width: 0;
-            border-radius: 20px;
+            border-radius: 30px;
             position: absolute;
             text-align: center;
             line-height: 50px;
@@ -181,13 +179,16 @@ if page == "GreenAleph Active Principal":
 
         # Calculate percentage for the progress bar
         progress_percentage = min(int(total_deployed / 500000 * 100), 100)
+        # Format the total deployed value with a dollar sign
+        formatted_value = f"${total_deployed:,.0f}"
 
-        # Render the progress bar with custom styles
+        # Render the progress bar with custom styles and value label
         st.markdown(f"""
         <div class="progress-bar">
-            <div class="progress-bar-fill" style="width: {progress_percentage}%;">Total Deployed Progress</div>
+            <div class="progress-bar-fill" style="width: {progress_percentage}%;">{formatted_value}</div>
         </div>
         """, unsafe_allow_html=True)
+
 
 
 
