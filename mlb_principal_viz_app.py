@@ -109,7 +109,7 @@ if page == "GreenAleph Active Principal":
         df['TotalDollarsAtStake'] = df['TotalDollarsAtStake'].astype(float)
 
         # Sort the DataFrame by TotalDollarsAtStake in ascending order
-        df = df.sort_values(by = 'TotalDollarsAtStake')
+        df = df.sort_values(by='TotalDollarsAtStake')
 
         # Define colors for bars
         colors = ['#77dd77', '#89cff0', '#fdfd96', '#ffb347', '#aec6cf', '#cfcfc4', '#ffb6c1', '#b39eb5']
@@ -157,8 +157,16 @@ if page == "GreenAleph Active Principal":
         if deployed_data and len(deployed_data) > 0 and 'TotalDollarsDeployed' in deployed_data[0]:
             total_dollars_deployed = deployed_data[0]['TotalDollarsDeployed']
             
-            # Calculate progress as a percentage of the total active principal
+            # Ensure total_dollars_deployed is a float
+            total_dollars_deployed = float(total_dollars_deployed) if total_dollars_deployed else 0.0
+            
+            # Calculate the total active principal
             total_active_principal = df['TotalDollarsAtStake'].sum()
+            
+            # Ensure total_active_principal is a float
+            total_active_principal = float(total_active_principal) if total_active_principal else 0.0
+            
+            # Calculate progress as a percentage of the total active principal
             progress_percentage = total_dollars_deployed / total_active_principal if total_active_principal else 0
             
             # Display the progress bar
@@ -175,9 +183,6 @@ if page == "GreenAleph Active Principal":
             """, unsafe_allow_html=True)
         else:
             st.error("No data available for Total Dollars Deployed.")
-
-
-
 
 
 
