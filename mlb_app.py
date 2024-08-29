@@ -47,6 +47,7 @@ page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "Tennis Charts"
 
 
 
+
 if page == "GreenAleph Active Principal":
     # GreenAleph Active Principal
     st.title('Principal Dashboard - GreenAleph I')
@@ -64,6 +65,20 @@ if page == "GreenAleph Active Principal":
     )
 
     SELECT 
+        l.LeagueName,
+        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake,
+        ROUND(SUM(NetProfit)) AS TotalNetProfit
+    FROM 
+        DistinctBets db
+    JOIN 
+        (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
+    GROUP BY 
+        l.LeagueName
+
+    UNION ALL
+
+    SELECT 
+        'Total' AS LeagueName,
         ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake,
         ROUND(SUM(NetProfit)) AS TotalNetProfit
     FROM 
@@ -80,15 +95,59 @@ if page == "GreenAleph Active Principal":
         # Create a DataFrame from the fetched data
         df = pd.DataFrame(data)
 
-        # Extract total values
-        total_active_principal = df['TotalDollarsAtStake'].values[0] if not df.empty else 0
-        total_net_profit = df['TotalNetProfit'].values[0] if not df.empty else 0
-        
-        # Calculate total deployed
-        total_deployed = total_active_principal - total_net_profit
+        # Convert columns to float for calculations
+        df['TotalDollarsAtStake'] = df['TotalDollarsAtStake'].astype(float)
+        df['TotalNetProfit'] = df['TotalNetProfit'].astype(float)
 
-        # Plot the bar chart for Total Active Principal (if needed)
-        # For now, we assume you are focusing on the progress bar.
+        # Sort the DataFrame by TotalDollarsAtStake in ascending order
+        df = df.sort_values(by='TotalDollarsAtStake')
+
+        # Define colors for bars
+        colors = ['#77dd77', '#89cff0', '#fdfd96', '#ffb347', '#aec6cf', '#cfcfc4', '#ffb6c1', '#b39eb5']
+        total_color = '#006400'  # Dark green for the Total bar
+
+        # Create color list ensuring 'Total' bar is dark green
+        bar_colors = [total_color if name == 'Total' else colors[i % len(colors)] for i, name in enumerate(df['LeagueName'])]
+
+        # Plot the bar chart
+        fig, ax = plt.subplots(figsize=(15, 10))
+        bars = ax.bar(df['LeagueName'], df['TotalDollarsAtStake'], color=bar_colors, width=0.6, edgecolor='black')
+
+        # Add labels and title
+        ax.set_title('GA1: Total Active Principal', fontsize=18, fontweight='bold')
+        ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
+
+        # Annotate each bar with the value
+        for bar in bars:
+            height = bar.get_height()
+            ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                        xytext=(0, 3), textcoords="offset points",
+                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
+
+        # Rotate the x-axis labels to 45 degrees
+        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+
+        # Add horizontal line at y=0 for reference
+        ax.axhline(0, color='black', linewidth=0.8)
+
+        # Set background color to white
+        ax.set_facecolor('white')
+
+        # Add border around the plot
+        for spine in ax.spines.values():
+            spine.set_edgecolor('black')
+            spine.set_linewidth(1.2)
+
+        # Adjust layout
+        plt.tight_layout()
+
+        # Use Streamlit to display the chart
+        st.pyplot(fig)
+
+        # Calculate total deployed for the progress bar
+        total_active_principal = df[df['LeagueName'] == 'Total']['TotalDollarsAtStake'].values[0] if not df[df['LeagueName'] == 'Total'].empty else 0
+        total_net_profit = df[df['LeagueName'] == 'Total']['TotalNetProfit'].values[0] if not df[df['LeagueName'] == 'Total'].empty else 0
+        total_deployed = total_active_principal - total_net_profit
 
         # Display the progress bar
         st.subheader('Total Deployed Progress')
@@ -133,6 +192,7 @@ if page == "GreenAleph Active Principal":
             <div class="progress-bar-fill" style="width: {progress_percentage}%;">{formatted_value}</div>
         </div>
         """, unsafe_allow_html=True)
+
 
 
 
