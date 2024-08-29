@@ -147,7 +147,7 @@ if page == "GreenAleph Active Principal":
         total_deployed = total_active_principal - total_net_profit
 
         # Display the progress bar
-        st.subheader('Total Deployed Progress')
+        st.subheader('Total $ Deployed Progress Bar')
 
         # Custom CSS for the progress bar
         st.markdown("""
