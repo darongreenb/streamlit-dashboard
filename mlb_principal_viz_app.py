@@ -174,17 +174,14 @@ if page == "GreenAleph Active Principal":
             # Ensure total_dollars_deployed is a float and round it to the nearest dollar
             total_dollars_deployed = round(float(total_dollars_deployed)) if total_dollars_deployed is not None else 0
             
-            # Calculate the total active principal
-            total_active_principal = df['TotalDollarsAtStake'].sum()
+            # Set the goal amount
+            goal_amount = 500000
             
-            # Ensure total_active_principal is a float
-            total_active_principal = float(total_active_principal) if total_active_principal is not None else 0
-            
-            # Calculate progress as a percentage of the total active principal
-            progress_percentage = total_dollars_deployed / total_active_principal if total_active_principal > 0 else 0
+            # Calculate the progress percentage relative to the $500k goal
+            progress_percentage = min(total_dollars_deployed / goal_amount, 1)  # Ensure it does not exceed 100%
             
             # Calculate the position of the label as a percentage of the bar's width
-            label_position_percentage = progress_percentage * 50  # This centers the label within the light green area
+            label_position_percentage = progress_percentage * 50  # Center the label within the light green area
         
             # Display the heading and subheading
             st.markdown(f"<h3 style='text-align: center; font-weight: bold; color: black;'>Total Deployed = Total Active Principal - Realized Profit</h3>", unsafe_allow_html=True)
@@ -202,6 +199,7 @@ if page == "GreenAleph Active Principal":
             """, unsafe_allow_html=True)
         else:
             st.error("No data available for Total Dollars Deployed.")
+
 
 
 
