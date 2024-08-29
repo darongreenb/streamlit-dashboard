@@ -184,7 +184,7 @@ if page == "GreenAleph Active Principal":
             label_position_percentage = progress_percentage * 50  # Center the label within the light green area
         
             # Display the smaller heading
-            st.markdown(f"<h4 style='text-align: center; font-weight: bold; color: black;'>Total Deployed = Total Active Principal - Realized Profit</h4>", unsafe_allow_html=True)
+            st.markdown(f"<h4 style='text-align: center; font-weight: bold; color: black;'>Total $ Deployed (Total Active Principal - Realized Profit)</h4>", unsafe_allow_html=True)
             
             # Display the progress bar with shaded sides
             st.markdown(f"""
@@ -198,7 +198,7 @@ if page == "GreenAleph Active Principal":
             """, unsafe_allow_html=True)
         
             # Display the subheading directly below the progress bar
-            st.markdown(f"<h5 style='text-align: center; font-weight: bold; color: gray;'>$500k Initial Goal</h5>", unsafe_allow_html=True)
+            st.markdown(f"<h5 style='text-align: center; font-weight: bold; color: gray;'>$500k Initial Deployment Goal</h5>", unsafe_allow_html=True)
         else:
             st.error("No data available for Total Dollars Deployed.")
 
