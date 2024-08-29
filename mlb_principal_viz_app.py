@@ -183,13 +183,16 @@ if page == "GreenAleph Active Principal":
             # Calculate progress as a percentage of the total active principal
             progress_percentage = total_dollars_deployed / total_active_principal if total_active_principal > 0 else 0
             
-            # Display the progress bar with centered value
+            # Display the heading and subheading
+            st.markdown(f"<h3 style='text-align: center; font-weight: bold; color: black;'>Total Deployed = Total Active Principal - Realized Profit</h3>", unsafe_allow_html=True)
+            st.markdown(f"<h4 style='text-align: center; font-weight: bold; color: gray;'>$500k Initial Goal</h4>", unsafe_allow_html=True)
+            
+            # Display the progress bar with shaded sides
             st.markdown(f"""
-            <div style='text-align: center; font-weight: bold; color: black;'>Total Dollars Deployed: ${total_dollars_deployed:,}</div>
             <div style='width: 80%; margin: 0 auto;'>
-                <div style='background-color: #77dd77; height: 40px; position: relative; border-radius: 5px;'>
-                    <div style='background-color: #006400; width: {progress_percentage * 100}%; height: 100%; border-radius: 5px; position: relative;'>
-                        <span style='position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: white; font-weight: bold;'>{total_dollars_deployed:,}</span>
+                <div style='background-color: lightgray; height: 40px; position: relative; border-radius: 5px;'>
+                    <div style='background: linear-gradient(to right, #77dd77 {progress_percentage * 100}%, gray 0%); width: 100%; height: 100%; border-radius: 5px; position: relative;'>
+                        <span style='position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: white; font-weight: bold;'>${total_dollars_deployed:,}</span>
                     </div>
                 </div>
             </div>
