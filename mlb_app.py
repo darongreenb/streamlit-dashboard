@@ -143,7 +143,7 @@ if page == "GreenAleph Active Principal":
         total_active_principal = df[df['LeagueName'] == 'Total']['TotalDollarsAtStake'].values[0] if not df[df['LeagueName'] == 'Total'].empty else 0
 
         # Display the progress bar
-        st.subheader('Progress Bar: $500k Initial Goal')
+        st.subheader('Progress Bar ($500k Initial Goal)')
 
         # Custom CSS for the progress bar
         st.markdown("""
