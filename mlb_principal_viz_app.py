@@ -109,7 +109,7 @@ if page == "GreenAleph Active Principal":
         df['TotalDollarsAtStake'] = df['TotalDollarsAtStake'].astype(float)
 
         # Sort the DataFrame by TotalDollarsAtStake in ascending order
-        df = df.sort_values(by 'TotalDollarsAtStake')
+        df = df.sort_values(by = 'TotalDollarsAtStake')
 
         # Define colors for bars
         colors = ['#77dd77', '#89cff0', '#fdfd96', '#ffb347', '#aec6cf', '#cfcfc4', '#ffb6c1', '#b39eb5']
