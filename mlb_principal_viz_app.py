@@ -87,12 +87,26 @@ if page == "GreenAleph Active Principal":
 
     # Query to calculate total dollars deployed
     deployed_query = """
+    WITH ActiveBets AS (
+        SELECT DollarsAtStake, NetProfit
+        FROM bets
+        WHERE WhichBankroll = 'GreenAleph'
+          AND WLCA = 'Active'
+    ),
+    TotalBets AS (
+        SELECT SUM(DollarsAtStake) AS TotalDollarsAtStake
+        FROM ActiveBets
+    ),
+    TotalNetProfit AS (
+        SELECT SUM(NetProfit) AS TotalNetProfit
+        FROM bets
+        WHERE WhichBankroll = 'GreenAleph'
+    )
+
     SELECT 
-        ROUND(SUM(DollarsAtStake - NetProfit), 2) AS TotalDollarsDeployed
+        (TotalBets.TotalDollarsAtStake - COALESCE(TotalNetProfit.TotalNetProfit, 0)) AS TotalDollarsDeployed
     FROM 
-        bets
-    WHERE 
-        WhichBankroll = 'GreenAleph';
+        TotalBets, TotalNetProfit;
     """
 
     # Fetch the total dollars deployed
@@ -158,16 +172,16 @@ if page == "GreenAleph Active Principal":
             total_dollars_deployed = deployed_data[0]['TotalDollarsDeployed']
             
             # Ensure total_dollars_deployed is a float
-            total_dollars_deployed = float(total_dollars_deployed) if total_dollars_deployed else 0.0
+            total_dollars_deployed = float(total_dollars_deployed) if total_dollars_deployed is not None else 0.0
             
             # Calculate the total active principal
             total_active_principal = df['TotalDollarsAtStake'].sum()
             
             # Ensure total_active_principal is a float
-            total_active_principal = float(total_active_principal) if total_active_principal else 0.0
+            total_active_principal = float(total_active_principal) if total_active_principal is not None else 0.0
             
             # Calculate progress as a percentage of the total active principal
-            progress_percentage = total_dollars_deployed / total_active_principal if total_active_principal else 0
+            progress_percentage = total_dollars_deployed / total_active_principal if total_active_principal > 0 else 0
             
             # Display the progress bar
             st.markdown(f"<div style='text-align: center; font-weight: bold; color: black;'>Total Dollars Deployed: ${total_dollars_deployed:,.2f}</div>", unsafe_allow_html=True)
@@ -183,6 +197,7 @@ if page == "GreenAleph Active Principal":
             """, unsafe_allow_html=True)
         else:
             st.error("No data available for Total Dollars Deployed.")
+
 
 
 
