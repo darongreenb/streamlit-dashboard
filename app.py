@@ -190,7 +190,7 @@ if page == "GreenAleph Active Principal":
             st.markdown(f"""
             <div style='width: 80%; margin: 0 auto;'>
                 <div style='background-color: lightgray; height: 40px; position: relative; border-radius: 5px;'>
-                    <div style='background: linear-gradient(to right, #77dd77 {progress_percentage * 100}%, gray 0%); width: 100%; height: 100%; border-radius: 5px; position: relative;'>
+                    <div style='background: linear-gradient(to right, #77dd77 {progress_percentage * 100}%, lightgray 0%); width: 100%; height: 100%; border-radius: 5px; position: relative;'>
                         <span style='position: absolute; left: {label_position_percentage}%; top: 50%; transform: translate(-50%, -50%); color: white; font-weight: bold;'>${total_dollars_deployed:,}</span>
                     </div>
                 </div>
