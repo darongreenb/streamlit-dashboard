@@ -44,6 +44,8 @@ page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "Tennis Charts"
 
 
 
+
+
 if page == "GreenAleph Active Principal":
     # GreenAleph Active Principal
     st.title('Principal Dashboard - GreenAleph I')
@@ -148,22 +150,26 @@ if page == "GreenAleph Active Principal":
         <style>
         .progress-bar {
             width: 100%;
+            max-width: 800px;
             background-color: #d3d3d3;
-            border-radius: 15px;
+            border-radius: 20px;
             overflow: hidden;
             position: relative;
-            height: 30px;
+            height: 50px;
+            margin: auto;
         }
         .progress-bar-fill {
             height: 100%;
             background-color: #77dd77;
             width: 0;
-            border-radius: 15px;
+            border-radius: 20px;
             position: absolute;
             text-align: center;
-            line-height: 30px;
+            line-height: 50px;
             color: white;
             font-weight: bold;
+            font-size: 18px;
+            left: 0;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -174,9 +180,10 @@ if page == "GreenAleph Active Principal":
         # Render the progress bar with custom styles
         st.markdown(f"""
         <div class="progress-bar">
-            <div class="progress-bar-fill" style="width: {progress_percentage}%;">{total_active_principal:,.0f}</div>
+            <div class="progress-bar-fill" style="width: {progress_percentage}%;">Total Active Principal Progress</div>
         </div>
         """, unsafe_allow_html=True)
+
 
 
 
