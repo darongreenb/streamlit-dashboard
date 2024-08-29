@@ -56,7 +56,7 @@ if page == "GreenAleph Active Principal":
     # SQL query to fetch data
     data_query = """
     WITH DistinctBets AS (
-        SELECT DISTINCT WagerID, DollarsAtStake
+        SELECT DISTINCT WagerID, DollarsAtStake, NetProfit
         FROM bets
         WHERE WhichBankroll = 'GreenAleph'
           AND WLCA = 'Active'
@@ -64,7 +64,8 @@ if page == "GreenAleph Active Principal":
 
     SELECT 
         l.LeagueName,
-        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake
+        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake,
+        ROUND(SUM(NetProfit)) AS TotalNetProfit
     FROM 
         DistinctBets db
     JOIN 
@@ -76,7 +77,8 @@ if page == "GreenAleph Active Principal":
 
     SELECT 
         'Total' AS LeagueName,
-        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake
+        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake,
+        ROUND(SUM(NetProfit)) AS TotalNetProfit
     FROM 
         DistinctBets;
     """
@@ -91,15 +93,16 @@ if page == "GreenAleph Active Principal":
         # Create a DataFrame from the fetched data
         df = pd.DataFrame(data)
 
-        # Convert TotalDollarsAtStake to float for plotting
+        # Convert columns to float for calculations
         df['TotalDollarsAtStake'] = df['TotalDollarsAtStake'].astype(float)
+        df['TotalNetProfit'] = df['TotalNetProfit'].astype(float)
 
         # Sort the DataFrame by TotalDollarsAtStake in ascending order
         df = df.sort_values(by='TotalDollarsAtStake')
 
         # Define colors for bars
         colors = ['#77dd77', '#89cff0', '#fdfd96', '#ffb347', '#aec6cf', '#cfcfc4', '#ffb6c1', '#b39eb5']
-        total_color = 'lightgreen'  # Dark green for the Total bar
+        total_color = '#006400'  # Dark green for the Total bar
 
         # Create color list ensuring 'Total' bar is dark green
         bar_colors = [total_color if name == 'Total' else colors[i % len(colors)] for i, name in enumerate(df['LeagueName'])]
@@ -139,11 +142,13 @@ if page == "GreenAleph Active Principal":
         # Use Streamlit to display the chart
         st.pyplot(fig)
 
-        # Calculate total active principal for the progress bar
+        # Calculate total deployed for the progress bar
         total_active_principal = df[df['LeagueName'] == 'Total']['TotalDollarsAtStake'].values[0] if not df[df['LeagueName'] == 'Total'].empty else 0
+        total_net_profit = df[df['LeagueName'] == 'Total']['TotalNetProfit'].values[0] if not df[df['LeagueName'] == 'Total'].empty else 0
+        total_deployed = total_active_principal - total_net_profit
 
         # Display the progress bar
-        st.subheader('Progress Bar ($500k Initial Goal)')
+        st.subheader('Total Deployed Progress')
 
         # Custom CSS for the progress bar
         st.markdown("""
@@ -175,14 +180,15 @@ if page == "GreenAleph Active Principal":
         """, unsafe_allow_html=True)
 
         # Calculate percentage for the progress bar
-        progress_percentage = min(int(total_active_principal / 500000 * 100), 100)
+        progress_percentage = min(int(total_deployed / 500000 * 100), 100)
 
         # Render the progress bar with custom styles
         st.markdown(f"""
         <div class="progress-bar">
-            <div class="progress-bar-fill" style="width: {progress_percentage}%;">Total Active Principal Progress</div>
+            <div class="progress-bar-fill" style="width: {progress_percentage}%;">Total Deployed Progress</div>
         </div>
         """, unsafe_allow_html=True)
+
 
 
 
