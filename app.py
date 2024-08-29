@@ -127,7 +127,7 @@ if page == "GreenAleph Active Principal":
 
         # Define colors for bars
         colors = ['#77dd77', '#89cff0', '#fdfd96', '#ffb347', '#aec6cf', '#cfcfc4', '#ffb6c1', '#b39eb5']
-        total_color = '#006400'  # Dark green for the Total bar
+        total_color = 'lightgreen'  # Light green for the Total bar
 
         # Create color list ensuring 'Total' bar is dark green
         bar_colors = [total_color if name == 'Total' else colors[i % len(colors)] for i, name in enumerate(df['LeagueName'])]
