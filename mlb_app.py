@@ -42,6 +42,8 @@ st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions", "Profit"])
 
 
+
+
 if page == "GreenAleph Active Principal":
     # GreenAleph Active Principal
     st.title('Principal Dashboard - GreenAleph I')
@@ -93,9 +95,6 @@ if page == "GreenAleph Active Principal":
         # Sort the DataFrame by TotalDollarsAtStake in ascending order
         df = df.sort_values(by='TotalDollarsAtStake')
 
-        # Display the fetched data
-        # st.subheader(f'Total Dollars At Stake for GA1 (Active)')
-
         # Define colors for bars
         colors = ['#77dd77', '#89cff0', '#fdfd96', '#ffb347', '#aec6cf', '#cfcfc4', '#ffb6c1', '#b39eb5']
         total_color = '#006400'  # Dark green for the Total bar
@@ -143,12 +142,42 @@ if page == "GreenAleph Active Principal":
 
         # Display the progress bar
         st.subheader('Total Active Principal Progress')
-        progress_bar = st.progress(0)
-        st.write(f"Total Active Principal: ${total_active_principal:,.0f}")
 
-        # Update progress bar
-        if total_active_principal > 0:
-            progress_bar.progress(min(int(total_active_principal / 500000 * 100), 100))
+        # Custom CSS for the progress bar
+        st.markdown("""
+        <style>
+        .progress-bar {
+            width: 100%;
+            background-color: #d3d3d3;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+            height: 30px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background-color: #77dd77;
+            width: 0;
+            border-radius: 15px;
+            position: absolute;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+            font-weight: bold;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+        # Calculate percentage for the progress bar
+        progress_percentage = min(int(total_active_principal / 500000 * 100), 100)
+
+        # Render the progress bar with custom styles
+        st.markdown(f"""
+        <div class="progress-bar">
+            <div class="progress-bar-fill" style="width: {progress_percentage}%;">{total_active_principal:,.0f}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
 
 
 
