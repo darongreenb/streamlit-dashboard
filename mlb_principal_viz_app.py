@@ -109,7 +109,7 @@ if page == "GreenAleph Active Principal":
         df['TotalDollarsAtStake'] = df['TotalDollarsAtStake'].astype(float)
 
         # Sort the DataFrame by TotalDollarsAtStake in ascending order
-        df = df.sort_values(by='TotalDollarsAtStake')
+        df = df.sort_values(by 'TotalDollarsAtStake')
 
         # Define colors for bars
         colors = ['#77dd77', '#89cff0', '#fdfd96', '#ffb347', '#aec6cf', '#cfcfc4', '#ffb6c1', '#b39eb5']
@@ -153,22 +153,28 @@ if page == "GreenAleph Active Principal":
         # Use Streamlit to display the chart
         st.pyplot(fig)
 
-        # Extract the total dollars deployed
-        total_dollars_deployed = deployed_data[0][0]
-
-        # Display progress bar
-        progress_percentage = min(1.0, max(0.0, total_dollars_deployed / df['TotalDollarsAtStake'].sum()))
-        st.markdown(f"<div style='text-align: center; font-weight: bold; color: black;'>Total Dollars Deployed: ${total_dollars_deployed:,.2f}</div>", unsafe_allow_html=True)
-        st.progress(progress_percentage, text=f"${total_dollars_deployed:,.2f}")
-
-        # Customize the color of the progress bar (using the style attribute)
-        st.markdown(f"""
-        <style>
-        .stProgress > div > div > div > div {{
-            background-color: #77dd77;
-        }}
-        </style>
-        """, unsafe_allow_html=True)
+        # Handle the total dollars deployed data
+        if deployed_data and len(deployed_data) > 0 and 'TotalDollarsDeployed' in deployed_data[0]:
+            total_dollars_deployed = deployed_data[0]['TotalDollarsDeployed']
+            
+            # Calculate progress as a percentage of the total active principal
+            total_active_principal = df['TotalDollarsAtStake'].sum()
+            progress_percentage = total_dollars_deployed / total_active_principal if total_active_principal else 0
+            
+            # Display the progress bar
+            st.markdown(f"<div style='text-align: center; font-weight: bold; color: black;'>Total Dollars Deployed: ${total_dollars_deployed:,.2f}</div>", unsafe_allow_html=True)
+            st.progress(progress_percentage, text=f"${total_dollars_deployed:,.2f}")
+            
+            # Customize the color of the progress bar
+            st.markdown(f"""
+            <style>
+            .stProgress > div > div > div > div {{
+                background-color: #77dd77;
+            }}
+            </style>
+            """, unsafe_allow_html=True)
+        else:
+            st.error("No data available for Total Dollars Deployed.")
 
 
 
