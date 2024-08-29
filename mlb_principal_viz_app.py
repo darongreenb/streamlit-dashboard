@@ -171,32 +171,32 @@ if page == "GreenAleph Active Principal":
         if deployed_data and len(deployed_data) > 0 and 'TotalDollarsDeployed' in deployed_data[0]:
             total_dollars_deployed = deployed_data[0]['TotalDollarsDeployed']
             
-            # Ensure total_dollars_deployed is a float
-            total_dollars_deployed = float(total_dollars_deployed) if total_dollars_deployed is not None else 0.0
+            # Ensure total_dollars_deployed is a float and round it to the nearest dollar
+            total_dollars_deployed = round(float(total_dollars_deployed)) if total_dollars_deployed is not None else 0
             
             # Calculate the total active principal
             total_active_principal = df['TotalDollarsAtStake'].sum()
             
             # Ensure total_active_principal is a float
-            total_active_principal = float(total_active_principal) if total_active_principal is not None else 0.0
+            total_active_principal = float(total_active_principal) if total_active_principal is not None else 0
             
             # Calculate progress as a percentage of the total active principal
             progress_percentage = total_dollars_deployed / total_active_principal if total_active_principal > 0 else 0
             
-            # Display the progress bar
-            st.markdown(f"<div style='text-align: center; font-weight: bold; color: black;'>Total Dollars Deployed: ${total_dollars_deployed:,.2f}</div>", unsafe_allow_html=True)
-            st.progress(progress_percentage, text=f"${total_dollars_deployed:,.2f}")
-            
-            # Customize the color of the progress bar
+            # Display the progress bar with centered value
             st.markdown(f"""
-            <style>
-            .stProgress > div > div > div > div {{
-                background-color: #77dd77;
-            }}
-            </style>
+            <div style='text-align: center; font-weight: bold; color: black;'>Total Dollars Deployed: ${total_dollars_deployed:,}</div>
+            <div style='width: 80%; margin: 0 auto;'>
+                <div style='background-color: #77dd77; height: 40px; position: relative; border-radius: 5px;'>
+                    <div style='background-color: #006400; width: {progress_percentage * 100}%; height: 100%; border-radius: 5px; position: relative;'>
+                        <span style='position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: white; font-weight: bold;'>{total_dollars_deployed:,}</span>
+                    </div>
+                </div>
+            </div>
             """, unsafe_allow_html=True)
         else:
             st.error("No data available for Total Dollars Deployed.")
+
 
 
 
