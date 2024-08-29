@@ -47,7 +47,6 @@ page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "Tennis Charts"
 
 
 
-
 if page == "GreenAleph Active Principal":
     # GreenAleph Active Principal
     st.title('Principal Dashboard - GreenAleph I')
@@ -66,8 +65,7 @@ if page == "GreenAleph Active Principal":
 
     SELECT 
         l.LeagueName,
-        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake,
-        ROUND(SUM(NetProfit)) AS TotalNetProfit
+        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake
     FROM 
         DistinctBets db
     JOIN 
@@ -79,8 +77,7 @@ if page == "GreenAleph Active Principal":
 
     SELECT 
         'Total' AS LeagueName,
-        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake,
-        ROUND(SUM(NetProfit)) AS TotalNetProfit
+        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake
     FROM 
         DistinctBets;
     """
@@ -88,16 +85,28 @@ if page == "GreenAleph Active Principal":
     # Fetch the data
     data = get_data_from_db(data_query)
 
+    # Query to calculate total dollars deployed
+    deployed_query = """
+    SELECT 
+        ROUND(SUM(DollarsAtStake - NetProfit), 2) AS TotalDollarsDeployed
+    FROM 
+        bets
+    WHERE 
+        WhichBankroll = 'GreenAleph';
+    """
+
+    # Fetch the total dollars deployed
+    deployed_data = get_data_from_db(deployed_query)
+
     # Check if data is fetched successfully
-    if data is None:
+    if data is None or deployed_data is None:
         st.error("Failed to fetch data from the database.")
     else:
         # Create a DataFrame from the fetched data
         df = pd.DataFrame(data)
 
-        # Convert columns to float for calculations
+        # Convert TotalDollarsAtStake to float for plotting
         df['TotalDollarsAtStake'] = df['TotalDollarsAtStake'].astype(float)
-        df['TotalNetProfit'] = df['TotalNetProfit'].astype(float)
 
         # Sort the DataFrame by TotalDollarsAtStake in ascending order
         df = df.sort_values(by='TotalDollarsAtStake')
@@ -144,64 +153,22 @@ if page == "GreenAleph Active Principal":
         # Use Streamlit to display the chart
         st.pyplot(fig)
 
-        # Calculate total deployed for the progress bar
-        total_active_principal = df[df['LeagueName'] == 'Total']['TotalDollarsAtStake'].values[0] if not df[df['LeagueName'] == 'Total'].empty else 0
-        total_net_profit = df[df['LeagueName'] == 'Total']['TotalNetProfit'].values[0] if not df[df['LeagueName'] == 'Total'].empty else 0
-        total_deployed = total_active_principal - total_net_profit
+        # Extract the total dollars deployed
+        total_dollars_deployed = deployed_data[0][0]
 
-        # Display the progress bar
-        st.subheader('Total Deployed Progress')
+        # Display progress bar
+        progress_percentage = min(1.0, max(0.0, total_dollars_deployed / df['TotalDollarsAtStake'].sum()))
+        st.markdown(f"<div style='text-align: center; font-weight: bold; color: black;'>Total Dollars Deployed: ${total_dollars_deployed:,.2f}</div>", unsafe_allow_html=True)
+        st.progress(progress_percentage, text=f"${total_dollars_deployed:,.2f}")
 
-        # Custom CSS for the progress bar
-        st.markdown("""
+        # Customize the color of the progress bar (using the style attribute)
+        st.markdown(f"""
         <style>
-        .progress-bar {
-            width: 100%;
-            max-width: 800px;
-            background-color: #d3d3d3;
-            border-radius: 30px;
-            overflow: hidden;
-            position: relative;
-            height: 50px;
-            margin: auto;
-        }
-        .progress-bar-fill {
-            height: 100%;
+        .stProgress > div > div > div > div {{
             background-color: #77dd77;
-            width: 0;
-            border-radius: 30px;
-            position: absolute;
-            text-align: center;
-            line-height: 50px;
-            color: white;
-            font-weight: bold;
-            font-size: 18px;
-            left: 0;
-        }
+        }}
         </style>
         """, unsafe_allow_html=True)
-
-        # Calculate percentage for the progress bar
-        progress_percentage = min(int(total_deployed / 500000 * 100), 100)
-        # Format the total deployed value with a dollar sign
-        formatted_value = f"${total_deployed:,.0f}"
-
-        # Render the progress bar with custom styles and value label
-        st.markdown(f"""
-        <div class="progress-bar">
-            <div class="progress-bar-fill" style="width: {progress_percentage}%;">{formatted_value}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1011,4 +978,5 @@ elif page == "Profit":
                 
                 except Exception as e:
                     st.error(f"Error processing data: {e}")
+
 
