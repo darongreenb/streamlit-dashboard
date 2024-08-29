@@ -184,8 +184,8 @@ if page == "GreenAleph Active Principal":
             label_position_percentage = progress_percentage * 50  # Center the label within the light green area
         
             # Display the heading and subheading
-            st.markdown(f"<h3 style='text-align: center; font-weight: bold; color: black;'>Total Deployed = Total Active Principal - Realized Profit</h3>", unsafe_allow_html=True)
-            st.markdown(f"<h4 style='text-align: center; font-weight: bold; color: gray;'>$500k Initial Goal</h4>", unsafe_allow_html=True)
+            st.markdown(f"<h3 style='text-align: center; font-weight: bold; color: black;'>Total Deployed (Total Active Principal minus Realized Profit)</h3>", unsafe_allow_html=True)
+            st.markdown(f"<h4 style='text-align: center; font-weight: bold; color: gray;'>$500k Initial Deployment Goal</h4>", unsafe_allow_html=True)
             
             # Display the progress bar with shaded sides
             st.markdown(f"""
