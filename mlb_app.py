@@ -1015,7 +1015,3 @@ elif page == "Profit":
                 
                 except Exception as e:
                     st.error(f"Error processing data: {e}")
-            
-            
-            
-            
