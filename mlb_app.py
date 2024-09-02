@@ -919,7 +919,7 @@ elif page == "Profit":
             if 'DateTimePlaced' not in df.columns:
                 st.error("The 'DateTimePlaced' column is missing from the data.")
             else:
-               try:
+                try:
                     # Ensure DateTimePlaced is a datetime object
                     df['DateTimePlaced'] = pd.to_datetime(df['DateTimePlaced'])
                 
