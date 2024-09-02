@@ -920,101 +920,101 @@ elif page == "Profit":
                 st.error("The 'DateTimePlaced' column is missing from the data.")
             else:
                try:
-                # Ensure DateTimePlaced is a datetime object
-                df['DateTimePlaced'] = pd.to_datetime(df['DateTimePlaced'])
-            
-                # Convert 'NetProfit' to float to avoid the Decimal issue
-                df['NetProfit'] = df['NetProfit'].astype(float)
-            
-                # Filter data to start from March 2024
-                df = df[df['DateTimePlaced'] >= '2024-03-01']
-            
-                # Sort by DateTimePlaced
-                df.sort_values(by='DateTimePlaced', inplace=True)
-            
-                # Calculate the cumulative net profit
-                df['Cumulative Net Profit'] = df['NetProfit'].cumsum()
-            
-                # Drop initial zero values for line start
-                non_zero_index = df[df['Cumulative Net Profit'] != 0].index.min()
-                df = df.loc[non_zero_index:]
-            
-                # Convert 'Cumulative Net Profit' to float for calculations
-                df['Cumulative Net Profit'] = df['Cumulative Net Profit'].astype(float)
-            
-                # Create the line chart with dynamic colors based on the y-value
-                fig, ax = plt.subplots(figsize=(15, 10))
-            
-                # Plot the line with color changing based on the y-value
-                for i in range(1, len(df)):
-                    # Get the start and end points of the current segment
-                    x_values = [df['DateTimePlaced'].iloc[i-1], df['DateTimePlaced'].iloc[i]]
-                    y_values = [df['Cumulative Net Profit'].iloc[i-1], df['Cumulative Net Profit'].iloc[i]]
-            
-                    # Determine the color based on the sign of the y-values
-                    if y_values[0] >= 0 and y_values[1] >= 0:
-                        color = 'green'
-                    elif y_values[0] < 0 and y_values[1] < 0:
-                        color = 'red'
-                    else:
-                        # Handle the transition: first part of the segment will be one color, the second part another
-                        if y_values[0] >= 0:
-                            # Interpolate to find where the line crosses y=0
-                            x_cross = x_values[0] + (x_values[1] - x_values[0]) * (0 - y_values[0]) / (y_values[1] - y_values[0])
-                            ax.plot([x_values[0], x_cross], [y_values[0], 0], color='green', linewidth=4)
-                            ax.plot([x_cross, x_values[1]], [0, y_values[1]], color='red', linewidth=4)
+                    # Ensure DateTimePlaced is a datetime object
+                    df['DateTimePlaced'] = pd.to_datetime(df['DateTimePlaced'])
+                
+                    # Convert 'NetProfit' to float to avoid the Decimal issue
+                    df['NetProfit'] = df['NetProfit'].astype(float)
+                
+                    # Filter data to start from March 2024
+                    df = df[df['DateTimePlaced'] >= '2024-03-01']
+                
+                    # Sort by DateTimePlaced
+                    df.sort_values(by='DateTimePlaced', inplace=True)
+                
+                    # Calculate the cumulative net profit
+                    df['Cumulative Net Profit'] = df['NetProfit'].cumsum()
+                
+                    # Drop initial zero values for line start
+                    non_zero_index = df[df['Cumulative Net Profit'] != 0].index.min()
+                    df = df.loc[non_zero_index:]
+                
+                    # Convert 'Cumulative Net Profit' to float for calculations
+                    df['Cumulative Net Profit'] = df['Cumulative Net Profit'].astype(float)
+                
+                    # Create the line chart with dynamic colors based on the y-value
+                    fig, ax = plt.subplots(figsize=(15, 10))
+                
+                    # Plot the line with color changing based on the y-value
+                    for i in range(1, len(df)):
+                        # Get the start and end points of the current segment
+                        x_values = [df['DateTimePlaced'].iloc[i-1], df['DateTimePlaced'].iloc[i]]
+                        y_values = [df['Cumulative Net Profit'].iloc[i-1], df['Cumulative Net Profit'].iloc[i]]
+                
+                        # Determine the color based on the sign of the y-values
+                        if y_values[0] >= 0 and y_values[1] >= 0:
+                            color = 'green'
+                        elif y_values[0] < 0 and y_values[1] < 0:
+                            color = 'red'
                         else:
-                            x_cross = x_values[0] + (x_values[1] - x_values[0]) * (0 - y_values[0]) / (y_values[1] - y_values[0])
-                            ax.plot([x_values[0], x_cross], [y_values[0], 0], color='red', linewidth=4)
-                            ax.plot([x_cross, x_values[1]], [0, y_values[1]], color='green', linewidth=4)
-                        continue
-            
-                    # Plot the segment
-                    ax.plot(x_values, y_values, color=color, linewidth=4)
-            
-                # Adding titles and labels
-                ax.set_title('Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
-                ax.set_xlabel('Date of Bet Placed', fontsize=16, fontweight='bold')
-                ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
-            
-                # Annotate only the last data point with the value
-                last_point = df.iloc[-1]
-                ax.annotate(f'${last_point["Cumulative Net Profit"]:,.0f}', 
-                            xy=(last_point['DateTimePlaced'], last_point['Cumulative Net Profit']),
-                            xytext=(5, 5), textcoords="offset points",
-                            ha='left', va='bottom', fontsize=12, fontweight='bold', color='black')
-            
-                # Rotate the x-axis labels to 45 degrees
-                plt.xticks(rotation=30, ha='right', fontsize=14, fontweight='bold')
-            
-                # Add horizontal line at y=0 for reference
-                ax.axhline(0, color='black', linewidth=1.5)
-            
-                # Set x-axis and y-axis limits to ensure consistency
-                x_min = df['DateTimePlaced'].min()
-                x_max = df['DateTimePlaced'].max()
-                ymin = df['Cumulative Net Profit'].min() - 500
-                ymax = df['Cumulative Net Profit'].max() + 500
-                ax.set_xlim(x_min, x_max)
-                ax.set_ylim(ymin, ymax)
-            
-                # Set background color to white
-                ax.set_facecolor('white')
-                plt.gcf().set_facecolor('white')
-            
-                # Add border around the plot
-                for spine in ax.spines.values():
-                    spine.set_edgecolor('black')
-                    spine.set_linewidth(1.2)
-            
-                # Adjust layout
-                plt.tight_layout()
-            
-                # Use Streamlit to display the chart
-                st.pyplot(fig)
-            
-            except Exception as e:
-                st.error(f"Error processing data: {e}")
+                            # Handle the transition: first part of the segment will be one color, the second part another
+                            if y_values[0] >= 0:
+                                # Interpolate to find where the line crosses y=0
+                                x_cross = x_values[0] + (x_values[1] - x_values[0]) * (0 - y_values[0]) / (y_values[1] - y_values[0])
+                                ax.plot([x_values[0], x_cross], [y_values[0], 0], color='green', linewidth=4)
+                                ax.plot([x_cross, x_values[1]], [0, y_values[1]], color='red', linewidth=4)
+                            else:
+                                x_cross = x_values[0] + (x_values[1] - x_values[0]) * (0 - y_values[0]) / (y_values[1] - y_values[0])
+                                ax.plot([x_values[0], x_cross], [y_values[0], 0], color='red', linewidth=4)
+                                ax.plot([x_cross, x_values[1]], [0, y_values[1]], color='green', linewidth=4)
+                            continue
+                
+                        # Plot the segment
+                        ax.plot(x_values, y_values, color=color, linewidth=4)
+                
+                    # Adding titles and labels
+                    ax.set_title('Cumulative Realized Profit Over Time', fontsize=18, fontweight='bold')
+                    ax.set_xlabel('Date of Bet Placed', fontsize=16, fontweight='bold')
+                    ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
+                
+                    # Annotate only the last data point with the value
+                    last_point = df.iloc[-1]
+                    ax.annotate(f'${last_point["Cumulative Net Profit"]:,.0f}', 
+                                xy=(last_point['DateTimePlaced'], last_point['Cumulative Net Profit']),
+                                xytext=(5, 5), textcoords="offset points",
+                                ha='left', va='bottom', fontsize=12, fontweight='bold', color='black')
+                
+                    # Rotate the x-axis labels to 45 degrees
+                    plt.xticks(rotation=30, ha='right', fontsize=14, fontweight='bold')
+                
+                    # Add horizontal line at y=0 for reference
+                    ax.axhline(0, color='black', linewidth=1.5)
+                
+                    # Set x-axis and y-axis limits to ensure consistency
+                    x_min = df['DateTimePlaced'].min()
+                    x_max = df['DateTimePlaced'].max()
+                    ymin = df['Cumulative Net Profit'].min() - 500
+                    ymax = df['Cumulative Net Profit'].max() + 500
+                    ax.set_xlim(x_min, x_max)
+                    ax.set_ylim(ymin, ymax)
+                
+                    # Set background color to white
+                    ax.set_facecolor('white')
+                    plt.gcf().set_facecolor('white')
+                
+                    # Add border around the plot
+                    for spine in ax.spines.values():
+                        spine.set_edgecolor('black')
+                        spine.set_linewidth(1.2)
+                
+                    # Adjust layout
+                    plt.tight_layout()
+                
+                    # Use Streamlit to display the chart
+                    st.pyplot(fig)
+                
+                except Exception as e:
+                    st.error(f"Error processing data: {e}")
             
             
             
