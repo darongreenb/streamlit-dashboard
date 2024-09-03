@@ -207,12 +207,9 @@ if page == "GreenAleph Active Principal":
 
 
 
-
-
-
 elif page == "Tennis Charts":
     
-    st.title('Tennis Futures Bets - GA1')
+    st.title('Tennis Futures and Active Bets - GA1')
 
     # Function to fetch and plot bar charts
     def plot_bar_chart(data, title, ylabel):
@@ -250,7 +247,7 @@ elif page == "Tennis Charts":
     # Filter for LeagueName
     league_name = st.selectbox('Select League', ['ATP', 'WTA'])
 
-    # SQL query for EventLabel breakdown
+    # SQL query for EventLabel breakdown (Futures)
     event_label_query = f"""
     WITH DistinctBets AS (
         SELECT DISTINCT WagerID, DollarsAtStake
@@ -309,19 +306,14 @@ elif page == "Tennis Charts":
                 event_type_option = st.selectbox('Select EventType', event_types)
 
                 if event_type_option:
-                    # Query for combined chart (DollarsAtStake and PotentialPayout)
+                    # Query for combined chart (DollarsAtStake and PotentialPayout for Active Bets)
                     combined_query = f"""
                     WITH DistinctBets AS (
                         SELECT DISTINCT WagerID, DollarsAtStake, PotentialPayout
                         FROM bets
                         WHERE WhichBankroll = 'GreenAleph'
                           AND LegCount = 1
-                          AND EXISTS (
-                              SELECT 1 
-                              FROM legs 
-                              WHERE legs.WagerID = bets.WagerID 
-                              AND legs.IsFuture = 'Yes'
-                          )
+                          AND WLCA = 'Active'
                     )
                     SELECT 
                         l.ParticipantName,
@@ -335,7 +327,6 @@ elif page == "Tennis Charts":
                         l.LeagueName = '{league_name}'
                         AND l.EventLabel = '{event_label_option}'
                         AND l.EventType = '{event_type_option}'
-                        AND l.IsFuture = 'Yes'
                     GROUP BY 
                         l.ParticipantName;
                     """
@@ -358,7 +349,7 @@ elif page == "Tennis Charts":
                             bars2 = ax.bar(df['ParticipantName'], df['TotalPotentialPayout'], color=color_potential_payout, width=0.4, edgecolor='black', label='Total Potential Payout', alpha=0.6, bottom=df['TotalDollarsAtStake'])
 
                             ax.set_ylabel('Total Amount ($)', fontsize=16, fontweight='bold')
-                            ax.set_title(f'Total Futures Principal Overlaid on Potential Payout by ParticipantName for {event_type_option} - {event_label_option} ({league_name}, Straight Bets Only)', fontsize=18, fontweight='bold')
+                            ax.set_title(f'Total Active Principal Overlaid on Potential Payout by ParticipantName for {event_type_option} - {event_label_option} ({league_name}, Straight Bets Only)', fontsize=18, fontweight='bold')
 
                             for bar1 in bars1:
                                 height = bar1.get_height()
@@ -388,7 +379,8 @@ elif page == "Tennis Charts":
                             st.error("No data available for the selected filters.")
 
 
- 
+
+
 
 
 
