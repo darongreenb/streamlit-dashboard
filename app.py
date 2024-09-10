@@ -796,7 +796,7 @@ elif page == "Profit":
     st.title('Realized Profit - GA1')
 
     # Subtitle
-    st.subheader('Total incorporates all bets, but Only Straight bets by League')
+    st.subheader('"Total" incorporates all bets, but straight bets ONLY by League Name')
 
 
     # SQL query for the new bar chart (Profit by League)
