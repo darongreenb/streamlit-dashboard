@@ -790,7 +790,7 @@ elif page == "MLB Participant Positions":
 
 elif page == "Profit":
     # Profit Page
-    st.title('Realized Profit - GA1 ('Total incorporates all bets, but Only Straight bets by League')
+    st.title('Realized Profit - GA1 (Total incorporates all bets, but Only Straight bets by League)')
 
     # SQL query for the new bar chart (Profit by League)
     league_profit_query = """
