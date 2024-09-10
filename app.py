@@ -799,7 +799,7 @@ elif page == "Profit":
     FROM bets b
     JOIN legs l ON b.WagerID = l.WagerID
     WHERE b.WhichBankroll = 'GreenAleph')
-    AND WHERE b.LegCount = 1,
+    AND b.LegCount = 1,
     LeagueSums AS (
     SELECT 
         l.LeagueName,
