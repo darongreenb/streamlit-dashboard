@@ -790,7 +790,14 @@ elif page == "MLB Participant Positions":
 
 elif page == "Profit":
     # Profit Page
-    st.title('Realized Profit - GA1 (Total incorporates all bets, but Only Straight bets by League)')
+    import streamlit as st
+
+    # Main title
+    st.title('Realized Profit - GA1')
+
+    # Subtitle
+    st.subheader('Total incorporates all bets, but Only Straight bets by League')
+
 
     # SQL query for the new bar chart (Profit by League)
     league_profit_query = """
