@@ -798,8 +798,8 @@ elif page == "Profit":
     SELECT DISTINCT b.WagerID, b.NetProfit, l.LeagueName
     FROM bets b
     JOIN legs l ON b.WagerID = l.WagerID
-    WHERE b.WhichBankroll = 'GreenAleph')
-    AND b.LegCount = 1,
+    WHERE b.WhichBankroll = 'GreenAleph'
+    AND b.LegCount = 1),
     LeagueSums AS (
     SELECT 
         l.LeagueName,
