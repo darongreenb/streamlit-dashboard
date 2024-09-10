@@ -790,7 +790,7 @@ elif page == "MLB Participant Positions":
 
 elif page == "Profit":
     # Profit Page
-    st.title('Realized Profit - GA1')
+    st.title('Realized Profit - GA1 ('Total incorporates all bets, but Only Straight bets by League')
 
     # SQL query for the new bar chart (Profit by League)
     league_profit_query = """
@@ -798,7 +798,8 @@ elif page == "Profit":
     SELECT DISTINCT b.WagerID, b.NetProfit, l.LeagueName
     FROM bets b
     JOIN legs l ON b.WagerID = l.WagerID
-    WHERE b.WhichBankroll = 'GreenAleph'),
+    WHERE b.WhichBankroll = 'GreenAleph')
+    AND WHERE b.LegCount = 1,
     LeagueSums AS (
     SELECT 
         l.LeagueName,
