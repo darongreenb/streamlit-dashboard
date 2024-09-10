@@ -862,7 +862,7 @@ elif page == "Profit":
 
         # Adjust y-axis range
         ymin = league_profit_df['NetProfit'].min() - 500
-        ymax = league_profit_df['NetProfit'].max() + 1000
+        ymax = league_profit_df['NetProfit'].max() + 1500
         ax.set_ylim(ymin, ymax)
 
         # Adjust layout
