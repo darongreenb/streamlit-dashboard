@@ -795,31 +795,32 @@ elif page == "Profit":
     # SQL query for the new bar chart (Profit by League)
     league_profit_query = """
     WITH DistinctBets AS (
-        SELECT DISTINCT b.WagerID, b.NetProfit, l.LeagueName
-        FROM bets b
-        JOIN legs l ON b.WagerID = l.WagerID
-        WHERE b.WhichBankroll = 'GreenAleph'
-    ),
+    SELECT DISTINCT b.WagerID, b.NetProfit, l.LeagueName
+    FROM bets b
+    JOIN legs l ON b.WagerID = l.WagerID
+    WHERE b.WhichBankroll = 'GreenAleph'),
     LeagueSums AS (
-        SELECT 
-            l.LeagueName,
-            ROUND(SUM(db.NetProfit), 0) AS NetProfit
-        FROM 
-            DistinctBets db
-        JOIN 
-            (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
-        GROUP BY 
-            l.LeagueName
-    )
+    SELECT 
+        l.LeagueName,
+        ROUND(SUM(db.NetProfit), 0) AS NetProfit
+    FROM 
+        DistinctBets db
+    JOIN 
+        (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
+    GROUP BY 
+        l.LeagueName)
     SELECT * FROM LeagueSums
 
     UNION ALL
 
     SELECT 
-        'Total' AS LeagueName,
-        ROUND(SUM(db.NetProfit), 0) AS NetProfit
+    'Total' AS LeagueName,
+    ROUND(SUM(b.NetProfit), 0) AS NetProfit
     FROM 
-        DistinctBets db;
+    bets b
+    WHERE 
+    b.WhichBankroll = 'GreenAleph'
+    AND b.WagerID IN (SELECT DISTINCT WagerID FROM legs);
     """
 
     # Fetch the data for the new bar chart
