@@ -313,7 +313,7 @@ elif page == "NFL Charts":
                 AND l.EventType = '{event_type_option}'
                 AND b.WhichBankroll = 'GreenAleph'
                 AND b.WLCA = 'Active'
-                AND l.EventType = 'Division Winner';
+                ;
             """
 
             # Fetch the EventLabel data
