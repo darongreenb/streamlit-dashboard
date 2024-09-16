@@ -375,7 +375,7 @@ elif page == "NFL Charts":
                         fig, ax = plt.subplots(figsize=(18, 12))
 
                         # Plot TotalDollarsAtStake with no transparency (fully opaque)
-                        bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], color= 'lightblue', width=0.4, edgecolor='black', label='Total Dollars At Stake (Negative)')
+                        bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], color= 'lightblue', width=0.4, edgecolor='black', label='Total Dollars At Stake')
 
                         # Plot TotalPotentialPayout with transparency (alpha=0.6)
                         bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], color='beige', width=0.4, edgecolor='black', label='Total Potential Payout', alpha=0.6, bottom=combined_df['TotalDollarsAtStake'])
