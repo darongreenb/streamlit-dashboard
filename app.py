@@ -368,17 +368,17 @@ elif page == "NFL Charts":
                         combined_df = combined_df.sort_values('TotalDollarsAtStake', ascending=True)
 
                         # Define colors for DollarsAtStake and PotentialPayout
-                        color_dollars_at_stake = 'lightblue'  # Light blue color for bars and label
-                        color_potential_payout = '#f4a261'  # Light orange
+                        #color_dollars_at_stake = 'lightblue'  # Light blue color for bars and label
+                        #color_potential_payout = '#f4a261'  # Light orange
 
                         # Plot the combined bar chart
                         fig, ax = plt.subplots(figsize=(18, 12))
 
                         # Plot TotalDollarsAtStake with no transparency (fully opaque)
-                        bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], color=color_dollars_at_stake, width=0.4, edgecolor='black', label='Total Dollars At Stake (Negative)')
+                        bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], color= 'lightblue', width=0.4, edgecolor='black', label='Total Dollars At Stake (Negative)')
 
                         # Plot TotalPotentialPayout with transparency (alpha=0.6)
-                        bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], color=color_potential_payout, width=0.4, edgecolor='black', label='Total Potential Payout', alpha=0.6, bottom=combined_df['TotalDollarsAtStake'])
+                        bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], color='lightorange', width=0.4, edgecolor='black', label='Total Potential Payout', alpha=0.6, bottom=combined_df['TotalDollarsAtStake'])
 
                         # Add labels and title
                         ax.set_ylabel('Total Amount ($)', fontsize=16, fontweight='bold')
