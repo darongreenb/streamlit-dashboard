@@ -378,7 +378,7 @@ elif page == "NFL Charts":
                         bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], color= 'lightblue', width=0.4, edgecolor='black', label='Total Dollars At Stake (Negative)')
 
                         # Plot TotalPotentialPayout with transparency (alpha=0.6)
-                        bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], color='lightorange', width=0.4, edgecolor='black', label='Total Potential Payout', alpha=0.6, bottom=combined_df['TotalDollarsAtStake'])
+                        bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], color='beige', width=0.4, edgecolor='black', label='Total Potential Payout', alpha=0.6, bottom=combined_df['TotalDollarsAtStake'])
 
                         # Add labels and title
                         ax.set_ylabel('Total Amount ($)', fontsize=16, fontweight='bold')
