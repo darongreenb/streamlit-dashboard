@@ -368,12 +368,12 @@ elif page == "NFL Charts":
                         combined_df = combined_df.sort_values('TotalDollarsAtStake', ascending=True)
 
                         # Define colors for DollarsAtStake and PotentialPayout
-                        color_dollars_at_stake = '#219ebc'  # Blue color
+                        color_dollars_at_stake = 'blue'  # Blue color
                         color_potential_payout = '#f4a261'  # Light orange
 
                         # Plot the combined bar chart
                         fig, ax = plt.subplots(figsize=(18, 12))
-                        bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], color=color_dollars_at_stake, width=0.4, edgecolor='black', label='Total Dollars At Stake (Negative)')
+                        bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], color=color_dollars_at_stake, width=0.4, edgecolor='black', label='Total Dollars At Stake')
                         bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], color=color_potential_payout, width=0.4, edgecolor='black', label='Total Potential Payout', alpha=0.6, bottom=combined_df['TotalDollarsAtStake'])
 
                         # Add labels and title
@@ -562,7 +562,7 @@ elif page == "Tennis Charts":
                             color_potential_payout = '#f4a261'
 
                             fig, ax = plt.subplots(figsize=(18, 12))
-                            bars1 = ax.bar(df['ParticipantName'], df['TotalDollarsAtStake'], color=color_dollars_at_stake, width=0.4, edgecolor='black', label='Total Dollars At Stake (Negative)')
+                            bars1 = ax.bar(df['ParticipantName'], df['TotalDollarsAtStake'], color=color_dollars_at_stake, width=0.4, edgecolor='black', label='Total Dollars At Stake')
                             bars2 = ax.bar(df['ParticipantName'], df['TotalPotentialPayout'], color=color_potential_payout, width=0.4, edgecolor='black', label='Total Potential Payout', alpha=0.6, bottom=df['TotalDollarsAtStake'])
 
                             ax.set_ylabel('Total Amount ($)', fontsize=16, fontweight='bold')
@@ -767,7 +767,7 @@ elif page == "MLB Charts":
                         
                         # Plot the combined bar chart
                         fig, ax = plt.subplots(figsize=(18, 12))
-                        bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], color=color_dollars_at_stake, width=0.4, edgecolor='black', label='Total Dollars At Stake (Negative)')
+                        bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], color=color_dollars_at_stake, width=0.4, edgecolor='black', label='Total Dollars At Stake')
                         bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], color=color_potential_payout, width=0.4, edgecolor='black', label='Total Potential Payout', alpha=0.6, bottom=combined_df['TotalDollarsAtStake'])
                         
                         # Add labels and title
