@@ -368,12 +368,12 @@ elif page == "NFL Charts":
                         combined_df = combined_df.sort_values('TotalDollarsAtStake', ascending=True)
 
                         # Define colors for DollarsAtStake and PotentialPayout
-                        color_dollars_at_stake = 'lightblue'  # Blue color
+                        color_dollars_at_stake = 'lightblue'  # Light blue color for bars and label
                         color_potential_payout = '#f4a261'  # Light orange
 
                         # Plot the combined bar chart
                         fig, ax = plt.subplots(figsize=(18, 12))
-                        bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], color='lightblue', width=0.4, edgecolor='black', label='Total Dollars At Stake')
+                        bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], color=color_dollars_at_stake, width=0.4, edgecolor='black', label='Total Dollars At Stake (Negative)')
                         bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], color=color_potential_payout, width=0.4, edgecolor='black', label='Total Potential Payout', alpha=0.6, bottom=combined_df['TotalDollarsAtStake'])
 
                         # Add labels and title
@@ -384,7 +384,8 @@ elif page == "NFL Charts":
                         for bar1 in bars1:
                             height = bar1.get_height()
                             ax.annotate(f'{abs(height):,.0f}', xy=(bar1.get_x() + bar1.get_width() / 2, height),
-                                        xytext=(0, -10), textcoords="offset points",
+                                        xytext=(0, -15),  # Move the labels further down below the bars
+                                        textcoords="offset points",
                                         ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
 
                         # Annotate each bar with the TotalPotentialPayout value above the stacked bar
@@ -414,6 +415,7 @@ elif page == "NFL Charts":
                             spine.set_edgecolor('black')
                             spine.set_linewidth(1.2)
 
+                        # Extend negative y-axis range
                         ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 5000, max(combined_df['TotalPotentialPayout']) + 5000)
 
                         # Adjust layout
@@ -421,6 +423,9 @@ elif page == "NFL Charts":
 
                         # Use Streamlit to display the combined chart
                         st.pyplot(fig)
+
+
+
 
 
 
