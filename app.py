@@ -594,6 +594,7 @@ elif page == "Tennis Charts":
                                 spine.set_linewidth(1.2)
                             ax.legend()
                             plt.tight_layout()
+                            ax.set_ylim(min(df['TotalDollarsAtStake']) - 5000, max(df['TotalPotentialPayout']) + 5000)
                             st.pyplot(fig)
                         else:
                             st.error("No data available for the selected filters.")
