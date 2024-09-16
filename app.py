@@ -202,227 +202,66 @@ if page == "GreenAleph Active Principal":
 
 
 
-elif page == "NFL Charts":
-    # NFL Charts
-    st.title('NFL Active Bets - GA1')
+# Define colors for DollarsAtStake and PotentialPayout
+color_dollars_at_stake = 'lightblue'  # Light blue color for bars and label
+color_potential_payout = '#f4a261'  # Light orange
 
-    # SQL query to fetch data for the first bar chart
-    first_chart_query = """
-    WITH DistinctBets AS (
-        SELECT DISTINCT WagerID, DollarsAtStake
-        FROM bets
-        WHERE WhichBankroll = 'GreenAleph'
-          AND WLCA = 'Active'
-    ),
-    EventTypeSums AS (
-        SELECT 
-            l.EventType,
-            ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
-        FROM 
-            DistinctBets db
-        JOIN 
-            (SELECT DISTINCT WagerID, EventType, LeagueName FROM legs) l ON db.WagerID = l.WagerID
-        WHERE
-            l.LeagueName = 'NFL'
-        GROUP BY 
-            l.EventType
-    )
-    SELECT * FROM EventTypeSums
+# Plot the combined bar chart
+fig, ax = plt.subplots(figsize=(18, 12))
 
-    UNION ALL
+# Plot TotalDollarsAtStake with no transparency (fully opaque)
+bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], color=color_dollars_at_stake, width=0.4, edgecolor='black', label='Total Dollars At Stake (Negative)')
 
-    SELECT 
-        'Total' AS EventType,
-        ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
-    FROM 
-        DistinctBets db
-    JOIN 
-        (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
-    WHERE
-        l.LeagueName = 'NFL';
-    """
+# Plot TotalPotentialPayout with transparency (alpha=0.6)
+bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], color=color_potential_payout, width=0.4, edgecolor='black', label='Total Potential Payout', alpha=0.6, bottom=combined_df['TotalDollarsAtStake'])
 
-    # Fetch the data for the first bar chart
-    first_chart_data = get_data_from_db(first_chart_query)
+# Add labels and title
+ax.set_ylabel('Total Amount ($)', fontsize=16, fontweight='bold')
+ax.set_title(f'Total Active Principal Overlaid on Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
 
-    # Check if data is fetched successfully
-    if first_chart_data is None:
-        st.error("Failed to fetch data from the database.")
-    else:
-        # Create a DataFrame from the fetched data
-        first_chart_df = pd.DataFrame(first_chart_data)
+# Annotate each bar with the TotalDollarsAtStake value below the bar
+for bar1 in bars1:
+    height = bar1.get_height()
+    ax.annotate(f'{abs(height):,.0f}', xy=(bar1.get_x() + bar1.get_width() / 2, height),
+                xytext=(0, -15),  # Move the labels further down below the bars
+                textcoords="offset points",
+                ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
 
-        # Display the fetched data
-        first_chart_df['TotalDollarsAtStake'] = first_chart_df['TotalDollarsAtStake'].astype(float).round(0)
+# Annotate each bar with the TotalPotentialPayout value above the stacked bar
+for bar1, bar2 in zip(bars1, bars2):
+    height1 = bar1.get_height()
+    height2 = bar2.get_height()
+    total_height = height1 + height2
+    ax.annotate(f'{height2:,.0f}', 
+                xy=(bar2.get_x() + bar2.get_width() / 2, total_height),
+                xytext=(0, 3), textcoords="offset points",
+                ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
 
-        # Sort the DataFrame by 'TotalDollarsAtStake' in ascending order
-        first_chart_df = first_chart_df.sort_values('TotalDollarsAtStake', ascending=True)
+# Rotate the x-axis labels to 45 degrees
+plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
 
-        # Define pastel colors for the first chart
-        pastel_colors = ['#a0d8f1', '#f4a261', '#e76f51', '#8ecae6', '#219ebc', '#023047', '#ffb703', '#fb8500', '#d4a5a5', '#9ab0a8']
+# Add legend
+ax.legend()
 
-        # Plot the first bar chart
-        fig, ax = plt.subplots(figsize=(15, 10))
-        bars = ax.bar(first_chart_df['EventType'], first_chart_df['TotalDollarsAtStake'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(first_chart_df['EventType']))], width=0.6, edgecolor='black')
+# Add horizontal line at y=0 for reference
+ax.axhline(0, color='black', linewidth=0.8)
 
-        # Add labels and title
-        ax.set_title('Total Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
-        ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
+# Set background color to white
+ax.set_facecolor('white')
 
-        # Annotate each bar with the value (no dollar sign)
-        for bar in bars:
-            height = bar.get_height()
-            ax.annotate(f'{height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
-                        xytext=(0, 3), textcoords="offset points",
-                        ha='center', va='bottom', fontsize=14, fontweight='bold', color='black')
+# Add border around the plot
+for spine in ax.spines.values():
+    spine.set_edgecolor('black')
+    spine.set_linewidth(1.2)
 
-        # Rotate the x-axis labels to 45 degrees
-        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+# Extend negative y-axis range
+ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 5000, max(combined_df['TotalPotentialPayout']) + 5000)
 
-        # Add horizontal line at y=0 for reference
-        ax.axhline(0, color='black', linewidth=0.8)
+# Adjust layout
+plt.tight_layout()
 
-        # Set background color to white
-        ax.set_facecolor('white')
-
-        # Add border around the plot
-        for spine in ax.spines.values():
-            spine.set_edgecolor('black')
-            spine.set_linewidth(1.2)
-
-        # Adjust layout
-        plt.tight_layout()
-
-        # Use Streamlit to display the first chart
-        st.pyplot(fig)
-
-        # Add filter for EventType
-        event_type_option = st.selectbox('Select EventType', sorted(first_chart_df[first_chart_df['EventType'] != 'Total']['EventType'].unique()))
-
-        if event_type_option:
-            # SQL query to fetch data for the EventLabel dropdown
-            event_label_query = f"""
-            SELECT DISTINCT l.EventLabel
-            FROM 
-                bets b
-            JOIN 
-                legs l ON b.WagerID = l.WagerID
-            WHERE
-                l.LeagueName = 'NFL'
-                AND l.EventType = '{event_type_option}'
-                AND b.WhichBankroll = 'GreenAleph'
-                AND b.WLCA = 'Active'
-                ;
-            """
-
-            # Fetch the EventLabel data
-            event_label_data = get_data_from_db(event_label_query)
-
-            if event_label_data is None:
-                st.error("Failed to fetch data from the database.")
-            else:
-                event_labels = [row['EventLabel'] for row in event_label_data]
-                event_label_option = st.selectbox('Select EventLabel', sorted(event_labels))
-
-                if event_label_option:
-                    # SQL query to fetch data for the combined bar chart (DollarsAtStake and PotentialPayout)
-                    combined_query = f"""
-                    WITH DistinctBets AS (
-                        SELECT DISTINCT WagerID, DollarsAtStake, PotentialPayout
-                        FROM bets
-                        WHERE WhichBankroll = 'GreenAleph'
-                          AND WLCA = 'Active'
-                          AND LegCount = 1
-                    )
-                    SELECT 
-                        l.ParticipantName,
-                        SUM(db.DollarsAtStake) AS TotalDollarsAtStake,
-                        SUM(db.PotentialPayout) AS TotalPotentialPayout
-                    FROM 
-                        DistinctBets db
-                    JOIN 
-                        legs l ON db.WagerID = l.WagerID
-                    WHERE
-                        l.LeagueName = 'NFL'
-                        AND l.EventType = '{event_type_option}'
-                        AND l.EventLabel = '{event_label_option}'
-                    GROUP BY 
-                        l.ParticipantName;
-                    """
-
-                    # Fetch the combined data
-                    combined_data = get_data_from_db(combined_query)
-
-                    # Check if data is fetched successfully
-                    if combined_data is None:
-                        st.error("Failed to fetch data from the database.")
-                    else:
-                        # Create a DataFrame from the fetched data
-                        combined_df = pd.DataFrame(combined_data)
-
-                        # Modify to multiply TotalDollarsAtStake by -1 for the chart
-                        combined_df['TotalDollarsAtStake'] = -combined_df['TotalDollarsAtStake'].astype(float).round(0)
-                        combined_df['TotalPotentialPayout'] = combined_df['TotalPotentialPayout'].astype(float).round(0)
-
-                        # Sort the DataFrame by 'TotalDollarsAtStake' in ascending order
-                        combined_df = combined_df.sort_values('TotalDollarsAtStake', ascending=True)
-
-                        # Define colors for DollarsAtStake and PotentialPayout
-                        color_dollars_at_stake = 'lightblue'  # Light blue color for bars and label
-                        color_potential_payout = '#f4a261'  # Light orange
-
-                        # Plot the combined bar chart
-                        fig, ax = plt.subplots(figsize=(18, 12))
-                        bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], color=color_dollars_at_stake, width=0.4, edgecolor='black', label='Total Dollars At Stake (Negative)')
-                        bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], color=color_potential_payout, width=0.4, edgecolor='black', label='Total Potential Payout', alpha=0.6, bottom=combined_df['TotalDollarsAtStake'])
-
-                        # Add labels and title
-                        ax.set_ylabel('Total Amount ($)', fontsize=16, fontweight='bold')
-                        ax.set_title(f'Total Active Principal Overlaid on Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
-
-                        # Annotate each bar with the TotalDollarsAtStake value below the bar
-                        for bar1 in bars1:
-                            height = bar1.get_height()
-                            ax.annotate(f'{abs(height):,.0f}', xy=(bar1.get_x() + bar1.get_width() / 2, height),
-                                        xytext=(0, -15),  # Move the labels further down below the bars
-                                        textcoords="offset points",
-                                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
-
-                        # Annotate each bar with the TotalPotentialPayout value above the stacked bar
-                        for bar1, bar2 in zip(bars1, bars2):
-                            height1 = bar1.get_height()
-                            height2 = bar2.get_height()
-                            total_height = height1 + height2
-                            ax.annotate(f'{height2:,.0f}', 
-                                        xy=(bar2.get_x() + bar2.get_width() / 2, total_height),
-                                        xytext=(0, 3), textcoords="offset points",
-                                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
-
-                        # Rotate the x-axis labels to 45 degrees
-                        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
-
-                        # Add legend
-                        ax.legend()
-
-                        # Add horizontal line at y=0 for reference
-                        ax.axhline(0, color='black', linewidth=0.8)
-
-                        # Set background color to white
-                        ax.set_facecolor('white')
-
-                        # Add border around the plot
-                        for spine in ax.spines.values():
-                            spine.set_edgecolor('black')
-                            spine.set_linewidth(1.2)
-
-                        # Extend negative y-axis range
-                        ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 5000, max(combined_df['TotalPotentialPayout']) + 5000)
-
-                        # Adjust layout
-                        plt.tight_layout()
-
-                        # Use Streamlit to display the combined chart
-                        st.pyplot(fig)
+# Use Streamlit to display the combined chart
+st.pyplot(fig)
 
 
 
