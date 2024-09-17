@@ -384,7 +384,7 @@ elif page == "NFL Charts":
                 
                         # Add labels and title
                         ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
-                        ax.set_title(f'Total Active Principal and Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
+                        ax.set_title(f'Total Active Principal (Below x-axis) and Potential Payout (above x-axis) by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
                 
                         # Annotate each bar with the TotalDollarsAtStake value below the bar
                         for bar1 in bars1:
