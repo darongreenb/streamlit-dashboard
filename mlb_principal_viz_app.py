@@ -587,8 +587,12 @@ elif page == "Tennis Charts":
                                            color=color_potential_payout, width=0.4, edgecolor='black')
                 
                             # Add labels and title
-                            ax.set_ylabel('Total Amount ($)', fontsize=16, fontweight='bold')
-                            ax.set_title(f'Total Futures Principal & Potential Payout by ParticipantName for {event_type_option} - {event_label_option} ({league_name}, Straight Bets Only, Excluding Cashouts)', fontsize=18, fontweight='bold')
+                            ax.set_ylabel('Total Amount ($)', fontsize=20, fontweight='bold', color='black')
+                            ax.set_title(f'Total Futures Principal & Potential Payout by ParticipantName for {event_type_option} - {event_label_option} ({league_name}, Straight Bets Only, Excluding Cashouts)', fontsize=24, fontweight='bold', color='black')
+                
+                            # Increase font size and make tick labels bold
+                            ax.tick_params(axis='x', labelsize=16, labelcolor='black', labelrotation=45)
+                            ax.tick_params(axis='y', labelsize=16, labelcolor='black')
                 
                             # Annotate each bar for TotalDollarsAtStake (below the bar since it's negative)
                             for bar1 in bars1:
@@ -596,7 +600,7 @@ elif page == "Tennis Charts":
                                 ax.annotate(f'{abs(height):,.0f}', xy=(bar1.get_x() + bar1.get_width() / 2, height),
                                             xytext=(0, -15),  # Move label down
                                             textcoords="offset points",
-                                            ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
+                                            ha='center', va='bottom', fontsize=14, fontweight='bold', color='black')
                 
                             # Annotate each bar for TotalPotentialPayout (above the bar)
                             for bar2 in bars2:
@@ -604,10 +608,7 @@ elif page == "Tennis Charts":
                                 ax.annotate(f'{height2:,.0f}', 
                                             xy=(bar2.get_x() + bar2.get_width() / 2, height2),
                                             xytext=(0, 3), textcoords="offset points",
-                                            ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
-                
-                            # Rotate x-axis labels to 45 degrees for readability
-                            plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+                                            ha='center', va='bottom', fontsize=14, fontweight='bold', color='black')
                 
                             # Add a horizontal line at y=0 for reference
                             ax.axhline(0, color='black', linewidth=0.8)
@@ -621,7 +622,7 @@ elif page == "Tennis Charts":
                                 spine.set_linewidth(1.2)
                 
                             # Add the legend with the correct order for the bars
-                            ax.legend([bars2, bars1], ['Potential Payout', 'Active Principal'], loc='upper right')
+                            ax.legend([bars2, bars1], ['Potential Payout', 'Active Principal'], loc='upper right', fontsize=14)
                 
                             # Adjust the layout
                             plt.tight_layout()
@@ -631,7 +632,8 @@ elif page == "Tennis Charts":
                         else:
                             st.error("No data available for the selected filters.")
                 
-                
+                                
+                                
                 
                 
                 
