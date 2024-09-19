@@ -779,9 +779,9 @@ elif page == "MLB Charts":
                         # Sort the DataFrame by 'TotalDollarsAtStake' in ascending order
                         combined_df = combined_df.sort_values('TotalDollarsAtStake', ascending=True)
                 
-                        # Define colors for DollarsAtStake and PotentialPayout
-                        color_dollars_at_stake = '#219ebc'  # Blue for DollarsAtStake
-                        color_potential_payout = '#f4a261'  # Light orange for PotentialPayout
+                        # Define colors for DollarsAtStake and PotentialPayout (same as NFL example)
+                        color_dollars_at_stake = 'lightblue'  # Light blue for DollarsAtStake
+                        color_potential_payout = 'beige'      # Beige for PotentialPayout
                 
                         # Plot the combined bar chart
                         fig, ax = plt.subplots(figsize=(18, 12))
@@ -839,6 +839,7 @@ elif page == "MLB Charts":
                 
                         # Use Streamlit to display the combined chart
                         st.pyplot(fig)
+
 
                    
                                                             
