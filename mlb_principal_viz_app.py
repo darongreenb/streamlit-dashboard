@@ -736,7 +736,7 @@ elif page == "MLB Charts":
                 event_labels = [row['EventLabel'] for row in event_label_data]
                 event_label_option = st.selectbox('Select EventLabel', sorted(event_labels))
 
-               if event_label_option:
+                if event_label_option:
                     # SQL query to fetch data for the combined bar chart (DollarsAtStake and PotentialPayout)
                     combined_query = f"""
                     WITH DistinctBets AS (
