@@ -2,6 +2,7 @@ import streamlit as st
 import mysql.connector
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 
 # Retrieve secrets from Streamlit
 db_host = st.secrets["DB_HOST"]
@@ -590,9 +591,18 @@ elif page == "Tennis Charts":
                             ax.set_ylabel('Total Amount ($)', fontsize=20, fontweight='bold', color='black')
                             ax.set_title(f'Total Futures Principal & Potential Payout by ParticipantName for {event_type_option} - {event_label_option} ({league_name}, Straight Bets Only, Excluding Cashouts)', fontsize=24, fontweight='bold', color='black')
                 
+                            # Create FontProperties object for bold tick labels
+                            tick_label_font = fm.FontProperties(weight='bold', size=16)
+                
                             # Increase font size and make tick labels bold; adjust the position of x-axis labels using labelpad
-                            ax.tick_params(axis='x', labelsize=16, labelcolor='black', labelrotation=45, labelbottom=True, pad=10, weight='bold')
-                            ax.tick_params(axis='y', labelsize=16, labelcolor='black', weight='bold')
+                            ax.tick_params(axis='x', labelsize=16, labelcolor='black', labelrotation=45, pad=10)
+                            ax.tick_params(axis='y', labelsize=16, labelcolor='black')
+                
+                            # Apply bold font to x and y tick labels
+                            for label in ax.get_xticklabels():
+                                label.set_fontproperties(tick_label_font)
+                            for label in ax.get_yticklabels():
+                                label.set_fontproperties(tick_label_font)
                 
                             # Annotate each bar for TotalDollarsAtStake (below the bar since it's negative)
                             for bar1 in bars1:
@@ -631,6 +641,7 @@ elif page == "Tennis Charts":
                             st.pyplot(fig)
                         else:
                             st.error("No data available for the selected filters.")
+
 
                 
                                 
