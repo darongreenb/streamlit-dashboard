@@ -590,9 +590,9 @@ elif page == "Tennis Charts":
                             ax.set_ylabel('Total Amount ($)', fontsize=20, fontweight='bold', color='black')
                             ax.set_title(f'Total Futures Principal & Potential Payout by ParticipantName for {event_type_option} - {event_label_option} ({league_name}, Straight Bets Only, Excluding Cashouts)', fontsize=24, fontweight='bold', color='black')
                 
-                            # Increase font size and make tick labels bold
-                            ax.tick_params(axis='x', labelsize=16, labelcolor='black', labelrotation=45)
-                            ax.tick_params(axis='y', labelsize=16, labelcolor='black')
+                            # Increase font size and make tick labels bold; adjust the position of x-axis labels using labelpad
+                            ax.tick_params(axis='x', labelsize=16, labelcolor='black', labelrotation=45, labelbottom=True, pad=10, weight='bold')
+                            ax.tick_params(axis='y', labelsize=16, labelcolor='black', weight='bold')
                 
                             # Annotate each bar for TotalDollarsAtStake (below the bar since it's negative)
                             for bar1 in bars1:
@@ -631,6 +631,7 @@ elif page == "Tennis Charts":
                             st.pyplot(fig)
                         else:
                             st.error("No data available for the selected filters.")
+
                 
                                 
                                 
