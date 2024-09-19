@@ -832,7 +832,7 @@ elif page == "MLB Charts":
                         ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 5000, max(combined_df['TotalPotentialPayout']) + 5000)
                 
                         # Add legend
-                        ax.legend([bars1, bars2], ['Active Principal', 'Potential Payout'])
+                        ax.legend([bars2, bars1], ['Potential Payout', 'Active Principal'])
                 
                         # Adjust layout
                         plt.tight_layout()
