@@ -568,8 +568,8 @@ elif page == "Tennis Charts":
                             df['TotalPotentialPayout'] = df['TotalPotentialPayout'].astype(float).round(0)
                             df = df.sort_values('TotalDollarsAtStake', ascending=True)
 
-                            color_dollars_at_stake = '#219ebc'
-                            color_potential_payout = '#f4a261'
+                            color_dollars_at_stake = 'lightblue'
+                            color_potential_payout = 'beige'
 
                             fig, ax = plt.subplots(figsize=(18, 12))
                             bars1 = ax.bar(df['ParticipantName'], df['TotalDollarsAtStake'], color=color_dollars_at_stake, width=0.4, edgecolor='black', label='Total Dollars At Stake')
