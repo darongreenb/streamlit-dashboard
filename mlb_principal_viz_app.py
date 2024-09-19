@@ -406,7 +406,7 @@ elif page == "NFL Charts":
                         plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
                 
                         # Add legend
-                        ax.legend([bars2, bars1]['Potential Payout', 'Active Principal'])
+                        ax.legend([bars2, bars1],['Potential Payout', 'Active Principal'])
                 
                         # Add horizontal line at y=0 for reference
                         ax.axhline(0, color='black', linewidth=0.8)
