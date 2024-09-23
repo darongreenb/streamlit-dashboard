@@ -1073,7 +1073,8 @@ elif page == "Profit":
     st.title('Profit')
     
     # Subtitle
-    st.subheader('"Total" incorporates all bets, but straight bets ONLY by League Name')
+    st.markdown('<p style="font-size:16px;">"Total" covers all bets, but ONLY straight bets by League Name</p>', unsafe_allow_html=True)
+
     
     # SQL query for the bar chart (Profit by League)
     league_profit_query = """
