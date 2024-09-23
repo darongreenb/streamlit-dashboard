@@ -1067,93 +1067,110 @@ elif page == "Profit":
     # Profit Page
     import streamlit as st
 
-    # Main title
-    st.title('Realized Profit - GA1')
+    # Profit Page
 
+    # Main title
+    st.title('Profit')
+    
     # Subtitle
     st.subheader('"Total" incorporates all bets, but straight bets ONLY by League Name')
-
-
-    # SQL query for the new bar chart (Profit by League)
+    
+    # SQL query for the bar chart (Profit by League)
     league_profit_query = """
     WITH DistinctBets AS (
-    SELECT DISTINCT b.WagerID, b.NetProfit, l.LeagueName
-    FROM bets b
-    JOIN legs l ON b.WagerID = l.WagerID
-    WHERE b.WhichBankroll = 'GreenAleph'
-    AND b.LegCount = 1),
+        SELECT DISTINCT b.WagerID, b.NetProfit, l.LeagueName
+        FROM bets b
+        JOIN legs l ON b.WagerID = l.WagerID
+        WHERE b.WhichBankroll = 'GreenAleph'
+        AND b.LegCount = 1
+    ),
     LeagueSums AS (
-    SELECT 
-        l.LeagueName,
-        ROUND(SUM(db.NetProfit), 0) AS NetProfit
-    FROM 
-        DistinctBets db
-    JOIN 
-        (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
-    GROUP BY 
-        l.LeagueName)
+        SELECT 
+            db.LeagueName,
+            ROUND(SUM(db.NetProfit), 0) AS NetProfit
+        FROM 
+            DistinctBets db
+        GROUP BY 
+            db.LeagueName
+    )
     SELECT * FROM LeagueSums
-
+    
     UNION ALL
-
+    
     SELECT 
-    'Total' AS LeagueName,
-    ROUND(SUM(b.NetProfit), 0) AS NetProfit
+        'Total' AS LeagueName,
+        ROUND(SUM(b.NetProfit), 0) AS NetProfit
     FROM 
-    bets b
+        bets b
     WHERE 
-    b.WhichBankroll = 'GreenAleph'
+        b.WhichBankroll = 'GreenAleph'
     AND b.WagerID IN (SELECT DISTINCT WagerID FROM legs);
     """
-
-    # Fetch the data for the new bar chart
+    
+    # Fetch the data for the bar chart
     league_profit_data = get_data_from_db(league_profit_query)
+    
+    # Check if data is fetched successfully
     if league_profit_data is None:
         st.error("Failed to fetch league profit data from the database.")
     else:
         # Create a DataFrame from the fetched data
         league_profit_df = pd.DataFrame(league_profit_data)
-        
-        # Create the bar chart
-        fig, ax = plt.subplots(figsize=(15, 8))
-        bar_colors = league_profit_df['NetProfit'].apply(lambda x: 'green' if x > 0 else 'red')  # Green for positive, Red for negative
-        bars = ax.bar(league_profit_df['LeagueName'], league_profit_df['NetProfit'], color=bar_colors, edgecolor='black')
-
-        # Adding titles and labels
-        ax.set_title('Realized Profit by League', fontsize=18, fontweight='bold')
-        ax.set_xlabel('League Name', fontsize=16, fontweight='bold')
-        ax.set_ylabel('Realized Profit ($)', fontsize=16, fontweight='bold')
-
-        # Annotate each bar with the value
-        for bar in bars:
-            height = bar.get_height()
-            ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
-                        xytext=(0, 3), textcoords="offset points",
-                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
-
-        # Rotate the x-axis labels to 45 degrees
-        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
-
-        # Set background color to white
-        ax.set_facecolor('white')
-        plt.gcf().set_facecolor('white')
-
-        # Add border around the plot
-        for spine in ax.spines.values():
-            spine.set_edgecolor('black')
-            spine.set_linewidth(1.2)
-
-        # Adjust y-axis range
-        ymin = league_profit_df['NetProfit'].min() - 500
-        ymax = league_profit_df['NetProfit'].max() + 1500
-        ax.set_ylim(ymin, ymax)
-
-        # Adjust layout
-        plt.tight_layout()
-
-        # Use Streamlit to display the chart
-        st.pyplot(fig)
-
-   
-
-
+    
+        # Ensure correct data types
+        league_profit_df['LeagueName'] = league_profit_df['LeagueName'].astype(str)
+        league_profit_df['NetProfit'] = pd.to_numeric(league_profit_df['NetProfit'], errors='coerce')
+    
+        # Drop rows with missing values
+        league_profit_df = league_profit_df.dropna(subset=['LeagueName', 'NetProfit'])
+    
+        # Check if DataFrame is not empty
+        if league_profit_df.empty:
+            st.write("No data available to display.")
+        else:
+            # Create the bar chart
+            fig, ax = plt.subplots(figsize=(15, 8))
+            
+            # Assign color based on profit (green for positive, red for negative)
+            bar_colors = league_profit_df['NetProfit'].apply(lambda x: 'green' if x > 0 else 'red')
+            
+            # Plot the bar chart
+            bars = ax.bar(league_profit_df['LeagueName'], league_profit_df['NetProfit'], color=bar_colors, edgecolor='black')
+    
+            # Set the title and labels
+            ax.set_title('Realized Profit by League', fontsize=18, fontweight='bold')
+            ax.set_xlabel('League Name', fontsize=16, fontweight='bold')
+            ax.set_ylabel('Realized Profit ($)', fontsize=16, fontweight='bold')
+    
+            # Annotate each bar with the value
+            for bar in bars:
+                height = bar.get_height()
+                ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                            xytext=(0, 3), textcoords="offset points",
+                            ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
+    
+            # Rotate the x-axis labels for better readability
+            plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+    
+            # Set background color and plot aesthetics
+            ax.set_facecolor('white')
+            plt.gcf().set_facecolor('white')
+    
+            # Add border around the plot
+            for spine in ax.spines.values():
+                spine.set_edgecolor('black')
+                spine.set_linewidth(1.2)
+    
+            # Adjust y-axis range for a cleaner view
+            ymin = league_profit_df['NetProfit'].min() - 500
+            ymax = league_profit_df['NetProfit'].max() + 1500
+            ax.set_ylim(ymin, ymax)
+    
+            # Tighten layout for better visual fit
+            plt.tight_layout()
+    
+            # Display the plot in Streamlit
+            st.pyplot(fig)
+    
+    
+    
