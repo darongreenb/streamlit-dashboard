@@ -77,13 +77,15 @@ ev_deltas_df = pd.DataFrame({
 # Sort by EV Delta for better visualization
 ev_deltas_df.sort_values(by='EV Delta', ascending=False, inplace=True)
 
-# Plotting the EV Deltas as a bar chart
+# Plotting the EV Deltas as a bar chart (horizontal bars)
 st.title("EV Deltas for NFL Playoff Matchups")
 fig, ax = plt.subplots()
-ax.barh(ev_deltas_df['Matchup'], ev_deltas_df['EV Delta'], color='skyblue')
-ax.set_xlabel("EV Delta")
-ax.set_ylabel("Matchup")
+ax.bar(ev_deltas_df['Matchup'], ev_deltas_df['EV Delta'], color='skyblue')
+ax.set_xlabel("Matchup")
+ax.set_ylabel("EV Delta")
 ax.set_title("Expected Value (EV) Deltas by Matchup")
+plt.xticks(rotation=45, ha='right')  # Rotate the x-axis labels for better readability
 
 # Display the bar chart in Streamlit
 st.pyplot(fig)
+
