@@ -88,7 +88,7 @@ st.title("EV Deltas for NFL Playoff Matchups")
 fig, ax = plt.subplots()
 ax.bar(ev_deltas_df['Matchup'], ev_deltas_df['EV Delta'], color='skyblue')
 ax.set_ylabel("EV Delta ($)")
-ax.set_title("Expected Value (EV) Deltas by Matchup")
+ax.set_title("EV Δ by Matchup")
 plt.xticks(rotation=45, ha='right')  # Rotate the x-axis labels for better readability
 
 # Display the bar chart in Streamlit
