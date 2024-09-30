@@ -84,7 +84,7 @@ ev_deltas_df = pd.DataFrame({
 ev_deltas_df.sort_values(by='EV Delta', ascending=False, inplace=True)
 
 # Plotting the EV Deltas as a vertical bar chart
-st.title("EV Deltas for NFL Playoff Matchups")
+st.title("NFL Playoff Matchups: Wild Card Round")
 fig, ax = plt.subplots()
 ax.bar(ev_deltas_df['Matchup'], ev_deltas_df['EV Delta'], color='skyblue')
 ax.set_ylabel("USD ($)")
