@@ -87,8 +87,7 @@ ev_deltas_df.sort_values(by='EV Delta', ascending=False, inplace=True)
 st.title("EV Deltas for NFL Playoff Matchups")
 fig, ax = plt.subplots()
 ax.bar(ev_deltas_df['Matchup'], ev_deltas_df['EV Delta'], color='skyblue')
-ax.set_xlabel("Matchup")
-ax.set_ylabel("EV Delta")
+ax.set_ylabel("EV Delta ($)")
 ax.set_title("Expected Value (EV) Deltas by Matchup")
 plt.xticks(rotation=45, ha='right')  # Rotate the x-axis labels for better readability
 
