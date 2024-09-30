@@ -67,7 +67,7 @@ ev_deltas = calculate_ev_deltas_for_all_matchups(teams_probs)
 # Prepare data for bar chart using the provided EV Delta values
 matchup_labels = [
     "AFC 2 vs 7", "AFC 3 vs 6", "AFC 4 vs 5",
-    "NFC 9 vs 14", "NFC 10 vs 13", "NFC 11 vs 12"
+    "NFC 2 vs 7", "NFC 3 vs 6", "NFC 4 vs 5"
 ]
 ev_delta_values = [
     1658, 586, 196,
