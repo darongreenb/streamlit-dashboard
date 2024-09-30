@@ -64,9 +64,15 @@ def calculate_ev_deltas_for_all_matchups(teams_probs):
 # Calculate EV Deltas
 ev_deltas = calculate_ev_deltas_for_all_matchups(teams_probs)
 
-# Prepare data for bar chart
-matchup_labels = [f"{conference} {seed1} vs {seed2}" for (conference, seed1, seed2) in ev_deltas.keys()]
-ev_delta_values = list(ev_deltas.values())
+# Prepare data for bar chart using the provided EV Delta values
+matchup_labels = [
+    "AFC 2 vs 7", "AFC 3 vs 6", "AFC 4 vs 5",
+    "NFC 9 vs 14", "NFC 10 vs 13", "NFC 11 vs 12"
+]
+ev_delta_values = [
+    1658, 586, 196,
+    1934, 889, 269
+]
 
 # Create a DataFrame for easier plotting
 ev_deltas_df = pd.DataFrame({
@@ -77,7 +83,7 @@ ev_deltas_df = pd.DataFrame({
 # Sort by EV Delta for better visualization
 ev_deltas_df.sort_values(by='EV Delta', ascending=False, inplace=True)
 
-# Plotting the EV Deltas as a bar chart (horizontal bars)
+# Plotting the EV Deltas as a vertical bar chart
 st.title("EV Deltas for NFL Playoff Matchups")
 fig, ax = plt.subplots()
 ax.bar(ev_deltas_df['Matchup'], ev_deltas_df['EV Delta'], color='skyblue')
@@ -88,4 +94,5 @@ plt.xticks(rotation=45, ha='right')  # Rotate the x-axis labels for better reada
 
 # Display the bar chart in Streamlit
 st.pyplot(fig)
+
 
