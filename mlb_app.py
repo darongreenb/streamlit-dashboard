@@ -341,7 +341,7 @@ elif page == "NBA Charts":
                     JOIN 
                         legs l ON db.WagerID = l.WagerID
                     WHERE
-                        l.LeagueName = 'NBA'
+                        l.LeagueName = 'NFL'
                         AND l.EventType = '{event_type_option}'
                         AND l.EventLabel = '{event_label_option}'
                     GROUP BY 
