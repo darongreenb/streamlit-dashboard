@@ -448,9 +448,6 @@ elif page == "NBA Charts":
 
 
 
-
-
-
 elif page == "NFL Charts":
     # NFL Charts
     st.title('NFL Active Bets - GA1')
