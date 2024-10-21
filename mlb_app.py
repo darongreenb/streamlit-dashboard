@@ -294,11 +294,11 @@ elif page == "NBA Charts":
         # Use Streamlit to display the first chart
         st.pyplot(fig)
 
-        # Add filter for EventType
+        # Add filter for EventType, sorted in alphabetical order
         event_type_option = st.selectbox('Select EventType', sorted(first_chart_df[first_chart_df['EventType'] != 'Total']['EventType'].unique()))
 
         if event_type_option:
-            # SQL query to fetch data for the EventLabel dropdown
+            # SQL query to fetch data for the EventLabel dropdown, sorted alphabetically
             event_label_query = f"""
             SELECT DISTINCT l.EventLabel
             FROM 
@@ -425,6 +425,7 @@ elif page == "NBA Charts":
                 
                         # Use Streamlit to display the combined chart
                         st.pyplot(fig)
+
 
 
 
