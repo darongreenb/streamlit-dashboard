@@ -215,7 +215,7 @@ elif page == "NBA Charts":
     EventTypeSums AS (
         SELECT 
             l.EventType,
-            ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
+            ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake -- Aggregating as TotalDollarsAtStake
         FROM 
             DistinctBets db
         JOIN 
@@ -250,7 +250,10 @@ elif page == "NBA Charts":
         # Create a DataFrame from the fetched data
         first_chart_df = pd.DataFrame(first_chart_data)
 
-        # Display the fetched data and check if 'TotalDollarsAtStake' exists
+        # Display the DataFrame columns for debugging
+        st.write("Columns in first_chart_df:", first_chart_df.columns)
+
+        # Check if 'TotalDollarsAtStake' exists
         if 'TotalDollarsAtStake' not in first_chart_df.columns:
             st.error("'TotalDollarsAtStake' column not found in the DataFrame.")
         else:
