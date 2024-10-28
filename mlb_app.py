@@ -40,7 +40,7 @@ else:
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions", "Profit"])
+page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions"])
 
 
 # Check the current page
