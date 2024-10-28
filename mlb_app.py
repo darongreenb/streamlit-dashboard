@@ -43,7 +43,7 @@ st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["Main Page", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions"])
 
 
-# Check if the user is on the "Main Page"
+# Check if the user is on the "Main Page" page
 if page == "Main Page":
     # Page title and update time display
     st.title('Principal Dashboard - GreenAleph I')
@@ -105,6 +105,9 @@ if page == "Main Page":
         plt.tight_layout()
         st.pyplot(fig)
 
+    # Add extra spacing
+    st.markdown("<br><br><br>", unsafe_allow_html=True)
+
     # SQL query for Total Dollars Deployed
     deployed_query = """
     WITH ActiveBets AS (
@@ -151,6 +154,9 @@ if page == "Main Page":
         st.markdown(f"<h5 style='text-align: center; font-weight: bold; color: gray;'>$500k Initial Deployment Goal</h5>", unsafe_allow_html=True)
     else:
         st.error("No data available for Total Dollars Deployed.")
+
+    # Add extra spacing
+    st.markdown("<br><br><br>", unsafe_allow_html=True)
 
     # SQL query for Profit by League bar chart
     league_profit_query = """
@@ -214,6 +220,7 @@ if page == "Main Page":
             ax.set_ylim(ymin, ymax)
             plt.tight_layout()
             st.pyplot(fig)
+
 
 
 
