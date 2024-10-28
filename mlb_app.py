@@ -203,7 +203,6 @@ if page == "Main Page":
             bar_colors = league_profit_df['NetProfit'].apply(lambda x: 'green' if x > 0 else 'red')
             bars = ax.bar(league_profit_df['LeagueName'], league_profit_df['NetProfit'], color=bar_colors, edgecolor='black')
             ax.set_title('Realized Profit by League', fontsize=18, fontweight='bold')
-            ax.set_xlabel('League Name', fontsize=16, fontweight='bold')
             ax.set_ylabel('Realized Profit ($)', fontsize=16, fontweight='bold')
             for bar in bars:
                 height = bar.get_height()
