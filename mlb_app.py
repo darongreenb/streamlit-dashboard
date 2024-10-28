@@ -43,10 +43,10 @@ st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["Main Page", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions"])
 
 
-# Check if the user is on the "High-Level Metrics" page
+# Check if the user is on the "Main Page"
 if page == "Main Page":
     # Page title and update time display
-    st.title('GreenAleph I Dashboard')
+    st.title('Principal Dashboard - GreenAleph I')
     st.markdown(f"**Last Update:** {last_update_time}", unsafe_allow_html=True)
 
     # SQL query for Active Principal by League bar chart
@@ -105,6 +105,53 @@ if page == "Main Page":
         plt.tight_layout()
         st.pyplot(fig)
 
+    # SQL query for Total Dollars Deployed
+    deployed_query = """
+    WITH ActiveBets AS (
+        SELECT DollarsAtStake, NetProfit
+        FROM bets
+        WHERE WhichBankroll = 'GreenAleph'
+          AND WLCA = 'Active'
+    ),
+    TotalBets AS (
+        SELECT SUM(DollarsAtStake) AS TotalDollarsAtStake
+        FROM ActiveBets
+    ),
+    TotalNetProfit AS (
+        SELECT SUM(NetProfit) AS TotalNetProfit
+        FROM bets
+        WHERE WhichBankroll = 'GreenAleph'
+    )
+    SELECT 
+        (TotalBets.TotalDollarsAtStake - COALESCE(TotalNetProfit.TotalNetProfit, 0)) AS TotalDollarsDeployed
+    FROM 
+        TotalBets, TotalNetProfit;
+    """
+
+    # Fetch and process data for Total Dollars Deployed
+    deployed_data = get_data_from_db(deployed_query)
+    if deployed_data and len(deployed_data) > 0 and 'TotalDollarsDeployed' in deployed_data[0]:
+        total_dollars_deployed = deployed_data[0]['TotalDollarsDeployed']
+        total_dollars_deployed = round(float(total_dollars_deployed)) if total_dollars_deployed is not None else 0
+        goal_amount = 500000
+        progress_percentage = min(total_dollars_deployed / goal_amount, 1)
+        label_position_percentage = progress_percentage * 50
+        
+        # Display Total $ Deployed progress bar between the charts
+        st.markdown(f"<h4 style='text-align: center; font-weight: bold; color: black;'>Total $ Deployed (Total Active Principal - Realized Profit)</h4>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div style='width: 80%; margin: 0 auto;'>
+            <div style='background-color: lightgray; height: 40px; position: relative; border-radius: 5px;'>
+                <div style='background: linear-gradient(to right, lightblue {progress_percentage * 100}%, lightgray 0%); width: 100%; height: 100%; border-radius: 5px; position: relative;'>
+                    <span style='position: absolute; left: {label_position_percentage}%; top: 50%; transform: translate(-50%, -50%); color: white; font-weight: bold;'>${total_dollars_deployed:,}</span>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown(f"<h5 style='text-align: center; font-weight: bold; color: gray;'>$500k Initial Deployment Goal</h5>", unsafe_allow_html=True)
+    else:
+        st.error("No data available for Total Dollars Deployed.")
+
     # SQL query for Profit by League bar chart
     league_profit_query = """
     WITH DistinctBets AS (
@@ -150,6 +197,7 @@ if page == "Main Page":
             bar_colors = league_profit_df['NetProfit'].apply(lambda x: 'green' if x > 0 else 'red')
             bars = ax.bar(league_profit_df['LeagueName'], league_profit_df['NetProfit'], color=bar_colors, edgecolor='black')
             ax.set_title('Realized Profit by League', fontsize=18, fontweight='bold')
+            ax.set_xlabel('League Name', fontsize=16, fontweight='bold')
             ax.set_ylabel('Realized Profit ($)', fontsize=16, fontweight='bold')
             for bar in bars:
                 height = bar.get_height()
@@ -167,51 +215,7 @@ if page == "Main Page":
             plt.tight_layout()
             st.pyplot(fig)
 
-    # SQL query for Total Dollars Deployed
-    deployed_query = """
-    WITH ActiveBets AS (
-        SELECT DollarsAtStake, NetProfit
-        FROM bets
-        WHERE WhichBankroll = 'GreenAleph'
-          AND WLCA = 'Active'
-    ),
-    TotalBets AS (
-        SELECT SUM(DollarsAtStake) AS TotalDollarsAtStake
-        FROM ActiveBets
-    ),
-    TotalNetProfit AS (
-        SELECT SUM(NetProfit) AS TotalNetProfit
-        FROM bets
-        WHERE WhichBankroll = 'GreenAleph'
-    )
-    SELECT 
-        (TotalBets.TotalDollarsAtStake - COALESCE(TotalNetProfit.TotalNetProfit, 0)) AS TotalDollarsDeployed
-    FROM 
-        TotalBets, TotalNetProfit;
-    """
 
-    # Fetch and process data for Total Dollars Deployed
-    deployed_data = get_data_from_db(deployed_query)
-    if deployed_data and len(deployed_data) > 0 and 'TotalDollarsDeployed' in deployed_data[0]:
-        total_dollars_deployed = deployed_data[0]['TotalDollarsDeployed']
-        total_dollars_deployed = round(float(total_dollars_deployed)) if total_dollars_deployed is not None else 0
-        goal_amount = 500000
-        progress_percentage = min(total_dollars_deployed / goal_amount, 1)
-        label_position_percentage = progress_percentage * 50
-        
-        st.markdown(f"<h4 style='text-align: center; font-weight: bold; color: black;'>Total $ Deployed (Total Active Principal - Realized Profit)</h4>", unsafe_allow_html=True)
-        st.markdown(f"""
-        <div style='width: 80%; margin: 0 auto;'>
-            <div style='background-color: lightgray; height: 40px; position: relative; border-radius: 5px;'>
-                <div style='background: linear-gradient(to right, lightblue {progress_percentage * 100}%, lightgray 0%); width: 100%; height: 100%; border-radius: 5px; position: relative;'>
-                    <span style='position: absolute; left: {label_position_percentage}%; top: 50%; transform: translate(-50%, -50%); color: white; font-weight: bold;'>${total_dollars_deployed:,}</span>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        st.markdown(f"<h5 style='text-align: center; font-weight: bold; color: gray;'>$500k Initial Deployment Goal</h5>", unsafe_allow_html=True)
-    else:
-        st.error("No data available for Total Dollars Deployed.")
 
 
 
