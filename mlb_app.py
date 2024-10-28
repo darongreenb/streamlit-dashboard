@@ -43,146 +43,91 @@ st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions", "Profit"])
 
 
+# Check the current page
 if page == "GreenAleph Active Principal":
-    # GreenAleph Active Principal
+    # GreenAleph Active Principal Page
     st.title('Principal Dashboard - GreenAleph I')
 
     # Display last update time in the corner
     st.markdown(f"**Last Update:** {last_update_time}", unsafe_allow_html=True)
 
-    # SQL query to fetch data
-    data_query = """
-    WITH DistinctBets AS (
-        SELECT DISTINCT WagerID, DollarsAtStake, NetProfit
-        FROM bets
-        WHERE WhichBankroll = 'GreenAleph'
-          AND WLCA = 'Active'
-    )
+    # League Profit Chart
+    # Fetch the data for the new Profit by League chart (added section)
+    league_profit_data = get_data_from_db(league_profit_query)
+    
+    if league_profit_data is None:
+        st.error("Failed to fetch league profit data from the database.")
+    else:
+        league_profit_df = pd.DataFrame(league_profit_data)
+        league_profit_df['LeagueName'] = league_profit_df['LeagueName'].astype(str)
+        league_profit_df['NetProfit'] = pd.to_numeric(league_profit_df['NetProfit'], errors='coerce')
+        league_profit_df = league_profit_df.dropna(subset=['LeagueName', 'NetProfit'])
+        
+        if not league_profit_df.empty:
+            fig, ax = plt.subplots(figsize=(15, 8))
+            bar_colors = league_profit_df['NetProfit'].apply(lambda x: 'green' if x > 0 else 'red')
+            bars = ax.bar(league_profit_df['LeagueName'], league_profit_df['NetProfit'], color=bar_colors, edgecolor='black')
+            ax.set_title('Realized Profit by League', fontsize=18, fontweight='bold')
+            ax.set_xlabel('League Name', fontsize=16, fontweight='bold')
+            ax.set_ylabel('Realized Profit ($)', fontsize=16, fontweight='bold')
+            for bar in bars:
+                height = bar.get_height()
+                ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                            xytext=(0, 3), textcoords="offset points",
+                            ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
+            plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+            ax.set_facecolor('white')
+            plt.gcf().set_facecolor('white')
+            for spine in ax.spines.values():
+                spine.set_edgecolor('black')
+                spine.set_linewidth(1.2)
+            ymin = league_profit_df['NetProfit'].min() - 500
+            ymax = league_profit_df['NetProfit'].max() + 1500
+            ax.set_ylim(ymin, ymax)
+            plt.tight_layout()
+            st.pyplot(fig)
 
-    SELECT 
-        l.LeagueName,
-        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake
-    FROM 
-        DistinctBets db
-    JOIN 
-        (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
-    GROUP BY 
-        l.LeagueName
-
-    UNION ALL
-
-    SELECT 
-        'Total' AS LeagueName,
-        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake
-    FROM 
-        DistinctBets;
-    """
-
-    # Fetch the data
+    # Total Active Principal Chart
     data = get_data_from_db(data_query)
-
-    # Query to calculate total dollars deployed
-    deployed_query = """
-    WITH ActiveBets AS (
-        SELECT DollarsAtStake, NetProfit
-        FROM bets
-        WHERE WhichBankroll = 'GreenAleph'
-          AND WLCA = 'Active'
-    ),
-    TotalBets AS (
-        SELECT SUM(DollarsAtStake) AS TotalDollarsAtStake
-        FROM ActiveBets
-    ),
-    TotalNetProfit AS (
-        SELECT SUM(NetProfit) AS TotalNetProfit
-        FROM bets
-        WHERE WhichBankroll = 'GreenAleph'
-    )
-
-    SELECT 
-        (TotalBets.TotalDollarsAtStake - COALESCE(TotalNetProfit.TotalNetProfit, 0)) AS TotalDollarsDeployed
-    FROM 
-        TotalBets, TotalNetProfit;
-    """
-
-    # Fetch the total dollars deployed
     deployed_data = get_data_from_db(deployed_query)
 
-    # Check if data is fetched successfully
     if data is None or deployed_data is None:
         st.error("Failed to fetch data from the database.")
     else:
-        # Create a DataFrame from the fetched data
         df = pd.DataFrame(data)
-
-        # Convert TotalDollarsAtStake to float for plotting
         df['TotalDollarsAtStake'] = df['TotalDollarsAtStake'].astype(float)
-
-        # Sort the DataFrame by TotalDollarsAtStake in ascending order
         df = df.sort_values(by='TotalDollarsAtStake')
-
-        # Define colors for bars
         colors = ['#77dd77', '#89cff0', '#fdfd96', '#ffb347', '#aec6cf', '#cfcfc4', '#ffb6c1', '#b39eb5']
-        total_color = 'lightblue'  # Light blue for the Total bar
-
-        # Create color list ensuring 'Total' bar is dark green
+        total_color = 'lightblue'
         bar_colors = [total_color if name == 'Total' else colors[i % len(colors)] for i, name in enumerate(df['LeagueName'])]
-
-        # Plot the bar chart
+        
         fig, ax = plt.subplots(figsize=(15, 10))
         bars = ax.bar(df['LeagueName'], df['TotalDollarsAtStake'], color=bar_colors, width=0.6, edgecolor='black')
-
-        # Add labels and title
         ax.set_title('GA1: Total Active Principal', fontsize=18, fontweight='bold')
         ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
-
-        # Annotate each bar with the value
         for bar in bars:
             height = bar.get_height()
             ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
                         xytext=(0, 3), textcoords="offset points",
                         ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
-
-        # Rotate the x-axis labels to 45 degrees
         plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
-
-        # Add horizontal line at y=0 for reference
         ax.axhline(0, color='black', linewidth=0.8)
-
-        # Set background color to white
         ax.set_facecolor('white')
-
-        # Add border around the plot
         for spine in ax.spines.values():
             spine.set_edgecolor('black')
             spine.set_linewidth(1.2)
-
-        # Adjust layout
         plt.tight_layout()
-
-        # Use Streamlit to display the chart
         st.pyplot(fig)
 
-        # Handle the total dollars deployed data
+        # Total Dollars Deployed Visual
         if deployed_data and len(deployed_data) > 0 and 'TotalDollarsDeployed' in deployed_data[0]:
             total_dollars_deployed = deployed_data[0]['TotalDollarsDeployed']
-            
-            # Ensure total_dollars_deployed is a float and round it to the nearest dollar
             total_dollars_deployed = round(float(total_dollars_deployed)) if total_dollars_deployed is not None else 0
-            
-            # Set the goal amount
             goal_amount = 500000
+            progress_percentage = min(total_dollars_deployed / goal_amount, 1)
+            label_position_percentage = progress_percentage * 50
             
-            # Calculate the progress percentage relative to the $500k goal
-            progress_percentage = min(total_dollars_deployed / goal_amount, 1)  # Ensure it does not exceed 100%
-            
-            # Calculate the position of the label as a percentage of the bar's width
-            label_position_percentage = progress_percentage * 50  # Center the label within the light green area
-        
-            # Display the smaller heading
             st.markdown(f"<h4 style='text-align: center; font-weight: bold; color: black;'>Total $ Deployed (Total Active Principal - Realized Profit)</h4>", unsafe_allow_html=True)
-            
-            # Display the progress bar with shaded sides
             st.markdown(f"""
             <div style='width: 80%; margin: 0 auto;'>
                 <div style='background-color: lightgray; height: 40px; position: relative; border-radius: 5px;'>
@@ -192,11 +137,10 @@ if page == "GreenAleph Active Principal":
                 </div>
             </div>
             """, unsafe_allow_html=True)
-        
-            # Display the subheading directly below the progress bar
             st.markdown(f"<h5 style='text-align: center; font-weight: bold; color: gray;'>$500k Initial Deployment Goal</h5>", unsafe_allow_html=True)
         else:
             st.error("No data available for Total Dollars Deployed.")
+
 
 
 
@@ -1291,115 +1235,5 @@ elif page == "MLB Participant Positions":
 
 
 
-elif page == "Profit":
-    # Profit Page
-    import streamlit as st
-
-    # Profit Page
-
-    # Main title
-    st.title('Profit')
-    
-    # Subtitle
-    st.markdown('<p style="font-size:16px;">"Total" covers all bets, but ONLY straight bets are covered by League Name</p>', unsafe_allow_html=True)
-
-    
-    # SQL query for the bar chart (Profit by League)
-    league_profit_query = """
-    WITH DistinctBets AS (
-        SELECT DISTINCT b.WagerID, b.NetProfit, l.LeagueName
-        FROM bets b
-        JOIN legs l ON b.WagerID = l.WagerID
-        WHERE b.WhichBankroll = 'GreenAleph'
-        AND b.LegCount = 1
-    ),
-    LeagueSums AS (
-        SELECT 
-            db.LeagueName,
-            ROUND(SUM(db.NetProfit), 0) AS NetProfit
-        FROM 
-            DistinctBets db
-        GROUP BY 
-            db.LeagueName
-    )
-    SELECT * FROM LeagueSums
-    
-    UNION ALL
-    
-    SELECT 
-        'Total' AS LeagueName,
-        ROUND(SUM(b.NetProfit), 0) AS NetProfit
-    FROM 
-        bets b
-    WHERE 
-        b.WhichBankroll = 'GreenAleph'
-    AND b.WagerID IN (SELECT DISTINCT WagerID FROM legs);
-    """
-    
-    # Fetch the data for the bar chart
-    league_profit_data = get_data_from_db(league_profit_query)
-    
-    # Check if data is fetched successfully
-    if league_profit_data is None:
-        st.error("Failed to fetch league profit data from the database.")
-    else:
-        # Create a DataFrame from the fetched data
-        league_profit_df = pd.DataFrame(league_profit_data)
-    
-        # Ensure correct data types
-        league_profit_df['LeagueName'] = league_profit_df['LeagueName'].astype(str)
-        league_profit_df['NetProfit'] = pd.to_numeric(league_profit_df['NetProfit'], errors='coerce')
-    
-        # Drop rows with missing values
-        league_profit_df = league_profit_df.dropna(subset=['LeagueName', 'NetProfit'])
-    
-        # Check if DataFrame is not empty
-        if league_profit_df.empty:
-            st.write("No data available to display.")
-        else:
-            # Create the bar chart
-            fig, ax = plt.subplots(figsize=(15, 8))
-            
-            # Assign color based on profit (green for positive, red for negative)
-            bar_colors = league_profit_df['NetProfit'].apply(lambda x: 'green' if x > 0 else 'red')
-            
-            # Plot the bar chart
-            bars = ax.bar(league_profit_df['LeagueName'], league_profit_df['NetProfit'], color=bar_colors, edgecolor='black')
-    
-            # Set the title and labels
-            ax.set_title('Realized Profit by League', fontsize=18, fontweight='bold')
-            ax.set_xlabel('League Name', fontsize=16, fontweight='bold')
-            ax.set_ylabel('Realized Profit ($)', fontsize=16, fontweight='bold')
-    
-            # Annotate each bar with the value
-            for bar in bars:
-                height = bar.get_height()
-                ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
-                            xytext=(0, 3), textcoords="offset points",
-                            ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
-    
-            # Rotate the x-axis labels for better readability
-            plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
-    
-            # Set background color and plot aesthetics
-            ax.set_facecolor('white')
-            plt.gcf().set_facecolor('white')
-    
-            # Add border around the plot
-            for spine in ax.spines.values():
-                spine.set_edgecolor('black')
-                spine.set_linewidth(1.2)
-    
-            # Adjust y-axis range for a cleaner view
-            ymin = league_profit_df['NetProfit'].min() - 500
-            ymax = league_profit_df['NetProfit'].max() + 1500
-            ax.set_ylim(ymin, ymax)
-    
-            # Tighten layout for better visual fit
-            plt.tight_layout()
-    
-            # Display the plot in Streamlit
-            st.pyplot(fig)
-    
     
     
