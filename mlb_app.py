@@ -40,14 +40,70 @@ else:
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions"])
+page = st.sidebar.radio("Go to", ["High-Level Metrics", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions"])
 
 
-# Check if the user is on the "GreenAleph Active Principal" page
-if page == "GreenAleph Active Principal":
+# Check if the user is on the "High-Level Metrics" page
+if page == "High-Level Metrics":
     # Page title and update time display
     st.title('Principal Dashboard - GreenAleph I')
     st.markdown(f"**Last Update:** {last_update_time}", unsafe_allow_html=True)
+
+    # SQL query for Active Principal by League bar chart
+    data_query = """
+    WITH DistinctBets AS (
+        SELECT DISTINCT WagerID, DollarsAtStake, NetProfit
+        FROM bets
+        WHERE WhichBankroll = 'GreenAleph'
+          AND WLCA = 'Active'
+    )
+    SELECT 
+        l.LeagueName,
+        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake
+    FROM 
+        DistinctBets db
+    JOIN 
+        (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
+    GROUP BY 
+        l.LeagueName
+    UNION ALL
+    SELECT 
+        'Total' AS LeagueName,
+        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake
+    FROM 
+        DistinctBets;
+    """
+
+    # Fetch and process data for Active Principal by League
+    active_principal_data = get_data_from_db(data_query)
+    if active_principal_data is None:
+        st.error("Failed to fetch active principal data from the database.")
+    else:
+        active_principal_df = pd.DataFrame(active_principal_data)
+        active_principal_df['TotalDollarsAtStake'] = active_principal_df['TotalDollarsAtStake'].astype(float)
+        active_principal_df = active_principal_df.sort_values(by='TotalDollarsAtStake')
+        
+        colors = ['#77dd77', '#89cff0', '#fdfd96', '#ffb347', '#aec6cf', '#cfcfc4', '#ffb6c1', '#b39eb5']
+        total_color = 'lightblue'
+        bar_colors = [total_color if name == 'Total' else colors[i % len(colors)] for i, name in enumerate(active_principal_df['LeagueName'])]
+        
+        fig, ax = plt.subplots(figsize=(15, 10))
+        bars = ax.bar(active_principal_df['LeagueName'], active_principal_df['TotalDollarsAtStake'], color=bar_colors, width=0.6, edgecolor='black')
+        ax.set_title('GA1: Total Active Principal', fontsize=18, fontweight='bold')
+        ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
+        for bar in bars:
+            height = bar.get_height()
+            ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                        xytext=(0, 3), textcoords="offset points",
+                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
+        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+        ax.axhline(0, color='black', linewidth=0.8)
+        ax.set_facecolor('white')
+        for spine in ax.spines.values():
+            spine.set_edgecolor('black')
+            spine.set_linewidth(1.2)
+        plt.tight_layout()
+        st.pyplot(fig)
 
     # SQL query for Profit by League bar chart
     league_profit_query = """
@@ -112,62 +168,6 @@ if page == "GreenAleph Active Principal":
             plt.tight_layout()
             st.pyplot(fig)
 
-    # SQL query for Active Principal by League bar chart
-    data_query = """
-    WITH DistinctBets AS (
-        SELECT DISTINCT WagerID, DollarsAtStake, NetProfit
-        FROM bets
-        WHERE WhichBankroll = 'GreenAleph'
-          AND WLCA = 'Active'
-    )
-    SELECT 
-        l.LeagueName,
-        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake
-    FROM 
-        DistinctBets db
-    JOIN 
-        (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
-    GROUP BY 
-        l.LeagueName
-    UNION ALL
-    SELECT 
-        'Total' AS LeagueName,
-        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake
-    FROM 
-        DistinctBets;
-    """
-
-    # Fetch and process data for Active Principal by League
-    active_principal_data = get_data_from_db(data_query)
-    if active_principal_data is None:
-        st.error("Failed to fetch active principal data from the database.")
-    else:
-        active_principal_df = pd.DataFrame(active_principal_data)
-        active_principal_df['TotalDollarsAtStake'] = active_principal_df['TotalDollarsAtStake'].astype(float)
-        active_principal_df = active_principal_df.sort_values(by='TotalDollarsAtStake')
-        
-        colors = ['#77dd77', '#89cff0', '#fdfd96', '#ffb347', '#aec6cf', '#cfcfc4', '#ffb6c1', '#b39eb5']
-        total_color = 'lightblue'
-        bar_colors = [total_color if name == 'Total' else colors[i % len(colors)] for i, name in enumerate(active_principal_df['LeagueName'])]
-        
-        fig, ax = plt.subplots(figsize=(15, 10))
-        bars = ax.bar(active_principal_df['LeagueName'], active_principal_df['TotalDollarsAtStake'], color=bar_colors, width=0.6, edgecolor='black')
-        ax.set_title('GA1: Total Active Principal', fontsize=18, fontweight='bold')
-        ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
-        for bar in bars:
-            height = bar.get_height()
-            ax.annotate(f'${height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
-                        xytext=(0, 3), textcoords="offset points",
-                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
-        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
-        ax.axhline(0, color='black', linewidth=0.8)
-        ax.set_facecolor('white')
-        for spine in ax.spines.values():
-            spine.set_edgecolor('black')
-            spine.set_linewidth(1.2)
-        plt.tight_layout()
-        st.pyplot(fig)
-
     # SQL query for Total Dollars Deployed
     deployed_query = """
     WITH ActiveBets AS (
@@ -213,6 +213,7 @@ if page == "GreenAleph Active Principal":
         st.markdown(f"<h5 style='text-align: center; font-weight: bold; color: gray;'>$500k Initial Deployment Goal</h5>", unsafe_allow_html=True)
     else:
         st.error("No data available for Total Dollars Deployed.")
+
 
 
 
