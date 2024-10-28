@@ -43,18 +43,44 @@ st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["GreenAleph Active Principal", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions"])
 
 
-# Check the current page
+# Check if the user is on the "GreenAleph Active Principal" page
 if page == "GreenAleph Active Principal":
-    # GreenAleph Active Principal Page
+    # Page title and update time display
     st.title('Principal Dashboard - GreenAleph I')
-
-    # Display last update time in the corner
     st.markdown(f"**Last Update:** {last_update_time}", unsafe_allow_html=True)
 
-    # League Profit Chart
-    # Fetch the data for the new Profit by League chart (added section)
+    # SQL query for Profit by League bar chart
+    league_profit_query = """
+    WITH DistinctBets AS (
+        SELECT DISTINCT b.WagerID, b.NetProfit, l.LeagueName
+        FROM bets b
+        JOIN legs l ON b.WagerID = l.WagerID
+        WHERE b.WhichBankroll = 'GreenAleph'
+        AND b.LegCount = 1
+    ),
+    LeagueSums AS (
+        SELECT 
+            db.LeagueName,
+            ROUND(SUM(db.NetProfit), 0) AS NetProfit
+        FROM 
+            DistinctBets db
+        GROUP BY 
+            db.LeagueName
+    )
+    SELECT * FROM LeagueSums
+    UNION ALL
+    SELECT 
+        'Total' AS LeagueName,
+        ROUND(SUM(b.NetProfit), 0) AS NetProfit
+    FROM 
+        bets b
+    WHERE 
+        b.WhichBankroll = 'GreenAleph'
+    AND b.WagerID IN (SELECT DISTINCT WagerID FROM legs);
+    """
+
+    # Fetch and process data for Profit by League
     league_profit_data = get_data_from_db(league_profit_query)
-    
     if league_profit_data is None:
         st.error("Failed to fetch league profit data from the database.")
     else:
@@ -62,7 +88,7 @@ if page == "GreenAleph Active Principal":
         league_profit_df['LeagueName'] = league_profit_df['LeagueName'].astype(str)
         league_profit_df['NetProfit'] = pd.to_numeric(league_profit_df['NetProfit'], errors='coerce')
         league_profit_df = league_profit_df.dropna(subset=['LeagueName', 'NetProfit'])
-        
+
         if not league_profit_df.empty:
             fig, ax = plt.subplots(figsize=(15, 8))
             bar_colors = league_profit_df['NetProfit'].apply(lambda x: 'green' if x > 0 else 'red')
@@ -77,7 +103,6 @@ if page == "GreenAleph Active Principal":
                             ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
             plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
             ax.set_facecolor('white')
-            plt.gcf().set_facecolor('white')
             for spine in ax.spines.values():
                 spine.set_edgecolor('black')
                 spine.set_linewidth(1.2)
@@ -87,22 +112,46 @@ if page == "GreenAleph Active Principal":
             plt.tight_layout()
             st.pyplot(fig)
 
-    # Total Active Principal Chart
-    data = get_data_from_db(data_query)
-    deployed_data = get_data_from_db(deployed_query)
+    # SQL query for Active Principal by League bar chart
+    data_query = """
+    WITH DistinctBets AS (
+        SELECT DISTINCT WagerID, DollarsAtStake, NetProfit
+        FROM bets
+        WHERE WhichBankroll = 'GreenAleph'
+          AND WLCA = 'Active'
+    )
+    SELECT 
+        l.LeagueName,
+        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake
+    FROM 
+        DistinctBets db
+    JOIN 
+        (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
+    GROUP BY 
+        l.LeagueName
+    UNION ALL
+    SELECT 
+        'Total' AS LeagueName,
+        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake
+    FROM 
+        DistinctBets;
+    """
 
-    if data is None or deployed_data is None:
-        st.error("Failed to fetch data from the database.")
+    # Fetch and process data for Active Principal by League
+    active_principal_data = get_data_from_db(data_query)
+    if active_principal_data is None:
+        st.error("Failed to fetch active principal data from the database.")
     else:
-        df = pd.DataFrame(data)
-        df['TotalDollarsAtStake'] = df['TotalDollarsAtStake'].astype(float)
-        df = df.sort_values(by='TotalDollarsAtStake')
+        active_principal_df = pd.DataFrame(active_principal_data)
+        active_principal_df['TotalDollarsAtStake'] = active_principal_df['TotalDollarsAtStake'].astype(float)
+        active_principal_df = active_principal_df.sort_values(by='TotalDollarsAtStake')
+        
         colors = ['#77dd77', '#89cff0', '#fdfd96', '#ffb347', '#aec6cf', '#cfcfc4', '#ffb6c1', '#b39eb5']
         total_color = 'lightblue'
-        bar_colors = [total_color if name == 'Total' else colors[i % len(colors)] for i, name in enumerate(df['LeagueName'])]
+        bar_colors = [total_color if name == 'Total' else colors[i % len(colors)] for i, name in enumerate(active_principal_df['LeagueName'])]
         
         fig, ax = plt.subplots(figsize=(15, 10))
-        bars = ax.bar(df['LeagueName'], df['TotalDollarsAtStake'], color=bar_colors, width=0.6, edgecolor='black')
+        bars = ax.bar(active_principal_df['LeagueName'], active_principal_df['TotalDollarsAtStake'], color=bar_colors, width=0.6, edgecolor='black')
         ax.set_title('GA1: Total Active Principal', fontsize=18, fontweight='bold')
         ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
         for bar in bars:
@@ -119,27 +168,52 @@ if page == "GreenAleph Active Principal":
         plt.tight_layout()
         st.pyplot(fig)
 
-        # Total Dollars Deployed Visual
-        if deployed_data and len(deployed_data) > 0 and 'TotalDollarsDeployed' in deployed_data[0]:
-            total_dollars_deployed = deployed_data[0]['TotalDollarsDeployed']
-            total_dollars_deployed = round(float(total_dollars_deployed)) if total_dollars_deployed is not None else 0
-            goal_amount = 500000
-            progress_percentage = min(total_dollars_deployed / goal_amount, 1)
-            label_position_percentage = progress_percentage * 50
-            
-            st.markdown(f"<h4 style='text-align: center; font-weight: bold; color: black;'>Total $ Deployed (Total Active Principal - Realized Profit)</h4>", unsafe_allow_html=True)
-            st.markdown(f"""
-            <div style='width: 80%; margin: 0 auto;'>
-                <div style='background-color: lightgray; height: 40px; position: relative; border-radius: 5px;'>
-                    <div style='background: linear-gradient(to right, lightblue {progress_percentage * 100}%, lightgray 0%); width: 100%; height: 100%; border-radius: 5px; position: relative;'>
-                        <span style='position: absolute; left: {label_position_percentage}%; top: 50%; transform: translate(-50%, -50%); color: white; font-weight: bold;'>${total_dollars_deployed:,}</span>
-                    </div>
+    # SQL query for Total Dollars Deployed
+    deployed_query = """
+    WITH ActiveBets AS (
+        SELECT DollarsAtStake, NetProfit
+        FROM bets
+        WHERE WhichBankroll = 'GreenAleph'
+          AND WLCA = 'Active'
+    ),
+    TotalBets AS (
+        SELECT SUM(DollarsAtStake) AS TotalDollarsAtStake
+        FROM ActiveBets
+    ),
+    TotalNetProfit AS (
+        SELECT SUM(NetProfit) AS TotalNetProfit
+        FROM bets
+        WHERE WhichBankroll = 'GreenAleph'
+    )
+    SELECT 
+        (TotalBets.TotalDollarsAtStake - COALESCE(TotalNetProfit.TotalNetProfit, 0)) AS TotalDollarsDeployed
+    FROM 
+        TotalBets, TotalNetProfit;
+    """
+
+    # Fetch and process data for Total Dollars Deployed
+    deployed_data = get_data_from_db(deployed_query)
+    if deployed_data and len(deployed_data) > 0 and 'TotalDollarsDeployed' in deployed_data[0]:
+        total_dollars_deployed = deployed_data[0]['TotalDollarsDeployed']
+        total_dollars_deployed = round(float(total_dollars_deployed)) if total_dollars_deployed is not None else 0
+        goal_amount = 500000
+        progress_percentage = min(total_dollars_deployed / goal_amount, 1)
+        label_position_percentage = progress_percentage * 50
+        
+        st.markdown(f"<h4 style='text-align: center; font-weight: bold; color: black;'>Total $ Deployed (Total Active Principal - Realized Profit)</h4>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div style='width: 80%; margin: 0 auto;'>
+            <div style='background-color: lightgray; height: 40px; position: relative; border-radius: 5px;'>
+                <div style='background: linear-gradient(to right, lightblue {progress_percentage * 100}%, lightgray 0%); width: 100%; height: 100%; border-radius: 5px; position: relative;'>
+                    <span style='position: absolute; left: {label_position_percentage}%; top: 50%; transform: translate(-50%, -50%); color: white; font-weight: bold;'>${total_dollars_deployed:,}</span>
                 </div>
             </div>
-            """, unsafe_allow_html=True)
-            st.markdown(f"<h5 style='text-align: center; font-weight: bold; color: gray;'>$500k Initial Deployment Goal</h5>", unsafe_allow_html=True)
-        else:
-            st.error("No data available for Total Dollars Deployed.")
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown(f"<h5 style='text-align: center; font-weight: bold; color: gray;'>$500k Initial Deployment Goal</h5>", unsafe_allow_html=True)
+    else:
+        st.error("No data available for Total Dollars Deployed.")
+
 
 
 
