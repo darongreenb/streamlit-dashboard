@@ -40,13 +40,13 @@ else:
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["High-Level Metrics", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions"])
+page = st.sidebar.radio("Go to", ["Main Page", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions"])
 
 
 # Check if the user is on the "High-Level Metrics" page
-if page == "High-Level Metrics":
+if page == "Main Page":
     # Page title and update time display
-    st.title('Principal Dashboard - GreenAleph I')
+    st.title('GreenAleph I Dashboard')
     st.markdown(f"**Last Update:** {last_update_time}", unsafe_allow_html=True)
 
     # SQL query for Active Principal by League bar chart
