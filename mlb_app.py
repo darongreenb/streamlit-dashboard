@@ -226,7 +226,7 @@ if page == "Main Page":
 
 # Adding the new "Betting Volume" page
 if page == "Betting Volume":
-    st.title("Betting Volume by Month (Number of Bets)")
+    st.title("Betting Volume by Month")
 
     # SQL query to get the number of bets by month for 'GreenAleph'
     volume_query = """
@@ -261,10 +261,8 @@ if page == "Betting Volume":
             x_labels = [date.strftime('%Y-%m') if isinstance(date, pd.Timestamp) else date for date in df_volume.index]
 
             # Plot the bar chart
-            st.subheader("Number of Bets Placed by Month for 'GreenAleph'")
             plt.figure(figsize=(12, 6))
             bars = plt.bar(x_labels, df_volume['NumberOfBets'])
-            plt.xlabel('Month')
             plt.ylabel('Number of Bets')
             plt.title('Number of Bets Placed by Month (GreenAleph)')
             plt.xticks(rotation=45, ha='right')
