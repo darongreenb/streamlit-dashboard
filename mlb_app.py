@@ -304,6 +304,9 @@ if page == "Betting Volume":
         df_league_volume['LeagueName'] = df_league_volume['LeagueName'].astype(str)
         df_league_volume['NumberOfBets'] = df_league_volume['NumberOfBets'].astype(int)
 
+        # Sort by NumberOfBets in ascending order
+        df_league_volume = df_league_volume.sort_values(by='NumberOfBets', ascending=True)
+
         # Check if the DataFrame is not empty
         if not df_league_volume.empty:
             # Plot the second bar chart
@@ -324,8 +327,6 @@ if page == "Betting Volume":
             st.warning("No data available for 'GreenAleph' betting volume by league.")
     else:
         st.error("Failed to retrieve data from the database.")
-
-
 
 
 
