@@ -226,13 +226,13 @@ if page == "Main Page":
 
 # Adding the new "Betting Volume" page
 if page == "Betting Volume":
-    st.title("Betting Volume by Month")
+    st.title("Betting Volume by Month (Number of Bets)")
 
-    # SQL query to get the total betting volume by month for 'GreenAleph'
+    # SQL query to get the number of bets by month for 'GreenAleph'
     volume_query = """
         SELECT 
             DATE_FORMAT(DateTimePlaced, '%Y-%m') AS Month,
-            SUM(DollarsAtStake) AS TotalVolume
+            COUNT(WagerID) AS NumberOfBets
         FROM bets
         WHERE WhichBankroll = 'GreenAleph'
         GROUP BY Month
@@ -253,18 +253,19 @@ if page == "Betting Volume":
             df_volume.sort_index(inplace=True)
 
             # Plot the bar chart
-            st.subheader("Total Betting Volume by Month for 'GreenAleph'")
+            st.subheader("Number of Bets Placed by Month for 'GreenAleph'")
             plt.figure(figsize=(12, 6))
-            plt.bar(df_volume.index.strftime('%Y-%m'), df_volume['TotalVolume'])
+            plt.bar(df_volume.index.strftime('%Y-%m'), df_volume['NumberOfBets'])
             plt.xlabel('Month')
-            plt.ylabel('Total Betting Volume ($)')
-            plt.title('Betting Volume by Month (GreenAleph)')
+            plt.ylabel('Number of Bets')
+            plt.title('Number of Bets Placed by Month (GreenAleph)')
             plt.xticks(rotation=45, ha='right')
             st.pyplot(plt)
         else:
             st.warning("No data available for 'GreenAleph' betting volume.")
     else:
         st.error("Failed to retrieve data from the database.")
+
 
 
 
