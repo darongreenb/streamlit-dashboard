@@ -226,7 +226,7 @@ if page == "Main Page":
 
 # Adding the new "Betting Volume" page
 if page == "Betting Volume":
-    st.title("Betting Volume by Month")
+    st.title("Betting Volume (GA1)")
 
     # SQL query to get the number of bets by month for 'GreenAleph'
     volume_query = """
@@ -264,7 +264,7 @@ if page == "Betting Volume":
             plt.figure(figsize=(12, 6))
             bars = plt.bar(x_labels, df_volume['NumberOfBets'])
             plt.ylabel('Number of Bets')
-            plt.title('Number of Bets Placed by Month (GreenAleph)')
+            plt.title('Number of Bets Placed by Month')
             plt.xticks(rotation=45, ha='right')
 
             # Add value labels above each bar
