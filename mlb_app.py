@@ -40,7 +40,7 @@ else:
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Main Page", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions"])
+page = st.sidebar.radio("Go to", ["Main Page", "Betting Volume", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions"])
 
 
 # Check if the user is on the "Main Page" page
@@ -224,6 +224,47 @@ if page == "Main Page":
 
 
 
+# Adding the new "Betting Volume" page
+if page == "Betting Volume":
+    st.title("Betting Volume by Month")
+
+    # SQL query to get the total betting volume by month for 'GreenAleph'
+    volume_query = """
+        SELECT 
+            DATE_FORMAT(DateTimePlaced, '%Y-%m') AS Month,
+            SUM(DollarsAtStake) AS TotalVolume
+        FROM bets
+        WHERE WhichBankroll = 'GreenAleph'
+        GROUP BY Month
+        ORDER BY Month;
+    """
+
+    # Get data from the database
+    volume_data = get_data_from_db(volume_query)
+
+    if volume_data:
+        # Convert the data to a DataFrame for plotting
+        df_volume = pd.DataFrame(volume_data)
+
+        # Check if the DataFrame is not empty
+        if not df_volume.empty:
+            df_volume['Month'] = pd.to_datetime(df_volume['Month'])
+            df_volume.set_index('Month', inplace=True)
+            df_volume.sort_index(inplace=True)
+
+            # Plot the bar chart
+            st.subheader("Total Betting Volume by Month for 'GreenAleph'")
+            plt.figure(figsize=(12, 6))
+            plt.bar(df_volume.index.strftime('%Y-%m'), df_volume['TotalVolume'])
+            plt.xlabel('Month')
+            plt.ylabel('Total Betting Volume ($)')
+            plt.title('Betting Volume by Month (GreenAleph)')
+            plt.xticks(rotation=45, ha='right')
+            st.pyplot(plt)
+        else:
+            st.warning("No data available for 'GreenAleph' betting volume.")
+    else:
+        st.error("Failed to retrieve data from the database.")
 
 
 
