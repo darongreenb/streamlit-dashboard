@@ -240,11 +240,11 @@ if page == "Betting Volume":
         ORDER BY Month;
     """
 
-    # SQL query to get the total betting volume by LeagueName for 'GreenAleph'
+    # SQL query to get the total betting volume by LeagueName for 'GreenAleph', counting each WagerID only once
     league_volume_query = """
         SELECT 
             l.LeagueName,
-            COUNT(b.WagerID) AS NumberOfBets
+            COUNT(DISTINCT b.WagerID) AS NumberOfBets
         FROM bets b
         JOIN legs l ON b.WagerID = l.WagerID
         WHERE b.WhichBankroll = 'GreenAleph'
@@ -324,6 +324,7 @@ if page == "Betting Volume":
             st.warning("No data available for 'GreenAleph' betting volume by league.")
     else:
         st.error("Failed to retrieve data from the database.")
+
 
 
 
