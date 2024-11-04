@@ -254,13 +254,13 @@ if page == "Betting Volume":
 
             # Calculate the total number of bets
             total_bets = df_volume['NumberOfBets'].sum()
-            total_row = pd.DataFrame({'NumberOfBets': [total_bets]}, index=[pd.Timestamp('Total')])
+            total_row = pd.DataFrame({'NumberOfBets': [total_bets]}, index=['Total'])
             df_volume = pd.concat([df_volume, total_row])
 
             # Plot the bar chart
             st.subheader("Number of Bets Placed by Month for 'GreenAleph'")
             plt.figure(figsize=(12, 6))
-            bars = plt.bar(df_volume.index.strftime('%Y-%m').tolist() + ['Total'], df_volume['NumberOfBets'])
+            bars = plt.bar(df_volume.index.strftime('%Y-%m').tolist()[:-1] + ['Total'], df_volume['NumberOfBets'])
             plt.xlabel('Month')
             plt.ylabel('Number of Bets')
             plt.title('Number of Bets Placed by Month (GreenAleph)')
