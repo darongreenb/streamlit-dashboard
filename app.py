@@ -274,7 +274,7 @@ if page == "Betting Volume":
             x_labels = [date.strftime('%Y-%m') if isinstance(date, pd.Timestamp) else date for date in df_volume.index]
 
             # Plot the first bar chart
-            st.subheader("Number of Bets Placed by Month for 'GreenAleph'")
+            st.subheader("Number of Bets Placed by Month")
             plt.figure(figsize=(12, 6))
             bars = plt.bar(x_labels, df_volume['NumberOfBets'])
             plt.ylabel('Number of Bets')
