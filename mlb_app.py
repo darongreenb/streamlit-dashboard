@@ -309,7 +309,7 @@ if page == "Betting Volume":
         # Check if the DataFrame is not empty
         if not df_league_volume.empty:
             # Plot the second bar chart
-            st.subheader("Betting Volume by LeagueName")
+            st.subheader("Betting Volume by League")
             plt.figure(figsize=(12, 6))
             plt.bar(df_league_volume['LeagueName'], df_league_volume['NumberOfBets'])
             plt.ylabel('Number of Bets')
