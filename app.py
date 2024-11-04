@@ -313,7 +313,7 @@ if page == "Betting Volume":
             plt.figure(figsize=(12, 6))
             plt.bar(df_league_volume['LeagueName'], df_league_volume['NumberOfBets'])
             plt.ylabel('Number of Bets')
-            plt.title('Total Betting Volume by LeagueName (GreenAleph)')
+            plt.title('Betting Volume by LeagueName (GreenAleph)')
             plt.xticks(rotation=45, ha='right')
 
             # Add value labels above each bar
