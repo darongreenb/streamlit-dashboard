@@ -252,19 +252,31 @@ if page == "Betting Volume":
             df_volume.set_index('Month', inplace=True)
             df_volume.sort_index(inplace=True)
 
+            # Calculate the total number of bets
+            total_bets = df_volume['NumberOfBets'].sum()
+            total_row = pd.DataFrame({'NumberOfBets': [total_bets]}, index=[pd.Timestamp('Total')])
+            df_volume = pd.concat([df_volume, total_row])
+
             # Plot the bar chart
             st.subheader("Number of Bets Placed by Month for 'GreenAleph'")
             plt.figure(figsize=(12, 6))
-            plt.bar(df_volume.index.strftime('%Y-%m'), df_volume['NumberOfBets'])
+            bars = plt.bar(df_volume.index.strftime('%Y-%m').tolist() + ['Total'], df_volume['NumberOfBets'])
             plt.xlabel('Month')
             plt.ylabel('Number of Bets')
             plt.title('Number of Bets Placed by Month (GreenAleph)')
             plt.xticks(rotation=45, ha='right')
+
+            # Add value labels above each bar
+            for bar in bars:
+                yval = bar.get_height()
+                plt.text(bar.get_x() + bar.get_width()/2, yval, int(yval), ha='center', va='bottom')
+
             st.pyplot(plt)
         else:
             st.warning("No data available for 'GreenAleph' betting volume.")
     else:
         st.error("Failed to retrieve data from the database.")
+
 
 
 
