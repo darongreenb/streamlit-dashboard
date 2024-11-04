@@ -224,9 +224,10 @@ if page == "Main Page":
 
 
 
+
 # Adding the new "Betting Volume" page
 if page == "Betting Volume":
-    st.title("Betting Volume (GA1)")
+    st.title("Betting Volume Analysis")
 
     # SQL query to get the number of bets by month for 'GreenAleph'
     volume_query = """
@@ -239,7 +240,19 @@ if page == "Betting Volume":
         ORDER BY Month;
     """
 
-    # Get data from the database
+    # SQL query to get the total betting volume by LeagueName for 'GreenAleph'
+    league_volume_query = """
+        SELECT 
+            l.LeagueName,
+            COUNT(b.WagerID) AS NumberOfBets
+        FROM bets b
+        JOIN legs l ON b.WagerID = l.WagerID
+        WHERE b.WhichBankroll = 'GreenAleph'
+        GROUP BY l.LeagueName
+        ORDER BY NumberOfBets DESC;
+    """
+
+    # Get data from the database for the first chart
     volume_data = get_data_from_db(volume_query)
 
     if volume_data:
@@ -260,11 +273,13 @@ if page == "Betting Volume":
             # Prepare x-axis labels
             x_labels = [date.strftime('%Y-%m') if isinstance(date, pd.Timestamp) else date for date in df_volume.index]
 
-            # Plot the bar chart
+            # Plot the first bar chart
+            st.subheader("Number of Bets Placed by Month for 'GreenAleph'")
             plt.figure(figsize=(12, 6))
             bars = plt.bar(x_labels, df_volume['NumberOfBets'])
+            plt.xlabel('Month')
             plt.ylabel('Number of Bets')
-            plt.title('Number of Bets Placed by Month')
+            plt.title('Number of Bets Placed by Month (GreenAleph)')
             plt.xticks(rotation=45, ha='right')
 
             # Add value labels above each bar
@@ -277,6 +292,35 @@ if page == "Betting Volume":
             st.warning("No data available for 'GreenAleph' betting volume.")
     else:
         st.error("Failed to retrieve data from the database.")
+
+    # Get data from the database for the second chart
+    league_volume_data = get_data_from_db(league_volume_query)
+
+    if league_volume_data:
+        # Convert the data to a DataFrame for plotting
+        df_league_volume = pd.DataFrame(league_volume_data)
+
+        # Check if the DataFrame is not empty
+        if not df_league_volume.empty:
+            # Plot the second bar chart
+            st.subheader("Total Betting Volume by LeagueName for 'GreenAleph'")
+            plt.figure(figsize=(12, 6))
+            plt.bar(df_league_volume['LeagueName'], df_league_volume['NumberOfBets'])
+            plt.xlabel('League Name')
+            plt.ylabel('Number of Bets')
+            plt.title('Total Betting Volume by LeagueName (GreenAleph)')
+            plt.xticks(rotation=45, ha='right')
+
+            # Add value labels above each bar
+            for index, value in enumerate(df_league_volume['NumberOfBets']):
+                plt.text(index, value, int(value), ha='center', va='bottom')
+
+            st.pyplot(plt)
+        else:
+            st.warning("No data available for 'GreenAleph' betting volume by league.")
+    else:
+        st.error("Failed to retrieve data from the database.")
+
 
 
 
