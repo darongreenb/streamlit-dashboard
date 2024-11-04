@@ -227,7 +227,7 @@ if page == "Main Page":
 
 # Adding the new "Betting Volume" page
 if page == "Betting Volume":
-    st.title("Betting Volume Analysis")
+    st.title("Betting Volume (GA1)")
 
     # SQL query to get the number of bets by month for 'GreenAleph'
     volume_query = """
@@ -277,7 +277,6 @@ if page == "Betting Volume":
             st.subheader("Number of Bets Placed by Month for 'GreenAleph'")
             plt.figure(figsize=(12, 6))
             bars = plt.bar(x_labels, df_volume['NumberOfBets'])
-            plt.xlabel('Month')
             plt.ylabel('Number of Bets')
             plt.title('Number of Bets Placed by Month (GreenAleph)')
             plt.xticks(rotation=45, ha='right')
@@ -310,10 +309,9 @@ if page == "Betting Volume":
         # Check if the DataFrame is not empty
         if not df_league_volume.empty:
             # Plot the second bar chart
-            st.subheader("Total Betting Volume by LeagueName for 'GreenAleph'")
+            st.subheader("Betting Volume by LeagueName")
             plt.figure(figsize=(12, 6))
             plt.bar(df_league_volume['LeagueName'], df_league_volume['NumberOfBets'])
-            plt.xlabel('League Name')
             plt.ylabel('Number of Bets')
             plt.title('Total Betting Volume by LeagueName (GreenAleph)')
             plt.xticks(rotation=45, ha='right')
