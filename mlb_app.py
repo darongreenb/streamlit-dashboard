@@ -226,7 +226,7 @@ if page == "Main Page":
             DATE_FORMAT(DateTimePlaced, '%Y-%m') AS Month,
             SUM(NetProfit) AS TotalNetProfit
         FROM bets
-        WHERE WhichBankroll = 'GreenAleph' AND WLCA != 'Cashout'
+        WHERE WhichBankroll = 'GreenAleph'
         GROUP BY Month
         ORDER BY Month;
     """
