@@ -220,7 +220,7 @@ if page == "Main Page":
             plt.tight_layout()
             st.pyplot(fig)
 
-    # SQL query for Realized Profit by Month
+        # SQL query for Realized Profit by Month
     monthly_profit_query = """
         SELECT 
             DATE_FORMAT(DateTimePlaced, '%Y-%m') AS Month,
@@ -246,23 +246,48 @@ if page == "Main Page":
             monthly_profit_df.set_index('Month', inplace=True)
             monthly_profit_df.sort_index(inplace=True)
     
-            # Plot the Realized Profit by Month chart
+            # Plot the Realized Profit by Month line graph
             st.subheader("Realized Profit by Month for 'GreenAleph'")
-            plt.figure(figsize=(12, 6))
-            bars = plt.bar(monthly_profit_df.index.strftime('%Y-%m'), monthly_profit_df['TotalNetProfit'], color='green', edgecolor='black')
-            plt.ylabel('Total Realized Profit ($)')
-            plt.title('Total Realized Profit by Month (GreenAleph)')
+            fig, ax = plt.subplots(figsize=(12, 6))
+    
+            # Separate the data into positive and negative segments for color coding
+            months = monthly_profit_df.index.strftime('%Y-%m')
+            profits = monthly_profit_df['TotalNetProfit']
+    
+            # Plot segments of the line with color based on whether profit is above or below zero
+            for i in range(1, len(profits)):
+                # Check if the line segment crosses the x-axis
+                if profits[i-1] >= 0 and profits[i] >= 0:
+                    ax.plot(months[i-1:i+1], profits[i-1:i+1], color='green', linewidth=2)
+                elif profits[i-1] < 0 and profits[i] < 0:
+                    ax.plot(months[i-1:i+1], profits[i-1:i+1], color='red', linewidth=2)
+                else:
+                    # Split the segment at zero if it crosses the x-axis
+                    x0, y0 = months[i-1], profits[i-1]
+                    x1, y1 = months[i], profits[i]
+                    zero_crossing = x0 + (x1 - x0) * (-y0 / (y1 - y0))
+                    ax.plot([x0, zero_crossing], [y0, 0], color='red' if y0 < 0 else 'green', linewidth=2)
+                    ax.plot([zero_crossing, x1], [0, y1], color='red' if y1 < 0 else 'green', linewidth=2)
+    
+            # Add labels and title
+            ax.set_ylabel('Total Realized Profit ($)')
+            ax.set_title('Total Realized Profit by Month (GreenAleph)')
+            ax.axhline(0, color='black', linewidth=0.8)  # Add y-axis line
+    
+            # Set x-axis labels
             plt.xticks(rotation=45, ha='right')
     
-            # Add value labels above each bar, rounded to whole numbers
-            for bar in bars:
-                yval = bar.get_height()
-                plt.text(bar.get_x() + bar.get_width() / 2, yval, f"${yval:,.0f}", ha='center', va='bottom')
+            # Add value labels above each data point
+            for month, profit in zip(months, profits):
+                ax.annotate(f"${profit:,.0f}", xy=(month, profit),
+                            xytext=(0, 5), textcoords="offset points",
+                            ha='center', va='bottom' if profit >= 0 else 'top', fontsize=10)
     
             plt.tight_layout()
-            st.pyplot(plt)
+            st.pyplot(fig)
         else:
             st.warning("No data available for monthly realized profit.")
+
 
 
 
