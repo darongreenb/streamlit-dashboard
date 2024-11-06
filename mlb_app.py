@@ -230,7 +230,7 @@ elif page == "Principal Volume":
     principal_volume_query = """
         SELECT 
             DATE_FORMAT(DateTimePlaced, '%Y-%m') AS Month,
-            SUM(DollarsAtStake) AS TotalDollarsAtStake
+            SUM(DISTINCT CASE WHEN LegCount > 1 THEN DollarsAtStake ELSE DollarsAtStake END) AS TotalDollarsAtStake
         FROM bets
         WHERE WhichBankroll = 'GreenAleph' AND WLCA != 'Cashout'
         GROUP BY Month
