@@ -220,7 +220,7 @@ if page == "Main Page":
             plt.tight_layout()
             st.pyplot(fig)
 
-        # SQL query for Realized Profit by Month
+    # SQL query for Realized Profit by Month
     monthly_profit_query = """
         SELECT 
             DATE_FORMAT(DateTimePlaced, '%Y-%m') AS Month,
@@ -231,7 +231,7 @@ if page == "Main Page":
         ORDER BY Month;
     """
     
-    # Fetch and process data for Realized Profit by Month
+    # Fetch and process data for Cumulative Realized Profit by Month
     monthly_profit_data = get_data_from_db(monthly_profit_query)
     if monthly_profit_data is None:
         st.error("Failed to fetch monthly realized profit data from the database.")
@@ -246,39 +246,37 @@ if page == "Main Page":
             monthly_profit_df.set_index('Month', inplace=True)
             monthly_profit_df.sort_index(inplace=True)
     
-            # Plot the Realized Profit by Month line graph
-            st.subheader("Realized Profit by Month for 'GreenAleph'")
+            # Calculate cumulative sum for the TotalNetProfit column
+            monthly_profit_df['CumulativeNetProfit'] = monthly_profit_df['TotalNetProfit'].cumsum()
+    
+            # Plot the Cumulative Realized Profit by Month line graph
+            st.subheader("Cumulative Realized Profit by Month for 'GreenAleph'")
             fig, ax = plt.subplots(figsize=(12, 6))
     
             # Separate the data into positive and negative segments for color coding
             months = monthly_profit_df.index.strftime('%Y-%m')
-            profits = monthly_profit_df['TotalNetProfit']
+            cumulative_profits = monthly_profit_df['CumulativeNetProfit']
     
-            # Plot segments of the line with color based on whether profit is above or below zero
-            for i in range(1, len(profits)):
-                # Check if the line segment crosses the x-axis
-                if profits[i-1] >= 0 and profits[i] >= 0:
-                    ax.plot(months[i-1:i+1], profits[i-1:i+1], color='green', linewidth=2)
-                elif profits[i-1] < 0 and profits[i] < 0:
-                    ax.plot(months[i-1:i+1], profits[i-1:i+1], color='red', linewidth=2)
+            # Plot segments of the line with color based on whether cumulative profit is above or below zero
+            for i in range(1, len(cumulative_profits)):
+                if cumulative_profits[i-1] >= 0 and cumulative_profits[i] >= 0:
+                    ax.plot(months[i-1:i+1], cumulative_profits[i-1:i+1], color='green', linewidth=2)
+                elif cumulative_profits[i-1] < 0 and cumulative_profits[i] < 0:
+                    ax.plot(months[i-1:i+1], cumulative_profits[i-1:i+1], color='red', linewidth=2)
                 else:
-                    # Split the segment at zero if it crosses the x-axis
-                    x0, y0 = months[i-1], profits[i-1]
-                    x1, y1 = months[i], profits[i]
-                    zero_crossing = x0 + (x1 - x0) * (-y0 / (y1 - y0))
-                    ax.plot([x0, zero_crossing], [y0, 0], color='red' if y0 < 0 else 'green', linewidth=2)
-                    ax.plot([zero_crossing, x1], [0, y1], color='red' if y1 < 0 else 'green', linewidth=2)
+                    # Handle cases where the line crosses zero
+                    ax.plot(months[i-1:i+1], cumulative_profits[i-1:i+1], color='green' if cumulative_profits[i] >= 0 else 'red', linewidth=2)
     
             # Add labels and title
-            ax.set_ylabel('Total Realized Profit ($)')
-            ax.set_title('Total Realized Profit by Month (GreenAleph)')
+            ax.set_ylabel('Cumulative Realized Profit ($)')
+            ax.set_title('Cumulative Realized Profit by Month (GreenAleph)')
             ax.axhline(0, color='black', linewidth=0.8)  # Add y-axis line
     
             # Set x-axis labels
             plt.xticks(rotation=45, ha='right')
     
             # Add value labels above each data point
-            for month, profit in zip(months, profits):
+            for month, profit in zip(months, cumulative_profits):
                 ax.annotate(f"${profit:,.0f}", xy=(month, profit),
                             xytext=(0, 5), textcoords="offset points",
                             ha='center', va='bottom' if profit >= 0 else 'top', fontsize=10)
@@ -286,7 +284,8 @@ if page == "Main Page":
             plt.tight_layout()
             st.pyplot(fig)
         else:
-            st.warning("No data available for monthly realized profit.")
+            st.warning("No data available for monthly cumulative realized profit.")
+
 
 
 
