@@ -266,23 +266,22 @@ if page == "Main Page":
             ax.set_ylabel('Cumulative Realized Profit ($)', fontsize=16, fontweight='bold')
             ax.set_title('Cumulative Realized Profit by Month (GreenAleph)', fontsize=20, fontweight='bold')
             ax.axhline(0, color='black', linewidth=1)  # Add horizontal line at y=0
-            ax.grid(True, linestyle='--', alpha=0.7)  # Add a light grid
     
             # Set x-axis labels with rotation and larger font size
             plt.xticks(rotation=45, ha='right', fontsize=12)
             plt.yticks(fontsize=12)
     
-            # Add value labels above each data point, larger for visibility
+            # Add black value labels above each data point with a larger font size
             for month, profit in zip(months, cumulative_profits):
                 ax.annotate(f"${profit:,.0f}", xy=(month, profit),
                             xytext=(0, 8), textcoords="offset points",
-                            ha='center', fontsize=12, fontweight='bold',
-                            color='green' if profit >= 0 else 'red')
+                            ha='center', fontsize=14, fontweight='bold', color='black')
     
             plt.tight_layout()
             st.pyplot(fig)
         else:
             st.warning("No data available for monthly cumulative realized profit.")
+
 
 
 
