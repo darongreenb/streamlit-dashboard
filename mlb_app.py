@@ -40,7 +40,7 @@ else:
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Main Page", "Principal Volume", "Betting Frequency", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions"])
+page = st.sidebar.radio("Go to", ["Main Page", "Principal Volume", "Betting Frequency", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions", "NBA Participant Positions"])
 
 
 # Check if the user is on the "Main Page" page
@@ -1603,6 +1603,75 @@ elif page == "MLB Participant Positions":
                 st.table(df)
             else:
                 st.warning('No data found for the selected filters.')
+
+
+
+elif page == "NBA Participant Positions":
+    # NBA Participant Positions
+    st.title('NBA Participant Positions - GA1')
+
+    # Fetch the list of participant names for the dropdown
+    participants_query = """
+    SELECT DISTINCT ParticipantName 
+    FROM legs 
+    WHERE LeagueName = 'NBA'
+    ORDER BY ParticipantName ASC;
+    """
+    participants = get_data_from_db(participants_query)
+
+    if participants is not None:
+        participant_names = [participant['ParticipantName'] for participant in participants]
+        participant_selected = st.selectbox('Select Participant', participant_names)
+
+        if participant_selected:
+            wlca_filter = st.selectbox('Select WLCA', ['All', 'Win', 'Loss', 'Cashout', 'Active'])
+            legcount_filter = st.selectbox('Select Bet Type', ['All', 'Straight', 'Parlay'])
+
+            # SQL query to fetch data for the selected participant
+            query = """
+            SELECT 
+                l.LegID,
+                l.EventType,
+                b.DollarsAtStake,
+                b.PotentialPayout,
+                b.NetProfit,
+                b.ImpliedOdds,
+                l.EventLabel,
+                l.LegDescription,
+                b.Sportsbook,
+                b.DateTimePlaced,
+                b.LegCount
+            FROM 
+                bets b
+            JOIN 
+                legs l ON b.WagerID = l.WagerID
+            WHERE 
+                l.ParticipantName = %s
+                AND b.WhichBankroll = 'GreenAleph'
+                AND l.LeagueName = 'NBA'
+            """
+            params = [participant_selected]
+
+            if wlca_filter != 'All':
+                query += " AND b.WLCA = %s"
+                params.append(wlca_filter)
+            
+            if legcount_filter == 'Straight':
+                query += " AND b.LegCount = 1"
+            elif legcount_filter == 'Parlay':
+                query += " AND b.LegCount > 1"
+
+            # Fetch the data for the selected participant
+            data = get_data_from_db(query, params)
+
+            # Display the data
+            if data:
+                df = pd.DataFrame(data)
+                st.subheader(f'Bets and Legs for {participant_selected}')
+                st.table(df)
+            else:
+                st.warning('No data found for the selected filters.')
+
 
 
 
