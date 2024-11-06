@@ -220,7 +220,7 @@ if page == "Main Page":
             plt.tight_layout()
             st.pyplot(fig)
 
-     # SQL query for Realized Profit by Month without excluding 'Cashout'
+    # SQL query for Realized Profit by Month without excluding 'Cashout'
     monthly_profit_query = """
         SELECT 
             DATE_FORMAT(DateTimePlaced, '%Y-%m') AS Month,
@@ -250,8 +250,8 @@ if page == "Main Page":
             monthly_profit_df['CumulativeNetProfit'] = monthly_profit_df['TotalNetProfit'].cumsum()
     
             # Determine y-axis limits with a buffer around min and max values
-            y_min = monthly_profit_df['CumulativeNetProfit'].min() - 6000
-            y_max = monthly_profit_df['CumulativeNetProfit'].max() + 6000
+            y_min = monthly_profit_df['CumulativeNetProfit'].min() - 3000
+            y_max = monthly_profit_df['CumulativeNetProfit'].max() + 3000
     
             # Plot the Cumulative Realized Profit by Month line graph
             st.subheader("Cumulative Realized Profit by Month for 'GreenAleph'")
@@ -276,16 +276,18 @@ if page == "Main Page":
             plt.xticks(rotation=45, ha='right', fontsize=12)
             plt.yticks(fontsize=12)
     
-            # Add black value labels above each data point with a larger font size
-            for month, profit in zip(months, cumulative_profits):
-                ax.annotate(f"${profit:,.0f}", xy=(month, profit),
-                            xytext=(0, 8), textcoords="offset points",
-                            ha='center', fontsize=14, fontweight='bold', color='black')
+            # Add only the final value label on the right side
+            final_month = months[-1]
+            final_profit = cumulative_profits.iloc[-1]
+            ax.annotate(f"${final_profit:,.0f}", xy=(final_month, final_profit),
+                        xytext=(0, 8), textcoords="offset points",
+                        ha='center', fontsize=14, fontweight='bold', color='black')
     
             plt.tight_layout()
             st.pyplot(fig)
         else:
             st.warning("No data available for monthly cumulative realized profit.")
+
 
 
 
