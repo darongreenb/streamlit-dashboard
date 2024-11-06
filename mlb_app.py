@@ -220,7 +220,7 @@ if page == "Main Page":
             plt.tight_layout()
             st.pyplot(fig)
 
-    # SQL query for Realized Profit by Month
+    # SQL query for Realized Profit by Month without excluding 'Cashout'
     monthly_profit_query = """
         SELECT 
             DATE_FORMAT(DateTimePlaced, '%Y-%m') AS Month,
@@ -251,35 +251,33 @@ if page == "Main Page":
     
             # Plot the Cumulative Realized Profit by Month line graph
             st.subheader("Cumulative Realized Profit by Month for 'GreenAleph'")
-            fig, ax = plt.subplots(figsize=(12, 6))
+            fig, ax = plt.subplots(figsize=(14, 8))
     
-            # Separate the data into positive and negative segments for color coding
+            # Separate data for segments above and below zero
             months = monthly_profit_df.index.strftime('%Y-%m')
             cumulative_profits = monthly_profit_df['CumulativeNetProfit']
     
             # Plot segments of the line with color based on whether cumulative profit is above or below zero
             for i in range(1, len(cumulative_profits)):
-                if cumulative_profits[i-1] >= 0 and cumulative_profits[i] >= 0:
-                    ax.plot(months[i-1:i+1], cumulative_profits[i-1:i+1], color='green', linewidth=2)
-                elif cumulative_profits[i-1] < 0 and cumulative_profits[i] < 0:
-                    ax.plot(months[i-1:i+1], cumulative_profits[i-1:i+1], color='red', linewidth=2)
-                else:
-                    # Handle cases where the line crosses zero
-                    ax.plot(months[i-1:i+1], cumulative_profits[i-1:i+1], color='green' if cumulative_profits[i] >= 0 else 'red', linewidth=2)
+                color = 'green' if cumulative_profits[i] >= 0 else 'red'
+                ax.plot(months[i-1:i+1], cumulative_profits[i-1:i+1], color=color, linewidth=3)
     
-            # Add labels and title
-            ax.set_ylabel('Cumulative Realized Profit ($)')
-            ax.set_title('Cumulative Realized Profit by Month (GreenAleph)')
-            ax.axhline(0, color='black', linewidth=0.8)  # Add y-axis line
+            # Enhancing the plot aesthetics
+            ax.set_ylabel('Cumulative Realized Profit ($)', fontsize=16, fontweight='bold')
+            ax.set_title('Cumulative Realized Profit by Month (GreenAleph)', fontsize=20, fontweight='bold')
+            ax.axhline(0, color='black', linewidth=1)  # Add horizontal line at y=0
+            ax.grid(True, linestyle='--', alpha=0.7)  # Add a light grid
     
-            # Set x-axis labels
-            plt.xticks(rotation=45, ha='right')
+            # Set x-axis labels with rotation and larger font size
+            plt.xticks(rotation=45, ha='right', fontsize=12)
+            plt.yticks(fontsize=12)
     
-            # Add value labels above each data point
+            # Add value labels above each data point, larger for visibility
             for month, profit in zip(months, cumulative_profits):
                 ax.annotate(f"${profit:,.0f}", xy=(month, profit),
-                            xytext=(0, 5), textcoords="offset points",
-                            ha='center', va='bottom' if profit >= 0 else 'top', fontsize=10)
+                            xytext=(0, 8), textcoords="offset points",
+                            ha='center', fontsize=12, fontweight='bold',
+                            color='green' if profit >= 0 else 'red')
     
             plt.tight_layout()
             st.pyplot(fig)
