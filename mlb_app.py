@@ -241,12 +241,13 @@ elif page == "Principal Volume":
     league_principal_volume_query = """
         SELECT 
             l.LeagueName,
-            SUM(b.DollarsAtStake) AS TotalDollarsAtStake
+            SUM(DISTINCT CASE WHEN b.LegCount > 1 THEN b.DollarsAtStake ELSE b.DollarsAtStake END) AS TotalDollarsAtStake
         FROM bets b
         JOIN legs l ON b.WagerID = l.WagerID
         WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA != 'Cashout'
         GROUP BY l.LeagueName
         ORDER BY TotalDollarsAtStake DESC;
+
     """
 
     # Get data from the database for the first chart
