@@ -223,105 +223,106 @@ if page == "Main Page":
 
 
 # Adding the new "Principal Volume" page
-if page == "Principal Volume":
-    st.title("Betting Stake Volume (GA1)")
+elif page == "Principal Volume":
+    st.title("Principal Volume (GA1)")
 
-    # SQL query to get the total dollars at stake by month for 'GreenAleph'
-    stake_volume_query = """
+    # SQL query to get the total principal (dollars at stake) by month for 'GreenAleph'
+    principal_volume_query = """
         SELECT 
             DATE_FORMAT(DateTimePlaced, '%Y-%m') AS Month,
             SUM(DollarsAtStake) AS TotalDollarsAtStake
         FROM bets
-        WHERE WhichBankroll = 'GreenAleph'
+        WHERE WhichBankroll = 'GreenAleph' AND WLCA != 'Cashout'
         GROUP BY Month
         ORDER BY Month;
     """
 
-    # SQL query to get the total dollars at stake by LeagueName for 'GreenAleph', summing each WagerID only once
-    league_stake_volume_query = """
+    # SQL query to get the total principal volume by LeagueName for 'GreenAleph', summing each WagerID only once
+    league_principal_volume_query = """
         SELECT 
             l.LeagueName,
             SUM(b.DollarsAtStake) AS TotalDollarsAtStake
         FROM bets b
         JOIN legs l ON b.WagerID = l.WagerID
-        WHERE b.WhichBankroll = 'GreenAleph'
+        WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA != 'Cashout'
         GROUP BY l.LeagueName
         ORDER BY TotalDollarsAtStake DESC;
     """
 
     # Get data from the database for the first chart
-    stake_volume_data = get_data_from_db(stake_volume_query)
+    principal_volume_data = get_data_from_db(principal_volume_query)
 
-    if stake_volume_data:
+    if principal_volume_data:
         # Convert the data to a DataFrame for plotting
-        df_stake_volume = pd.DataFrame(stake_volume_data)
+        df_principal_volume = pd.DataFrame(principal_volume_data)
 
         # Check if the DataFrame is not empty
-        if not df_stake_volume.empty:
-            df_stake_volume['Month'] = pd.to_datetime(df_stake_volume['Month'])
-            df_stake_volume.set_index('Month', inplace=True)
-            df_stake_volume.sort_index(inplace=True)
+        if not df_principal_volume.empty:
+            df_principal_volume['Month'] = pd.to_datetime(df_principal_volume['Month'])
+            df_principal_volume.set_index('Month', inplace=True)
+            df_principal_volume.sort_index(inplace=True)
 
-            # Calculate the total dollars at stake
-            total_stake = df_stake_volume['TotalDollarsAtStake'].sum()
-            total_row = pd.DataFrame({'TotalDollarsAtStake': [total_stake]}, index=['Total'])
-            df_stake_volume = pd.concat([df_stake_volume, total_row])
+            # Calculate the total principal volume
+            total_principal = df_principal_volume['TotalDollarsAtStake'].sum()
+            total_row = pd.DataFrame({'TotalDollarsAtStake': [total_principal]}, index=['Total'])
+            df_principal_volume = pd.concat([df_principal_volume, total_row])
 
             # Prepare x-axis labels
-            x_labels = [date.strftime('%Y-%m') if isinstance(date, pd.Timestamp) else date for date in df_stake_volume.index]
+            x_labels = [date.strftime('%Y-%m') if isinstance(date, pd.Timestamp) else date for date in df_principal_volume.index]
 
             # Plot the first bar chart
-            st.subheader("Total Dollars at Stake by Month for 'GreenAleph'")
+            st.subheader("Total Principal Volume by Month for 'GreenAleph'")
             plt.figure(figsize=(12, 6))
-            bars = plt.bar(x_labels, df_stake_volume['TotalDollarsAtStake'])
-            plt.ylabel('Total Dollars at Stake ($)')
-            plt.title('Total Dollars at Stake by Month (GreenAleph)')
+            bars = plt.bar(x_labels, df_principal_volume['TotalDollarsAtStake'])
+            plt.ylabel('Total Principal ($)')
+            plt.title('Total Principal Volume by Month (GreenAleph)')
             plt.xticks(rotation=45, ha='right')
 
-            # Add value labels above each bar
+            # Add value labels above each bar, rounded to whole numbers
             for bar in bars:
                 yval = bar.get_height()
-                plt.text(bar.get_x() + bar.get_width()/2, yval, f"${yval:,.2f}", ha='center', va='bottom')
+                plt.text(bar.get_x() + bar.get_width()/2, yval, f"${yval:,.0f}", ha='center', va='bottom')
 
             st.pyplot(plt)
         else:
-            st.warning("No data available for 'GreenAleph' dollars at stake.")
+            st.warning("No data available for 'GreenAleph' principal volume.")
     else:
         st.error("Failed to retrieve data from the database.")
 
     # Get data from the database for the second chart
-    league_stake_volume_data = get_data_from_db(league_stake_volume_query)
+    league_principal_volume_data = get_data_from_db(league_principal_volume_query)
 
-    if league_stake_volume_data:
+    if league_principal_volume_data:
         # Convert the data to a DataFrame for plotting
-        df_league_stake_volume = pd.DataFrame(league_stake_volume_data)
+        df_league_principal_volume = pd.DataFrame(league_principal_volume_data)
 
         # Ensure correct data types for plotting
-        df_league_stake_volume['LeagueName'] = df_league_stake_volume['LeagueName'].astype(str)
-        df_league_stake_volume['TotalDollarsAtStake'] = df_league_stake_volume['TotalDollarsAtStake'].astype(float)
+        df_league_principal_volume['LeagueName'] = df_league_principal_volume['LeagueName'].astype(str)
+        df_league_principal_volume['TotalDollarsAtStake'] = df_league_principal_volume['TotalDollarsAtStake'].astype(float)
 
         # Sort by TotalDollarsAtStake in ascending order
-        df_league_stake_volume = df_league_stake_volume.sort_values(by='TotalDollarsAtStake', ascending=True)
+        df_league_principal_volume = df_league_principal_volume.sort_values(by='TotalDollarsAtStake', ascending=True)
 
         # Check if the DataFrame is not empty
-        if not df_league_stake_volume.empty:
+        if not df_league_principal_volume.empty:
             # Plot the second bar chart
-            st.subheader("Betting Stake Volume by League")
+            st.subheader("Principal Volume by League")
             plt.figure(figsize=(12, 6))
-            plt.bar(df_league_stake_volume['LeagueName'], df_league_stake_volume['TotalDollarsAtStake'])
-            plt.ylabel('Total Dollars at Stake ($)')
-            plt.title('Total Dollars at Stake by LeagueName (GreenAleph)')
+            plt.bar(df_league_principal_volume['LeagueName'], df_league_principal_volume['TotalDollarsAtStake'])
+            plt.ylabel('Total Principal ($)')
+            plt.title('Total Principal Volume by LeagueName (GreenAleph)')
             plt.xticks(rotation=45, ha='right')
 
-            # Add value labels above each bar
-            for index, value in enumerate(df_league_stake_volume['TotalDollarsAtStake']):
-                plt.text(index, value, f"${value:,.2f}", ha='center', va='bottom')
+            # Add value labels above each bar, rounded to whole numbers
+            for index, value in enumerate(df_league_principal_volume['TotalDollarsAtStake']):
+                plt.text(index, value, f"${value:,.0f}", ha='center', va='bottom')
 
             st.pyplot(plt)
         else:
-            st.warning("No data available for 'GreenAleph' dollars at stake by league.")
+            st.warning("No data available for 'GreenAleph' principal volume by league.")
     else:
         st.error("Failed to retrieve data from the database.")
+
 
 
 
