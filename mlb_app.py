@@ -273,8 +273,8 @@ if page == "Main Page":
             ax.set_ylim(y_min, y_max)  # Set y-axis limits
     
             # Set x-axis labels with rotation and larger font size
-            plt.xticks(rotation=45, ha='right', fontsize=12)
-            plt.yticks(fontsize=12)
+            plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+            plt.yticks(fontsize=14, fontweight='bold')
     
             # Add only the final value label on the right side
             final_month = months[-1]
