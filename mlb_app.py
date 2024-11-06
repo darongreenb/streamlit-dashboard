@@ -410,11 +410,11 @@ if page == "Betting Frequency":
         # Check if the DataFrame is not empty
         if not df_league_frequency.empty:
             # Plot the second bar chart
-            st.subheader("Betting frequency by League")
+            st.subheader("Betting Frequency by League")
             plt.figure(figsize=(12, 6))
             plt.bar(df_league_frequency['LeagueName'], df_league_frequency['NumberOfBets'])
             plt.ylabel('Number of Bets')
-            plt.title('Total Betting frequency by LeagueName (GreenAleph)')
+            plt.title('Number of Bets Placed by League (GreenAleph)')
             plt.xticks(rotation=45, ha='right')
 
             # Add value labels above each bar
