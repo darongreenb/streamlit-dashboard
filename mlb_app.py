@@ -1613,8 +1613,9 @@ elif page == "NBA Participant Positions":
     # Fetch the list of participant names for the dropdown
     participants_query = """
     SELECT DISTINCT ParticipantName 
-    FROM legs 
-    WHERE LeagueName = 'NBA'
+    FROM legs l
+    JOIN bets b ON l.WagerID = b.WagerID
+    WHERE l.LeagueName = 'NBA' AND b.WhichBankroll = 'GreenAleph'
     ORDER BY ParticipantName ASC;
     """
     participants = get_data_from_db(participants_query)
