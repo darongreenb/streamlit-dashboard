@@ -220,7 +220,7 @@ if page == "Main Page":
             plt.tight_layout()
             st.pyplot(fig)
 
-    # SQL query for Realized Profit by Month without excluding 'Cashout'
+     # SQL query for Realized Profit by Month without excluding 'Cashout'
     monthly_profit_query = """
         SELECT 
             DATE_FORMAT(DateTimePlaced, '%Y-%m') AS Month,
@@ -249,6 +249,10 @@ if page == "Main Page":
             # Calculate cumulative sum for the TotalNetProfit column
             monthly_profit_df['CumulativeNetProfit'] = monthly_profit_df['TotalNetProfit'].cumsum()
     
+            # Determine y-axis limits with a buffer around min and max values
+            y_min = monthly_profit_df['CumulativeNetProfit'].min() - 3000
+            y_max = monthly_profit_df['CumulativeNetProfit'].max() + 3000
+    
             # Plot the Cumulative Realized Profit by Month line graph
             st.subheader("Cumulative Realized Profit by Month for 'GreenAleph'")
             fig, ax = plt.subplots(figsize=(14, 8))
@@ -266,6 +270,7 @@ if page == "Main Page":
             ax.set_ylabel('Cumulative Realized Profit ($)', fontsize=16, fontweight='bold')
             ax.set_title('Cumulative Realized Profit by Month (GreenAleph)', fontsize=20, fontweight='bold')
             ax.axhline(0, color='black', linewidth=1)  # Add horizontal line at y=0
+            ax.set_ylim(y_min, y_max)  # Set y-axis limits
     
             # Set x-axis labels with rotation and larger font size
             plt.xticks(rotation=45, ha='right', fontsize=12)
@@ -281,6 +286,7 @@ if page == "Main Page":
             st.pyplot(fig)
         else:
             st.warning("No data available for monthly cumulative realized profit.")
+
 
 
 
