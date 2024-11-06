@@ -250,8 +250,8 @@ if page == "Main Page":
             monthly_profit_df['CumulativeNetProfit'] = monthly_profit_df['TotalNetProfit'].cumsum()
     
             # Determine y-axis limits with a buffer around min and max values
-            y_min = monthly_profit_df['CumulativeNetProfit'].min() - 3000
-            y_max = monthly_profit_df['CumulativeNetProfit'].max() + 3000
+            y_min = monthly_profit_df['CumulativeNetProfit'].min() - 6000
+            y_max = monthly_profit_df['CumulativeNetProfit'].max() + 6000
     
             # Plot the Cumulative Realized Profit by Month line graph
             st.subheader("Cumulative Realized Profit by Month for 'GreenAleph'")
