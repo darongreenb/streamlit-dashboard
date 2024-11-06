@@ -220,6 +220,51 @@ if page == "Main Page":
             plt.tight_layout()
             st.pyplot(fig)
 
+    # SQL query for Realized Profit by Month
+    monthly_profit_query = """
+        SELECT 
+            DATE_FORMAT(DateTimePlaced, '%Y-%m') AS Month,
+            SUM(NetProfit) AS TotalNetProfit
+        FROM bets
+        WHERE WhichBankroll = 'GreenAleph' AND WLCA != 'Cashout'
+        GROUP BY Month
+        ORDER BY Month;
+    """
+    
+    # Fetch and process data for Realized Profit by Month
+    monthly_profit_data = get_data_from_db(monthly_profit_query)
+    if monthly_profit_data is None:
+        st.error("Failed to fetch monthly realized profit data from the database.")
+    else:
+        # Convert data to DataFrame
+        monthly_profit_df = pd.DataFrame(monthly_profit_data)
+    
+        # Ensure the DataFrame is not empty
+        if not monthly_profit_df.empty:
+            # Convert Month column to datetime and set as index
+            monthly_profit_df['Month'] = pd.to_datetime(monthly_profit_df['Month'])
+            monthly_profit_df.set_index('Month', inplace=True)
+            monthly_profit_df.sort_index(inplace=True)
+    
+            # Plot the Realized Profit by Month chart
+            st.subheader("Realized Profit by Month for 'GreenAleph'")
+            plt.figure(figsize=(12, 6))
+            bars = plt.bar(monthly_profit_df.index.strftime('%Y-%m'), monthly_profit_df['TotalNetProfit'], color='green', edgecolor='black')
+            plt.ylabel('Total Realized Profit ($)')
+            plt.title('Total Realized Profit by Month (GreenAleph)')
+            plt.xticks(rotation=45, ha='right')
+    
+            # Add value labels above each bar, rounded to whole numbers
+            for bar in bars:
+                yval = bar.get_height()
+                plt.text(bar.get_x() + bar.get_width() / 2, yval, f"${yval:,.0f}", ha='center', va='bottom')
+    
+            plt.tight_layout()
+            st.pyplot(plt)
+        else:
+            st.warning("No data available for monthly realized profit.")
+
+
 
 
 # Adding the new "Principal Volume" page
