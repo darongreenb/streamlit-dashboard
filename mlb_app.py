@@ -254,7 +254,7 @@ if page == "Main Page":
             y_max = monthly_profit_df['CumulativeNetProfit'].max() + 6000
     
             # Plot the Cumulative Realized Profit by Month line graph
-            st.subheader("Cumulative Realized Profit by Month for 'GreenAleph'")
+            #st.subheader("Cumulative Realized Profit by Month for 'GreenAleph'")
             fig, ax = plt.subplots(figsize=(14, 8))
     
             # Separate data for segments above and below zero
