@@ -223,14 +223,14 @@ if page == "Main Page":
 
 
 # Adding the new "Principal Volume" page
-elif page == "Principal Volume":
+if page == "Principal Volume":
     st.title("Principal Volume (GA1)")
 
-    # SQL query to get the total principal (dollars at stake) by month for 'GreenAleph'
+    # SQL query to get the total principal (dollars at stake) by month for 'GreenAleph' without including cashouts
     principal_volume_query = """
         SELECT 
             DATE_FORMAT(DateTimePlaced, '%Y-%m') AS Month,
-            SUM(DISTINCT CASE WHEN LegCount > 1 THEN DollarsAtStake ELSE DollarsAtStake END) AS TotalDollarsAtStake
+            SUM(DollarsAtStake) AS TotalDollarsAtStake
         FROM bets
         WHERE WhichBankroll = 'GreenAleph' AND WLCA != 'Cashout'
         GROUP BY Month
@@ -241,13 +241,17 @@ elif page == "Principal Volume":
     league_principal_volume_query = """
         SELECT 
             l.LeagueName,
-            SUM(DISTINCT CASE WHEN b.LegCount > 1 THEN b.DollarsAtStake ELSE b.DollarsAtStake END) AS TotalDollarsAtStake
+            SUM(b.DollarsAtStake) AS TotalDollarsAtStake
         FROM bets b
         JOIN legs l ON b.WagerID = l.WagerID
         WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA != 'Cashout'
+        AND b.WagerID IN (
+            SELECT DISTINCT WagerID
+            FROM bets
+            WHERE LegCount <= 1 OR (LegCount > 1 AND WLCA != 'Cashout')
+        )
         GROUP BY l.LeagueName
         ORDER BY TotalDollarsAtStake DESC;
-
     """
 
     # Get data from the database for the first chart
@@ -323,6 +327,7 @@ elif page == "Principal Volume":
             st.warning("No data available for 'GreenAleph' principal volume by league.")
     else:
         st.error("Failed to retrieve data from the database.")
+
 
 
 
