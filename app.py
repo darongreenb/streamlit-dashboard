@@ -40,7 +40,7 @@ else:
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Main Page", "Betting Volume", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "MLB Participant Positions"])
+page = st.sidebar.radio("Go to", ["Main Page", "Principal Volume", "Betting Frequency", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "NBA Participant Positions", "NFL Participant Positions"])
 
 
 # Check if the user is on the "Main Page" page
@@ -220,17 +220,199 @@ if page == "Main Page":
             plt.tight_layout()
             st.pyplot(fig)
 
+    # SQL query for Realized Profit by Month without excluding 'Cashout'
+    monthly_profit_query = """
+        SELECT 
+            DATE_FORMAT(DateTimePlaced, '%Y-%m') AS Month,
+            SUM(NetProfit) AS TotalNetProfit
+        FROM bets
+        WHERE WhichBankroll = 'GreenAleph'
+        GROUP BY Month
+        ORDER BY Month;
+    """
+    
+    # Fetch and process data for Cumulative Realized Profit by Month
+    monthly_profit_data = get_data_from_db(monthly_profit_query)
+    if monthly_profit_data is None:
+        st.error("Failed to fetch monthly realized profit data from the database.")
+    else:
+        # Convert data to DataFrame
+        monthly_profit_df = pd.DataFrame(monthly_profit_data)
+    
+        # Ensure the DataFrame is not empty
+        if not monthly_profit_df.empty:
+            # Convert Month column to datetime and set as index
+            monthly_profit_df['Month'] = pd.to_datetime(monthly_profit_df['Month'])
+            monthly_profit_df.set_index('Month', inplace=True)
+            monthly_profit_df.sort_index(inplace=True)
+    
+            # Calculate cumulative sum for the TotalNetProfit column
+            monthly_profit_df['CumulativeNetProfit'] = monthly_profit_df['TotalNetProfit'].cumsum()
+    
+            # Determine y-axis limits with a buffer around min and max values
+            y_min = monthly_profit_df['CumulativeNetProfit'].min() - 6000
+            y_max = monthly_profit_df['CumulativeNetProfit'].max() + 6000
+    
+            # Plot the Cumulative Realized Profit by Month line graph
+            #st.subheader("Cumulative Realized Profit by Month for 'GreenAleph'")
+            fig, ax = plt.subplots(figsize=(14, 8))
+    
+            # Separate data for segments above and below zero
+            months = monthly_profit_df.index.strftime('%Y-%m')
+            cumulative_profits = monthly_profit_df['CumulativeNetProfit']
+    
+            # Plot segments of the line with color based on whether cumulative profit is above or below zero
+            for i in range(1, len(cumulative_profits)):
+                color = 'green' if cumulative_profits[i] >= 0 else 'red'
+                ax.plot(months[i-1:i+1], cumulative_profits[i-1:i+1], color=color, linewidth=3)
+    
+            # Enhancing the plot aesthetics
+            ax.set_ylabel('Cumulative Realized Profit ($)', fontsize=16, fontweight='bold')
+            ax.set_title('Cumulative Realized Profit by Month (GreenAleph)', fontsize=20, fontweight='bold')
+            ax.axhline(0, color='black', linewidth=1)  # Add horizontal line at y=0
+            ax.set_ylim(y_min, y_max)  # Set y-axis limits
+    
+            # Set x-axis labels with rotation and larger font size
+            plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+            plt.yticks(fontsize=14, fontweight='bold')
+    
+            # Add only the final value label on the right side
+            final_month = months[-1]
+            final_profit = cumulative_profits.iloc[-1]
+            ax.annotate(f"${final_profit:,.0f}", xy=(final_month, final_profit),
+                        xytext=(0, 8), textcoords="offset points",
+                        ha='center', fontsize=14, fontweight='bold', color='black')
+    
+            plt.tight_layout()
+            st.pyplot(fig)
+        else:
+            st.warning("No data available for monthly cumulative realized profit.")
 
 
 
 
 
-# Adding the new "Betting Volume" page
-if page == "Betting Volume":
-    st.title("Betting Volume (GA1)")
+
+
+
+
+
+# Adding the new "Principal Volume" page
+if page == "Principal Volume":
+    st.title("Principal Volume (GA1)")
+
+    # SQL query to get the total principal (dollars at stake) by month for 'GreenAleph' without including cashouts
+    principal_volume_query = """
+        SELECT 
+            DATE_FORMAT(DateTimePlaced, '%Y-%m') AS Month,
+            SUM(DollarsAtStake) AS TotalDollarsAtStake
+        FROM bets
+        WHERE WhichBankroll = 'GreenAleph' AND WLCA != 'Cashout'
+        GROUP BY Month
+        ORDER BY Month;
+    """
+
+    # SQL query to get the total principal volume by LeagueName for 'GreenAleph', summing each WagerID only once
+    league_principal_volume_query = """
+        SELECT 
+            l.LeagueName,
+            SUM(b.DollarsAtStake) AS TotalDollarsAtStake
+        FROM bets b
+        JOIN legs l ON b.WagerID = l.WagerID
+        WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA != 'Cashout'
+        AND b.WagerID IN (
+            SELECT DISTINCT WagerID
+            FROM bets
+            WHERE LegCount <= 1 OR (LegCount > 1 AND WLCA != 'Cashout')
+        )
+        GROUP BY l.LeagueName
+        ORDER BY TotalDollarsAtStake DESC;
+    """
+
+    # Get data from the database for the first chart
+    principal_volume_data = get_data_from_db(principal_volume_query)
+
+    if principal_volume_data:
+        # Convert the data to a DataFrame for plotting
+        df_principal_volume = pd.DataFrame(principal_volume_data)
+
+        # Check if the DataFrame is not empty
+        if not df_principal_volume.empty:
+            df_principal_volume['Month'] = pd.to_datetime(df_principal_volume['Month'])
+            df_principal_volume.set_index('Month', inplace=True)
+            df_principal_volume.sort_index(inplace=True)
+
+            # Calculate the total principal volume
+            total_principal = df_principal_volume['TotalDollarsAtStake'].sum()
+            total_row = pd.DataFrame({'TotalDollarsAtStake': [total_principal]}, index=['Total'])
+            df_principal_volume = pd.concat([df_principal_volume, total_row])
+
+            # Prepare x-axis labels
+            x_labels = [date.strftime('%Y-%m') if isinstance(date, pd.Timestamp) else date for date in df_principal_volume.index]
+
+            # Plot the first bar chart
+            st.subheader("Total Principal Volume by Month for 'GreenAleph'")
+            plt.figure(figsize=(12, 6))
+            bars = plt.bar(x_labels, df_principal_volume['TotalDollarsAtStake'])
+            plt.ylabel('Total Principal ($)')
+            plt.title('Total Principal Volume by Month (GreenAleph)')
+            plt.xticks(rotation=45, ha='right')
+
+            # Add value labels above each bar, rounded to whole numbers
+            for bar in bars:
+                yval = bar.get_height()
+                plt.text(bar.get_x() + bar.get_width()/2, yval, f"${yval:,.0f}", ha='center', va='bottom')
+
+            st.pyplot(plt)
+        else:
+            st.warning("No data available for 'GreenAleph' principal volume.")
+    else:
+        st.error("Failed to retrieve data from the database.")
+
+    # Get data from the database for the second chart
+    league_principal_volume_data = get_data_from_db(league_principal_volume_query)
+
+    if league_principal_volume_data:
+        # Convert the data to a DataFrame for plotting
+        df_league_principal_volume = pd.DataFrame(league_principal_volume_data)
+
+        # Ensure correct data types for plotting
+        df_league_principal_volume['LeagueName'] = df_league_principal_volume['LeagueName'].astype(str)
+        df_league_principal_volume['TotalDollarsAtStake'] = df_league_principal_volume['TotalDollarsAtStake'].astype(float)
+
+        # Sort by TotalDollarsAtStake in ascending order
+        df_league_principal_volume = df_league_principal_volume.sort_values(by='TotalDollarsAtStake', ascending=True)
+
+        # Check if the DataFrame is not empty
+        if not df_league_principal_volume.empty:
+            # Plot the second bar chart
+            st.subheader("Principal Volume by League")
+            plt.figure(figsize=(12, 6))
+            plt.bar(df_league_principal_volume['LeagueName'], df_league_principal_volume['TotalDollarsAtStake'])
+            plt.ylabel('Total Principal ($)')
+            plt.title('Total Principal Volume by LeagueName (GreenAleph)')
+            plt.xticks(rotation=45, ha='right')
+
+            # Add value labels above each bar, rounded to whole numbers
+            for index, value in enumerate(df_league_principal_volume['TotalDollarsAtStake']):
+                plt.text(index, value, f"${value:,.0f}", ha='center', va='bottom')
+
+            st.pyplot(plt)
+        else:
+            st.warning("No data available for 'GreenAleph' principal volume by league.")
+    else:
+        st.error("Failed to retrieve data from the database.")
+
+
+
+
+
+# Adding the new "Betting Frequency" page
+if page == "Betting Frequency":
+    st.title("Betting Frequency (GA1)")
 
     # SQL query to get the number of bets by month for 'GreenAleph'
-    volume_query = """
+    frequency_query = """
         SELECT 
             DATE_FORMAT(DateTimePlaced, '%Y-%m') AS Month,
             COUNT(WagerID) AS NumberOfBets
@@ -240,8 +422,8 @@ if page == "Betting Volume":
         ORDER BY Month;
     """
 
-    # SQL query to get the total betting volume by LeagueName for 'GreenAleph', counting each WagerID only once
-    league_volume_query = """
+    # SQL query to get the total betting frequency by LeagueName for 'GreenAleph', counting each WagerID only once
+    league_frequency_query = """
         SELECT 
             l.LeagueName,
             COUNT(DISTINCT b.WagerID) AS NumberOfBets
@@ -253,30 +435,30 @@ if page == "Betting Volume":
     """
 
     # Get data from the database for the first chart
-    volume_data = get_data_from_db(volume_query)
+    frequency_data = get_data_from_db(frequency_query)
 
-    if volume_data:
+    if frequency_data:
         # Convert the data to a DataFrame for plotting
-        df_volume = pd.DataFrame(volume_data)
+        df_frequency = pd.DataFrame(frequency_data)
 
         # Check if the DataFrame is not empty
-        if not df_volume.empty:
-            df_volume['Month'] = pd.to_datetime(df_volume['Month'])
-            df_volume.set_index('Month', inplace=True)
-            df_volume.sort_index(inplace=True)
+        if not df_frequency.empty:
+            df_frequency['Month'] = pd.to_datetime(df_frequency['Month'])
+            df_frequency.set_index('Month', inplace=True)
+            df_frequency.sort_index(inplace=True)
 
             # Calculate the total number of bets
-            total_bets = df_volume['NumberOfBets'].sum()
+            total_bets = df_frequency['NumberOfBets'].sum()
             total_row = pd.DataFrame({'NumberOfBets': [total_bets]}, index=['Total'])
-            df_volume = pd.concat([df_volume, total_row])
+            df_frequency = pd.concat([df_frequency, total_row])
 
             # Prepare x-axis labels
-            x_labels = [date.strftime('%Y-%m') if isinstance(date, pd.Timestamp) else date for date in df_volume.index]
+            x_labels = [date.strftime('%Y-%m') if isinstance(date, pd.Timestamp) else date for date in df_frequency.index]
 
             # Plot the first bar chart
-            st.subheader("Number of Bets Placed by Month")
+            st.subheader("Number of Bets Placed by Month for 'GreenAleph'")
             plt.figure(figsize=(12, 6))
-            bars = plt.bar(x_labels, df_volume['NumberOfBets'])
+            bars = plt.bar(x_labels, df_frequency['NumberOfBets'])
             plt.ylabel('Number of Bets')
             plt.title('Number of Bets Placed by Month (GreenAleph)')
             plt.xticks(rotation=45, ha='right')
@@ -288,41 +470,41 @@ if page == "Betting Volume":
 
             st.pyplot(plt)
         else:
-            st.warning("No data available for 'GreenAleph' betting volume.")
+            st.warning("No data available for 'GreenAleph' betting frequency.")
     else:
         st.error("Failed to retrieve data from the database.")
 
     # Get data from the database for the second chart
-    league_volume_data = get_data_from_db(league_volume_query)
+    league_frequency_data = get_data_from_db(league_frequency_query)
 
-    if league_volume_data:
+    if league_frequency_data:
         # Convert the data to a DataFrame for plotting
-        df_league_volume = pd.DataFrame(league_volume_data)
+        df_league_frequency = pd.DataFrame(league_frequency_data)
 
         # Ensure correct data types for plotting
-        df_league_volume['LeagueName'] = df_league_volume['LeagueName'].astype(str)
-        df_league_volume['NumberOfBets'] = df_league_volume['NumberOfBets'].astype(int)
+        df_league_frequency['LeagueName'] = df_league_frequency['LeagueName'].astype(str)
+        df_league_frequency['NumberOfBets'] = df_league_frequency['NumberOfBets'].astype(int)
 
         # Sort by NumberOfBets in ascending order
-        df_league_volume = df_league_volume.sort_values(by='NumberOfBets', ascending=True)
+        df_league_frequency = df_league_frequency.sort_values(by='NumberOfBets', ascending=True)
 
         # Check if the DataFrame is not empty
-        if not df_league_volume.empty:
+        if not df_league_frequency.empty:
             # Plot the second bar chart
-            st.subheader("Betting Volume by League")
+            st.subheader("Betting Frequency by League")
             plt.figure(figsize=(12, 6))
-            plt.bar(df_league_volume['LeagueName'], df_league_volume['NumberOfBets'])
+            plt.bar(df_league_frequency['LeagueName'], df_league_frequency['NumberOfBets'])
             plt.ylabel('Number of Bets')
-            plt.title('Betting Volume by League (GreenAleph)')
+            plt.title('Number of Bets Placed by League (GreenAleph)')
             plt.xticks(rotation=45, ha='right')
 
             # Add value labels above each bar
-            for index, value in enumerate(df_league_volume['NumberOfBets']):
+            for index, value in enumerate(df_league_frequency['NumberOfBets']):
                 plt.text(index, value, int(value), ha='center', va='bottom')
 
             st.pyplot(plt)
         else:
-            st.warning("No data available for 'GreenAleph' betting volume by league.")
+            st.warning("No data available for 'GreenAleph' betting frequency by league.")
     else:
         st.error("Failed to retrieve data from the database.")
 
@@ -559,6 +741,105 @@ elif page == "NBA Charts":
                         # Use Streamlit to display the combined chart
                         st.pyplot(fig)
 
+    # Add a new section at the bottom of the NBA Charts page for tracking NBA parlays
+    st.header("NBA Parlays - GA1")
+    
+    # SQL query to fetch distinct EventTypes for the dropdown menu
+    event_type_dropdown_query = """
+    SELECT DISTINCT l.EventType
+    FROM bets b
+    JOIN legs l ON b.WagerID = l.WagerID
+    WHERE b.WhichBankroll = 'GreenAleph' 
+      AND b.WLCA = 'Active'
+      AND b.LegCount > 1  -- Only parlays
+      AND l.LeagueName = 'NBA'
+    ORDER BY l.EventType ASC;
+    """
+    
+    # Fetch EventTypes for the dropdown menu
+    event_types = get_data_from_db(event_type_dropdown_query)
+    if event_types is None:
+        st.error("Failed to fetch event types from the database.")
+    else:
+        event_type_options = [row['EventType'] for row in event_types]
+        selected_event_type = st.selectbox('Select EventType for Parlays', event_type_options)
+    
+        if selected_event_type:
+            # SQL query to count the number of parlays each participant is involved in for the selected EventType
+            parlay_count_query = f"""
+            SELECT 
+                l.ParticipantName,
+                COUNT(DISTINCT b.WagerID) AS NumberOfParlays
+            FROM 
+                bets b
+            JOIN 
+                legs l ON b.WagerID = l.WagerID
+            WHERE 
+                b.WhichBankroll = 'GreenAleph'
+                AND b.WLCA = 'Active'
+                AND b.LegCount > 1  -- Only count parlays
+                AND l.LeagueName = 'NBA'
+                AND l.EventType = %s
+            GROUP BY 
+                l.ParticipantName
+            ORDER BY 
+                NumberOfParlays DESC;
+            """
+    
+            # Fetch the data for the parlay counts
+            parlay_data = get_data_from_db(parlay_count_query, [selected_event_type])
+    
+            # Display the data if available
+            if parlay_data is None:
+                st.error("Failed to fetch parlay data from the database.")
+            else:
+                parlay_df = pd.DataFrame(parlay_data)
+    
+                if parlay_df.empty:
+                    st.warning("No parlay data found for the selected EventType.")
+                else:
+                    # Plot the parlay count bar chart
+                    st.subheader(f"Number of Parlays by Participant for {selected_event_type}")
+                    fig, ax = plt.subplots(figsize=(14, 8))
+                    
+                    # Plot bar chart for NumberOfParlays
+                    bars = ax.bar(parlay_df['ParticipantName'], parlay_df['NumberOfParlays'], color='skyblue', edgecolor='black')
+                    
+                    # Set title and labels
+                    ax.set_title(f"Parlay Involvement by Participant for {selected_event_type} (GA1)", fontsize=18, fontweight='bold')
+                    ax.set_ylabel("Number of Parlays", fontsize=14, fontweight='bold')
+                   
+                    
+                    # Rotate x-axis labels
+                    plt.xticks(rotation=45, ha='right', fontsize=12)
+                    
+                    # Annotate each bar with the count of parlays
+                    for bar in bars:
+                        height = bar.get_height()
+                        ax.annotate(f"{height}", xy=(bar.get_x() + bar.get_width() / 2, height),
+                                    xytext=(0, 5), textcoords="offset points",
+                                    ha='center', va='bottom', fontsize=12, color='black')
+    
+                    # Add horizontal line at y=0
+                    ax.axhline(0, color='black', linewidth=0.8)
+    
+                    # Set background color to white
+                    ax.set_facecolor('white')
+    
+                    # Add border around the plot
+                    for spine in ax.spines.values():
+                        spine.set_edgecolor('black')
+                        spine.set_linewidth(1.2)
+    
+                    # Adjust layout
+                    plt.tight_layout()
+    
+                    # Display the plot in Streamlit
+                    st.pyplot(fig)
+
+
+
+
 
 
 
@@ -789,6 +1070,102 @@ elif page == "NFL Charts":
                 
                         # Use Streamlit to display the combined chart
                         st.pyplot(fig)
+
+    # Add a new section at the bottom of the NFL Charts page for tracking NBA parlays
+    st.header("NFL Parlays - GA1")
+    
+    # SQL query to fetch distinct EventTypes for the dropdown menu
+    event_type_dropdown_query = """
+    SELECT DISTINCT l.EventType
+    FROM bets b
+    JOIN legs l ON b.WagerID = l.WagerID
+    WHERE b.WhichBankroll = 'GreenAleph' 
+      AND b.WLCA = 'Active'
+      AND b.LegCount > 1  -- Only parlays
+      AND l.LeagueName = 'NFL'
+    ORDER BY l.EventType ASC;
+    """
+    
+    # Fetch EventTypes for the dropdown menu
+    event_types = get_data_from_db(event_type_dropdown_query)
+    if event_types is None:
+        st.error("Failed to fetch event types from the database.")
+    else:
+        event_type_options = [row['EventType'] for row in event_types]
+        selected_event_type = st.selectbox('Select EventType for Parlays', event_type_options)
+    
+        if selected_event_type:
+            # SQL query to count the number of parlays each participant is involved in for the selected EventType
+            parlay_count_query = f"""
+            SELECT 
+                l.ParticipantName,
+                COUNT(DISTINCT b.WagerID) AS NumberOfParlays
+            FROM 
+                bets b
+            JOIN 
+                legs l ON b.WagerID = l.WagerID
+            WHERE 
+                b.WhichBankroll = 'GreenAleph'
+                AND b.WLCA = 'Active'
+                AND b.LegCount > 1  -- Only count parlays
+                AND l.LeagueName = 'NFL'
+                AND l.EventType = %s
+            GROUP BY 
+                l.ParticipantName
+            ORDER BY 
+                NumberOfParlays DESC;
+            """
+    
+            # Fetch the data for the parlay counts
+            parlay_data = get_data_from_db(parlay_count_query, [selected_event_type])
+    
+            # Display the data if available
+            if parlay_data is None:
+                st.error("Failed to fetch parlay data from the database.")
+            else:
+                parlay_df = pd.DataFrame(parlay_data)
+    
+                if parlay_df.empty:
+                    st.warning("No parlay data found for the selected EventType.")
+                else:
+                    # Plot the parlay count bar chart
+                    st.subheader(f"Number of Parlays by Participant for {selected_event_type}")
+                    fig, ax = plt.subplots(figsize=(14, 8))
+                    
+                    # Plot bar chart for NumberOfParlays
+                    bars = ax.bar(parlay_df['ParticipantName'], parlay_df['NumberOfParlays'], color='skyblue', edgecolor='black')
+                    
+                    # Set title and labels
+                    ax.set_title(f"Parlay Involvement by Participant for {selected_event_type} (GA1)", fontsize=18, fontweight='bold')
+                    ax.set_ylabel("Number of Parlays", fontsize=14, fontweight='bold')
+                   
+                    
+                    # Rotate x-axis labels
+                    plt.xticks(rotation=45, ha='right', fontsize=12)
+                    
+                    # Annotate each bar with the count of parlays
+                    for bar in bars:
+                        height = bar.get_height()
+                        ax.annotate(f"{height}", xy=(bar.get_x() + bar.get_width() / 2, height),
+                                    xytext=(0, 5), textcoords="offset points",
+                                    ha='center', va='bottom', fontsize=12, color='black')
+    
+                    # Add horizontal line at y=0
+                    ax.axhline(0, color='black', linewidth=0.8)
+    
+                    # Set background color to white
+                    ax.set_facecolor('white')
+    
+                    # Add border around the plot
+                    for spine in ax.spines.values():
+                        spine.set_edgecolor('black')
+                        spine.set_linewidth(1.2)
+    
+                    # Adjust layout
+                    plt.tight_layout()
+    
+                    # Display the plot in Streamlit
+                    st.pyplot(fig)
 
 
 
@@ -1356,15 +1733,17 @@ elif page == "MLB Principal Tables":
         st.table(parlay_bets_df)
 
 
-elif page == "MLB Participant Positions":
-    # MLB Participant Positions
-    st.title('MLB Participant Positions - GA1')
+
+elif page == "NBA Participant Positions":
+    # NBA Participant Positions
+    st.title('NBA Participant Positions - GA1')
 
     # Fetch the list of participant names for the dropdown
     participants_query = """
     SELECT DISTINCT ParticipantName 
-    FROM legs 
-    WHERE LeagueName = 'MLB'
+    FROM legs l
+    JOIN bets b ON l.WagerID = b.WagerID
+    WHERE l.LeagueName = 'NBA' AND b.WhichBankroll = 'GreenAleph'
     ORDER BY ParticipantName ASC;
     """
     participants = get_data_from_db(participants_query)
@@ -1398,7 +1777,7 @@ elif page == "MLB Participant Positions":
             WHERE 
                 l.ParticipantName = %s
                 AND b.WhichBankroll = 'GreenAleph'
-                AND l.LeagueName = 'MLB'
+                AND l.LeagueName = 'NBA'
             """
             params = [participant_selected]
 
@@ -1424,7 +1803,77 @@ elif page == "MLB Participant Positions":
 
 
 
-    
-    
 
 
+elif page == "NFL Participant Positions":
+    # NFL Participant Positions
+    st.title('NFL Participant Positions - GA1')
+
+    # Fetch the list of participant names for the dropdown
+    participants_query = """
+    SELECT DISTINCT ParticipantName 
+    FROM legs l
+    JOIN bets b ON l.WagerID = b.WagerID
+    WHERE l.LeagueName = 'NFL' AND b.WhichBankroll = 'GreenAleph'
+    ORDER BY ParticipantName ASC;
+    """
+    participants = get_data_from_db(participants_query)
+
+    if participants is not None:
+        participant_names = [participant['ParticipantName'] for participant in participants]
+        participant_selected = st.selectbox('Select Participant', participant_names)
+
+        if participant_selected:
+            wlca_filter = st.selectbox('Select WLCA', ['All', 'Win', 'Loss', 'Cashout', 'Active'])
+            legcount_filter = st.selectbox('Select Bet Type', ['All', 'Straight', 'Parlay'])
+
+            # SQL query to fetch data for the selected participant
+            query = """
+            SELECT 
+                l.LegID,
+                l.EventType,
+                b.DollarsAtStake,
+                b.PotentialPayout,
+                b.NetProfit,
+                b.ImpliedOdds,
+                l.EventLabel,
+                l.LegDescription,
+                b.Sportsbook,
+                b.DateTimePlaced,
+                b.LegCount
+            FROM 
+                bets b
+            JOIN 
+                legs l ON b.WagerID = l.WagerID
+            WHERE 
+                l.ParticipantName = %s
+                AND b.WhichBankroll = 'GreenAleph'
+                AND l.LeagueName = 'NFL'
+            """
+            params = [participant_selected]
+
+            if wlca_filter != 'All':
+                query += " AND b.WLCA = %s"
+                params.append(wlca_filter)
+            
+            if legcount_filter == 'Straight':
+                query += " AND b.LegCount = 1"
+            elif legcount_filter == 'Parlay':
+                query += " AND b.LegCount > 1"
+
+            # Fetch the data for the selected participant
+            data = get_data_from_db(query, params)
+
+            # Display the data
+            if data:
+                df = pd.DataFrame(data)
+                st.subheader(f'Bets and Legs for {participant_selected}')
+                st.table(df)
+            else:
+                st.warning('No data found for the selected filters.')
+
+
+
+
+    
+    
