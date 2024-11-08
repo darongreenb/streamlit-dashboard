@@ -854,7 +854,7 @@ elif page == "NBA Charts":
                             fig, ax = plt.subplots(figsize=(14, 8))
                             
                             # Plot bar chart for TotalDollarsAtStake
-                            bars = ax.bar(parlay_dollars_df['ParticipantName'], parlay_dollars_df['TotalDollarsAtStake'], color='blue', edgecolor='black')
+                            bars = ax.bar(parlay_dollars_df['ParticipantName'], parlay_dollars_df['TotalDollarsAtStake'], color='lightblue', edgecolor='black')
                             
                             # Set title and labels
                             ax.set_title(f"Total Dollars At Stake in Parlays by Participant for {event_type_option} (GA1)", fontsize=18, fontweight='bold')
@@ -1232,7 +1232,7 @@ elif page == "NFL Charts":
                     fig, ax = plt.subplots(figsize=(14, 8))
                     
                     # Plot bar chart for TotalDollarsAtStake
-                    bars = ax.bar(parlay_dollars_df['ParticipantName'], parlay_dollars_df['TotalDollarsAtStake'], color='blue', edgecolor='black')
+                    bars = ax.bar(parlay_dollars_df['ParticipantName'], parlay_dollars_df['TotalDollarsAtStake'], color='lightblue', edgecolor='black')
                     
                     # Set title and labels
                     ax.set_title(f"Total Dollars At Stake in Parlays by Participant for {event_type_option} (GA1)", fontsize=18, fontweight='bold')
