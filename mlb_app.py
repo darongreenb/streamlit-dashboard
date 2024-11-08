@@ -988,7 +988,7 @@ elif page == "NFL Charts":
         # Use Streamlit to display the first chart
         st.pyplot(fig)
 
-        # Add filter for EventType
+        # Filter for EventType
         event_type_option = st.selectbox('Select EventType', sorted(first_chart_df[first_chart_df['EventType'] != 'Total']['EventType'].unique()))
 
         if event_type_option:
@@ -1120,35 +1120,85 @@ elif page == "NFL Charts":
                         # Use Streamlit to display the combined chart
                         st.pyplot(fig)
 
-    # Add a new section at the bottom of the NFL Charts page for tracking NBA parlays
+    # Add a new section at the bottom for tracking NFL parlays
     st.header("NFL Parlays - GA1")
     
-    # SQL query to fetch distinct EventTypes for the dropdown menu
-    event_type_dropdown_query = """
-    SELECT DISTINCT l.EventType
-    FROM bets b
-    JOIN legs l ON b.WagerID = l.WagerID
-    WHERE b.WhichBankroll = 'GreenAleph' 
-      AND b.WLCA = 'Active'
-      AND b.LegCount > 1  -- Only parlays
-      AND l.LeagueName = 'NFL'
-    ORDER BY l.EventType ASC;
+    # SQL query to count the number of parlays each participant is involved in for the selected EventType
+    parlay_count_query = f"""
+    SELECT 
+        l.ParticipantName,
+        COUNT(DISTINCT b.WagerID) AS NumberOfParlays
+    FROM 
+        bets b
+    JOIN 
+        legs l ON b.WagerID = l.WagerID
+    WHERE 
+        b.WhichBankroll = 'GreenAleph'
+        AND b.WLCA = 'Active'
+        AND b.LegCount > 1  -- Only count parlays
+        AND l.LeagueName = 'NFL'
+        AND l.EventType = %s
+    GROUP BY 
+        l.ParticipantName
+    ORDER BY 
+        NumberOfParlays DESC;
     """
-    
-    # Fetch EventTypes for the dropdown menu
-    event_types = get_data_from_db(event_type_dropdown_query)
-    if event_types is None:
-        st.error("Failed to fetch event types from the database.")
+
+    # Fetch the data for the parlay counts
+    parlay_data = get_data_from_db(parlay_count_query, [event_type_option])
+
+    # Display the data if available
+    if parlay_data is None:
+        st.error("Failed to fetch parlay data from the database.")
     else:
-        event_type_options = [row['EventType'] for row in event_types]
-        selected_event_type = st.selectbox('Select EventType for Parlays', event_type_options)
-    
-        if selected_event_type:
-            # SQL query to count the number of parlays each participant is involved in for the selected EventType
-            parlay_count_query = f"""
+        parlay_df = pd.DataFrame(parlay_data)
+
+        if parlay_df.empty:
+            st.warning("No parlay data found for the selected EventType.")
+        else:
+            # Plot the parlay count bar chart
+            st.subheader(f"Number of Parlays by Participant for {event_type_option}")
+            fig, ax = plt.subplots(figsize=(14, 8))
+            
+            # Plot bar chart for NumberOfParlays
+            bars = ax.bar(parlay_df['ParticipantName'], parlay_df['NumberOfParlays'], color='skyblue', edgecolor='black')
+            
+            # Set title and labels
+            ax.set_title(f"Parlay Involvement by Participant for {event_type_option} (GA1)", fontsize=18, fontweight='bold')
+            ax.set_ylabel("Number of Parlays", fontsize=14, fontweight='bold')
+            
+            # Rotate x-axis labels
+            plt.xticks(rotation=45, ha='right', fontsize=12)
+            
+            # Annotate each bar with the count of parlays
+            for bar in bars:
+                height = bar.get_height()
+                ax.annotate(f"{height}", xy=(bar.get_x() + bar.get_width() / 2, height),
+                            xytext=(0, 5), textcoords="offset points",
+                            ha='center', va='bottom', fontsize=12, color='black')
+
+            # Add horizontal line at y=0
+            ax.axhline(0, color='black', linewidth=0.8)
+
+            # Set background color to white
+            ax.set_facecolor('white')
+
+            # Add border around the plot
+            for spine in ax.spines.values():
+                spine.set_edgecolor('black')
+                spine.set_linewidth(1.2)
+
+            # Adjust layout
+            plt.tight_layout()
+
+            # Display the plot in Streamlit
+            st.pyplot(fig)
+
+            # Additional chart for Total Dollars At Stake associated with Parlays by Participant
+            parlay_dollars_query = f"""
             SELECT 
                 l.ParticipantName,
-                COUNT(DISTINCT b.WagerID) AS NumberOfParlays
+                SUM(b.DollarsAtStake) AS TotalDollarsAtStake
             FROM 
                 bets b
             JOIN 
@@ -1162,59 +1212,59 @@ elif page == "NFL Charts":
             GROUP BY 
                 l.ParticipantName
             ORDER BY 
-                NumberOfParlays DESC;
+                TotalDollarsAtStake DESC;
             """
-    
-            # Fetch the data for the parlay counts
-            parlay_data = get_data_from_db(parlay_count_query, [selected_event_type])
-    
+
+            # Fetch the data for the total dollars at stake in parlays
+            parlay_dollars_data = get_data_from_db(parlay_dollars_query, [event_type_option])
+
             # Display the data if available
-            if parlay_data is None:
-                st.error("Failed to fetch parlay data from the database.")
+            if parlay_dollars_data is None:
+                st.error("Failed to fetch total dollars at stake in parlays data from the database.")
             else:
-                parlay_df = pd.DataFrame(parlay_data)
-    
-                if parlay_df.empty:
-                    st.warning("No parlay data found for the selected EventType.")
+                parlay_dollars_df = pd.DataFrame(parlay_dollars_data)
+
+                if parlay_dollars_df.empty:
+                    st.warning("No parlay dollar data found for the selected EventType.")
                 else:
-                    # Plot the parlay count bar chart
-                    st.subheader(f"Number of Parlays by Participant for {selected_event_type}")
+                    # Plot the total dollars at stake bar chart
+                    st.subheader(f"Total Dollars At Stake in Parlays by Participant for {event_type_option}")
                     fig, ax = plt.subplots(figsize=(14, 8))
                     
-                    # Plot bar chart for NumberOfParlays
-                    bars = ax.bar(parlay_df['ParticipantName'], parlay_df['NumberOfParlays'], color='skyblue', edgecolor='black')
+                    # Plot bar chart for TotalDollarsAtStake
+                    bars = ax.bar(parlay_dollars_df['ParticipantName'], parlay_dollars_df['TotalDollarsAtStake'], color='lightcoral', edgecolor='black')
                     
                     # Set title and labels
-                    ax.set_title(f"Parlay Involvement by Participant for {selected_event_type} (GA1)", fontsize=18, fontweight='bold')
-                    ax.set_ylabel("Number of Parlays", fontsize=14, fontweight='bold')
-                   
+                    ax.set_title(f"Total Dollars At Stake in Parlays by Participant for {event_type_option} (GA1)", fontsize=18, fontweight='bold')
+                    ax.set_ylabel("Total Dollars At Stake ($)", fontsize=14, fontweight='bold')
                     
                     # Rotate x-axis labels
                     plt.xticks(rotation=45, ha='right', fontsize=12)
                     
-                    # Annotate each bar with the count of parlays
+                    # Annotate each bar with the dollar value
                     for bar in bars:
                         height = bar.get_height()
-                        ax.annotate(f"{height}", xy=(bar.get_x() + bar.get_width() / 2, height),
+                        ax.annotate(f"${height:,.0f}", xy=(bar.get_x() + bar.get_width() / 2, height),
                                     xytext=(0, 5), textcoords="offset points",
                                     ha='center', va='bottom', fontsize=12, color='black')
-    
+
                     # Add horizontal line at y=0
                     ax.axhline(0, color='black', linewidth=0.8)
-    
+
                     # Set background color to white
                     ax.set_facecolor('white')
-    
+
                     # Add border around the plot
                     for spine in ax.spines.values():
                         spine.set_edgecolor('black')
                         spine.set_linewidth(1.2)
-    
+
                     # Adjust layout
                     plt.tight_layout()
-    
+
                     # Display the plot in Streamlit
                     st.pyplot(fig)
+
 
 
 
