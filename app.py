@@ -733,7 +733,7 @@ elif page == "NBA Charts":
                             spine.set_linewidth(1.2)
                 
                         # Extend y-axis range
-                        ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 5000, max(combined_df['TotalPotentialPayout']) + 5000)
+                        ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 15000, max(combined_df['TotalPotentialPayout']) + 20000)
                 
                         # Adjust layout
                         plt.tight_layout()
@@ -1112,7 +1112,7 @@ elif page == "NFL Charts":
                             spine.set_linewidth(1.2)
                 
                         # Extend y-axis range
-                        ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 10000, max(combined_df['TotalPotentialPayout']) + 20000)
+                        ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 15000, max(combined_df['TotalPotentialPayout']) + 20000)
                 
                         # Adjust layout
                         plt.tight_layout()
