@@ -789,7 +789,7 @@ elif page == "NBA Charts":
                     ax.set_ylabel("Number of Parlays", fontsize=14, fontweight='bold')
                     
                     # Rotate x-axis labels
-                    plt.xticks(rotation=45, ha='right', fontsize=12)
+                    plt.xticks(rotation=45, ha='right', fontsize=12, fontweight='bold')
                     
                     # Annotate each bar with the count of parlays
                     for bar in bars:
@@ -861,7 +861,7 @@ elif page == "NBA Charts":
                             ax.set_ylabel("Total Dollars At Stake ($)", fontsize=14, fontweight='bold')
                             
                             # Rotate x-axis labels
-                            plt.xticks(rotation=45, ha='right', fontsize=12)
+                            plt.xticks(rotation=45, ha='right', fontsize=12, fontweight='bold')
                             
                             # Annotate each bar with the dollar value
                             for bar in bars:
@@ -1239,7 +1239,7 @@ elif page == "NFL Charts":
                     ax.set_ylabel("Total Dollars At Stake ($)", fontsize=14, fontweight='bold')
                     
                     # Rotate x-axis labels
-                    plt.xticks(rotation=45, ha='right', fontsize=12)
+                    plt.xticks(rotation=45, ha='right', fontsize=12, fontweight='bold')
                     
                     # Annotate each bar with the dollar value
                     for bar in bars:
