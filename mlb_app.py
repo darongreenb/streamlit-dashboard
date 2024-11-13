@@ -40,7 +40,7 @@ else:
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Main Page", "Principal Volume", "Betting Frequency", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "NBA Participant Positions", "NFL Participant Positions"])
+page = st.sidebar.radio("Go to", ["Main Page", "Principal Volume", "Betting Frequency", "NBA Charts", "", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "NBA Participant Positions", "NFL Participant Positions"])
 
 
 # Check if the user is on the "Main Page" page
@@ -1112,7 +1112,7 @@ elif page == "NFL Charts":
                             spine.set_linewidth(1.2)
                 
                         # Extend y-axis range
-                        ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 5000, max(combined_df['TotalPotentialPayout']) + 5000)
+                        ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 5000, max(combined_df['TotalPotentialPayout']) + 10000)
                 
                         # Adjust layout
                         plt.tight_layout()
