@@ -301,7 +301,7 @@ if page == "Main Page":
 if page == "Principal Volume":
     st.title("Principal Volume (GA1)")
 
-    # SQL query to get the total principal (dollars at stake) by month and LeagueName for 'GreenAleph'
+    # SQL query to get the total principal (dollars at stake) by month and LeagueName for 'GreenAleph', summing each WagerID only once
     stacked_principal_volume_query = """
         SELECT 
             DATE_FORMAT(b.DateTimePlaced, '%Y-%m') AS Month,
@@ -310,6 +310,11 @@ if page == "Principal Volume":
         FROM bets b
         JOIN legs l ON b.WagerID = l.WagerID
         WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA != 'Cashout'
+        AND b.WagerID IN (
+            SELECT DISTINCT WagerID
+            FROM bets
+            WHERE LegCount <= 1 OR (LegCount > 1 AND WLCA != 'Cashout')
+        )
         GROUP BY Month, l.LeagueName
         ORDER BY Month, LeagueName;
     """
@@ -354,9 +359,6 @@ if page == "Principal Volume":
             # Sort index by time
             df_pivot.index = pd.to_datetime(df_pivot.index, format='%Y-%m')
             df_pivot.sort_index(inplace=True)
-
-            # Debugging: Output DataFrame for verification
-            st.write("Debug: Pivot DataFrame", df_pivot)
 
             # Plot the stacked bar chart
             st.subheader("Total Principal Volume by Month (Stacked by LeagueName)")
@@ -408,6 +410,7 @@ if page == "Principal Volume":
             st.warning("No data available for 'GreenAleph' principal volume by league.")
     else:
         st.error("Failed to retrieve data from the database.")
+
 
 
 
