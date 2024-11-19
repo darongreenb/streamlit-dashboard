@@ -342,10 +342,6 @@ if page == "Principal Volume":
             df_principal_volume.set_index('Month', inplace=True)
             df_principal_volume.sort_index(inplace=True)
 
-            # Calculate the total principal volume
-            total_principal = df_principal_volume['TotalDollarsAtStake'].sum()
-            total_row = pd.DataFrame({'TotalDollarsAtStake': [total_principal]}, index=['Total'])
-            df_principal_volume = pd.concat([df_principal_volume, total_row])
 
             # Prepare x-axis labels
             x_labels = [date.strftime('%Y-%m') if isinstance(date, pd.Timestamp) else date for date in df_principal_volume.index]
