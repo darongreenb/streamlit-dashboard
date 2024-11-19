@@ -329,11 +329,17 @@ if page == "Principal Volume":
                 columns='LeagueName',
                 values='TotalDollarsAtStake',
                 aggfunc='sum'
-            ).fillna(0)
+            ).fillna(0)  # Replace NaN with 0 for plotting
+
+            # Ensure all values are numeric
+            df_pivot = df_pivot.apply(pd.to_numeric, errors='coerce')
 
             # Sort index by time
             df_pivot.index = pd.to_datetime(df_pivot.index)
             df_pivot.sort_index(inplace=True)
+
+            # Debugging: Output DataFrame for verification
+            st.write("Debug: Pivot DataFrame", df_pivot)
 
             # Plot the stacked bar chart
             st.subheader("Total Principal Volume by Month (Stacked by LeagueName)")
@@ -400,6 +406,7 @@ if page == "Principal Volume":
             st.warning("No data available for 'GreenAleph' principal volume by league.")
     else:
         st.error("Failed to retrieve data from the database.")
+
 
 
 
