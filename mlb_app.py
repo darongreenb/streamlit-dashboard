@@ -301,20 +301,19 @@ if page == "Main Page":
 if page == "Principal Volume":
     st.title("Principal Volume (GA1)")
 
-    # SQL query to get the total principal (dollars at stake) by month and LeagueName for 'GreenAleph', summing each WagerID only once
+    # SQL query to get the total principal (dollars at stake) by month and LeagueName for 'GreenAleph',
+    # summing DollarsAtStake for unique WagerIDs only
     stacked_principal_volume_query = """
         SELECT 
             DATE_FORMAT(b.DateTimePlaced, '%Y-%m') AS Month,
             l.LeagueName,
             SUM(b.DollarsAtStake) AS TotalDollarsAtStake
-        FROM bets b
-        JOIN legs l ON b.WagerID = l.WagerID
-        WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA != 'Cashout'
-        AND b.WagerID IN (
-            SELECT DISTINCT WagerID
+        FROM (
+            SELECT DISTINCT WagerID, DollarsAtStake, DateTimePlaced, WhichBankroll, WLCA
             FROM bets
-            WHERE LegCount <= 1 OR (LegCount > 1 AND WLCA != 'Cashout')
-        )
+            WHERE WhichBankroll = 'GreenAleph' AND WLCA != 'Cashout'
+        ) b
+        JOIN legs l ON b.WagerID = l.WagerID
         GROUP BY Month, l.LeagueName
         ORDER BY Month, LeagueName;
     """
@@ -324,14 +323,12 @@ if page == "Principal Volume":
         SELECT 
             l.LeagueName,
             SUM(b.DollarsAtStake) AS TotalDollarsAtStake
-        FROM bets b
-        JOIN legs l ON b.WagerID = l.WagerID
-        WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA != 'Cashout'
-        AND b.WagerID IN (
-            SELECT DISTINCT WagerID
+        FROM (
+            SELECT DISTINCT WagerID, DollarsAtStake, WhichBankroll, WLCA
             FROM bets
-            WHERE LegCount <= 1 OR (LegCount > 1 AND WLCA != 'Cashout')
-        )
+            WHERE WhichBankroll = 'GreenAleph' AND WLCA != 'Cashout'
+        ) b
+        JOIN legs l ON b.WagerID = l.WagerID
         GROUP BY l.LeagueName
         ORDER BY TotalDollarsAtStake DESC;
     """
@@ -414,6 +411,7 @@ if page == "Principal Volume":
             st.warning("No data available for 'GreenAleph' principal volume by league.")
     else:
         st.error("Failed to retrieve data from the database.")
+
 
 
 
