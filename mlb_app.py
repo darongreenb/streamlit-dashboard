@@ -1767,42 +1767,44 @@ elif page == "NFL Participant Positions":
             wlca_filter = st.selectbox('Select WLCA', ['All', 'Win', 'Loss', 'Cashout', 'Active'])
             legcount_filter = st.selectbox('Select Bet Type', ['All', 'Straight', 'Parlay'])
 
-            # SQL query to fetch data for the selected participant
-            query = """
-            SELECT 
-                l.LegID,
-                l.EventType,
-                b.DollarsAtStake,
-                b.PotentialPayout,
-                b.NetProfit,
-                b.ImpliedOdds,
-                l.EventLabel,
-                l.LegDescription,
-                b.Sportsbook,
-                b.DateTimePlaced,
-                b.LegCount
-            FROM 
-                bets b
-            JOIN 
-                legs l ON b.WagerID = l.WagerID
-            WHERE 
-                l.ParticipantName = %s
-                AND b.WhichBankroll = 'GreenAleph'
-                AND l.LeagueName = 'NFL'
-            """
-            params = [participant_selected]
+        # SQL query to fetch data for the selected participant
+        query = """
+        SELECT 
+            l.LegID,
+            l.EventType,
+            b.DollarsAtStake,
+            b.PotentialPayout,
+            b.NetProfit,
+            b.ImpliedOdds,
+            l.EventLabel,
+            l.LegDescription,
+            b.Sportsbook,
+            b.DateTimePlaced,
+            b.LegCount
+        FROM 
+            bets b
+        JOIN 
+            legs l ON b.WagerID = l.WagerID
+        WHERE 
+            l.ParticipantName = %s
+            AND b.WhichBankroll = 'GreenAleph'
+            AND l.LeagueName = 'NFL'
+        """  # Closing triple quotes added here
+        
+        params = [participant_selected]
+        
+        if wlca_filter != 'All':
+            query += " AND b.WLCA = %s"
+            params.append(wlca_filter)
+        
+        if legcount_filter == 'Straight':
+            query += " AND b.LegCount = 1"
+        elif legcount_filter == 'Parlay':
+            query += " AND b.LegCount > 1"
+        
+        # Fetch the data for the selected participant
+        data = get_data_from_db(query, params)
 
-            if wlca_filter != 'All':
-                query += " AND b.WLCA = %s"
-                params.append(wlca_filter)
-            
-            if legcount_filter == 'Straight':
-                query += " AND b.LegCount = 1"
-            elif legcount_filter == 'Parlay':
-                query += " AND b.LegCount > 1"
-
-            # Fetch the data for the selected participant
-            data = get_data_from_db(query, params)
 
             # Display the data
             if data:
