@@ -367,10 +367,14 @@ if page == "Principal Volume":
 
             plt.ylabel('Total Principal ($)')
             plt.title('Total Principal Volume by Month (Stacked by LeagueName)')
-            plt.xticks(rotation=45, ha='right')
+            plt.xticks(ticks=range(len(df_pivot.index)), labels=df_pivot.index.strftime('%Y-%m'), rotation=45, ha='right')
             plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
-            plt.tight_layout()
 
+            # Add value labels above each bar (stacked total)
+            for idx, total in enumerate(df_pivot.sum(axis=1)):
+                plt.text(idx, total, f"${total:,.0f}", ha='center', va='bottom')
+
+            plt.tight_layout()
             st.pyplot(plt)
         else:
             st.warning("No data available for 'GreenAleph' principal volume by month and LeagueName.")
@@ -410,6 +414,7 @@ if page == "Principal Volume":
             st.warning("No data available for 'GreenAleph' principal volume by league.")
     else:
         st.error("Failed to retrieve data from the database.")
+
 
 
 
