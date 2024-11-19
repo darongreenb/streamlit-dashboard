@@ -421,6 +421,7 @@ if page == "Principal Volume":
 
 
 
+
 # Adding the new "Betting Frequency" page
 if page == "Betting Frequency":
     st.title("Betting Frequency (GA1)")
