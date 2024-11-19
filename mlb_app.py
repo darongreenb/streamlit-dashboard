@@ -301,34 +301,45 @@ if page == "Main Page":
 if page == "Principal Volume":
     st.title("Principal Volume (GA1)")
 
-    # SQL query to get the total principal (dollars at stake) by month and LeagueName for 'GreenAleph',
-    # summing DollarsAtStake for unique WagerIDs only
+    # SQL query to get the total principal (dollars at stake) by month and LeagueName for 'GreenAleph'
     stacked_principal_volume_query = """
-        SELECT 
-            DATE_FORMAT(b.DateTimePlaced, '%Y-%m') AS Month,
-            l.LeagueName,
-            SUM(b.DollarsAtStake) AS TotalDollarsAtStake
-        FROM (
-            SELECT DISTINCT WagerID, DollarsAtStake, DateTimePlaced, WhichBankroll, WLCA
+        WITH DistinctBets AS (
+            SELECT DISTINCT WagerID, DollarsAtStake, DateTimePlaced
             FROM bets
-            WHERE WhichBankroll = 'GreenAleph' AND WLCA != 'Cashout'
-        ) b
-        JOIN legs l ON b.WagerID = l.WagerID
-        GROUP BY Month, l.LeagueName
+            WHERE WLCA != 'Cashout'
+              AND WhichBankroll = 'GreenAleph'
+        ),
+        MonthlySums AS (
+            SELECT 
+                DATE_FORMAT(db.DateTimePlaced, '%Y-%m') AS Month,
+                l.LeagueName,
+                SUM(db.DollarsAtStake) AS TotalDollarsAtStake
+            FROM 
+                DistinctBets db
+            JOIN 
+                (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
+            GROUP BY 
+                Month, l.LeagueName
+        )
+        SELECT * FROM MonthlySums
         ORDER BY Month, LeagueName;
     """
 
     # SQL query to get the total principal volume by LeagueName for 'GreenAleph', summing each WagerID only once
     league_principal_volume_query = """
+        WITH DistinctBets AS (
+            SELECT DISTINCT WagerID, DollarsAtStake
+            FROM bets
+            WHERE WLCA != 'Cashout'
+              AND WhichBankroll = 'GreenAleph'
+        )
         SELECT 
             l.LeagueName,
-            SUM(b.DollarsAtStake) AS TotalDollarsAtStake
-        FROM (
-            SELECT DISTINCT WagerID, DollarsAtStake, WhichBankroll, WLCA
-            FROM bets
-            WHERE WhichBankroll = 'GreenAleph' AND WLCA != 'Cashout'
-        ) b
-        JOIN legs l ON b.WagerID = l.WagerID
+            SUM(db.DollarsAtStake) AS TotalDollarsAtStake
+        FROM 
+            DistinctBets db
+        JOIN 
+            (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
         GROUP BY l.LeagueName
         ORDER BY TotalDollarsAtStake DESC;
     """
@@ -411,6 +422,7 @@ if page == "Principal Volume":
             st.warning("No data available for 'GreenAleph' principal volume by league.")
     else:
         st.error("Failed to retrieve data from the database.")
+
 
 
 
