@@ -297,74 +297,76 @@ if page == "Main Page":
 
 
 
-# Adding the new "Principal Volume" page
+# Streamlit page for Principal Volume
 if page == "Principal Volume":
     st.title("Principal Volume (GA1)")
 
-    # SQL query to get the total principal (dollars at stake) by month for 'GreenAleph' without including cashouts
-    principal_volume_query = """
-        SELECT 
-            DATE_FORMAT(DateTimePlaced, '%Y-%m') AS Month,
-            SUM(DollarsAtStake) AS TotalDollarsAtStake
-        FROM bets
-        WHERE WhichBankroll = 'GreenAleph' AND WLCA != 'Cashout'
-        GROUP BY Month
-        ORDER BY Month;
+    # SQL query to get the total principal (dollars at stake) by month and LeagueName
+    principal_volume_by_league_query = """
+    SELECT 
+        DATE_FORMAT(b.DateTimePlaced, '%Y-%m') AS Month,
+        l.LeagueName,
+        SUM(b.DollarsAtStake) AS TotalDollarsAtStake
+    FROM bets b
+    JOIN legs l ON b.WagerID = l.WagerID
+    WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA != 'Cashout'
+    GROUP BY Month, l.LeagueName
+    ORDER BY Month, TotalDollarsAtStake DESC;
     """
 
-    # SQL query to get the total principal volume by LeagueName for 'GreenAleph', summing each WagerID only once
-    league_principal_volume_query = """
-        SELECT 
-            l.LeagueName,
-            SUM(b.DollarsAtStake) AS TotalDollarsAtStake
-        FROM bets b
-        JOIN legs l ON b.WagerID = l.WagerID
-        WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA != 'Cashout'
-        AND b.WagerID IN (
-            SELECT DISTINCT WagerID
-            FROM bets
-            WHERE LegCount <= 1 OR (LegCount > 1 AND WLCA != 'Cashout')
-        )
-        GROUP BY l.LeagueName
-        ORDER BY TotalDollarsAtStake DESC;
-    """
+    # Get data from the database
+    principal_volume_by_league_data = get_data_from_db(principal_volume_by_league_query)
 
-    # Get data from the database for the first chart
-    principal_volume_data = get_data_from_db(principal_volume_query)
-
-    if principal_volume_data:
+    if principal_volume_by_league_data:
         # Convert the data to a DataFrame for plotting
-        df_principal_volume = pd.DataFrame(principal_volume_data)
+        df_principal_volume_by_league = pd.DataFrame(principal_volume_by_league_data)
 
         # Check if the DataFrame is not empty
-        if not df_principal_volume.empty:
-            df_principal_volume['Month'] = pd.to_datetime(df_principal_volume['Month'])
-            df_principal_volume.set_index('Month', inplace=True)
-            df_principal_volume.sort_index(inplace=True)
+        if not df_principal_volume_by_league.empty:
+            # Pivot the data for stacked bar chart
+            df_pivot = df_principal_volume_by_league.pivot_table(
+                index='Month',
+                columns='LeagueName',
+                values='TotalDollarsAtStake',
+                aggfunc='sum'
+            ).fillna(0)
 
+            # Sort index by time
+            df_pivot.index = pd.to_datetime(df_pivot.index)
+            df_pivot.sort_index(inplace=True)
 
-
-            # Prepare x-axis labels
-            x_labels = [date.strftime('%Y-%m') if isinstance(date, pd.Timestamp) else date for date in df_principal_volume.index]
-
-            # Plot the first bar chart
-            st.subheader("Total Principal Volume by Month for 'GreenAleph'")
+            # Plot the stacked bar chart
+            st.subheader("Total Principal Volume by Month (Stacked by LeagueName)")
             plt.figure(figsize=(12, 6))
-            bars = plt.bar(x_labels, df_principal_volume['TotalDollarsAtStake'])
-            plt.ylabel('Total Principal ($)')
-            plt.title('Total Principal Volume by Month (GreenAleph)')
-            plt.xticks(rotation=45, ha='right')
+            df_pivot.plot(kind='bar', stacked=True, figsize=(12, 6))
 
-            # Add value labels above each bar, rounded to whole numbers
-            for bar in bars:
-                yval = bar.get_height()
-                plt.text(bar.get_x() + bar.get_width()/2, yval, f"${yval:,.0f}", ha='center', va='bottom')
+            plt.ylabel('Total Principal ($)')
+            plt.title('Total Principal Volume by Month (Stacked by LeagueName)')
+            plt.xticks(rotation=45, ha='right')
+            plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
 
             st.pyplot(plt)
         else:
-            st.warning("No data available for 'GreenAleph' principal volume.")
+            st.warning("No data available for 'GreenAleph' principal volume by month and LeagueName.")
     else:
         st.error("Failed to retrieve data from the database.")
+
+    # SQL query to get the total principal volume by LeagueName (overall)
+    league_principal_volume_query = """
+    SELECT 
+        l.LeagueName,
+        SUM(b.DollarsAtStake) AS TotalDollarsAtStake
+    FROM bets b
+    JOIN legs l ON b.WagerID = l.WagerID
+    WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA != 'Cashout'
+    AND b.WagerID IN (
+        SELECT DISTINCT WagerID
+        FROM bets
+        WHERE LegCount <= 1 OR (LegCount > 1 AND WLCA != 'Cashout')
+    )
+    GROUP BY l.LeagueName
+    ORDER BY TotalDollarsAtStake DESC;
+    """
 
     # Get data from the database for the second chart
     league_principal_volume_data = get_data_from_db(league_principal_volume_query)
@@ -385,20 +387,20 @@ if page == "Principal Volume":
             # Plot the second bar chart
             st.subheader("Principal Volume by League")
             plt.figure(figsize=(12, 6))
-            plt.bar(df_league_principal_volume['LeagueName'], df_league_principal_volume['TotalDollarsAtStake'])
-            plt.ylabel('Total Principal ($)')
+            plt.barh(df_league_principal_volume['LeagueName'], df_league_principal_volume['TotalDollarsAtStake'])
+            plt.xlabel('Total Principal ($)')
             plt.title('Total Principal Volume by LeagueName (GreenAleph)')
-            plt.xticks(rotation=45, ha='right')
 
-            # Add value labels above each bar, rounded to whole numbers
+            # Add value labels next to each bar, rounded to whole numbers
             for index, value in enumerate(df_league_principal_volume['TotalDollarsAtStake']):
-                plt.text(index, value, f"${value:,.0f}", ha='center', va='bottom')
+                plt.text(value, index, f"${value:,.0f}", va='center', ha='left')
 
             st.pyplot(plt)
         else:
             st.warning("No data available for 'GreenAleph' principal volume by league.")
     else:
         st.error("Failed to retrieve data from the database.")
+
 
 
 
