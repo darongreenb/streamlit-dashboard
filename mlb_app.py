@@ -1812,8 +1812,5 @@ elif page == "NFL Participant Positions":
             else:
                 st.warning('No data found for the selected filters.')
 
-
-
-
     
     
