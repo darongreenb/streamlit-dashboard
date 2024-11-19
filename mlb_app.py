@@ -297,42 +297,56 @@ if page == "Main Page":
 
 
 
-# Streamlit page for Principal Volume
+# Adding the new "Principal Volume" page
 if page == "Principal Volume":
     st.title("Principal Volume (GA1)")
 
-    # SQL query to get the total principal (dollars at stake) by month and LeagueName
-    principal_volume_by_league_query = """
-    SELECT 
-        DATE_FORMAT(b.DateTimePlaced, '%Y-%m') AS Month,
-        l.LeagueName,
-        SUM(b.DollarsAtStake) AS TotalDollarsAtStake
-    FROM bets b
-    JOIN legs l ON b.WagerID = l.WagerID
-    WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA != 'Cashout'
-    GROUP BY Month, l.LeagueName
-    ORDER BY Month, TotalDollarsAtStake DESC;
+    # SQL query to get the total principal (dollars at stake) by month and LeagueName for 'GreenAleph'
+    stacked_principal_volume_query = """
+        SELECT 
+            DATE_FORMAT(b.DateTimePlaced, '%Y-%m') AS Month,
+            l.LeagueName,
+            SUM(b.DollarsAtStake) AS TotalDollarsAtStake
+        FROM bets b
+        JOIN legs l ON b.WagerID = l.WagerID
+        WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA != 'Cashout'
+        GROUP BY Month, l.LeagueName
+        ORDER BY Month, LeagueName;
+    """
+
+    # SQL query to get the total principal volume by LeagueName for 'GreenAleph', summing each WagerID only once
+    league_principal_volume_query = """
+        SELECT 
+            l.LeagueName,
+            SUM(b.DollarsAtStake) AS TotalDollarsAtStake
+        FROM bets b
+        JOIN legs l ON b.WagerID = l.WagerID
+        WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA != 'Cashout'
+        AND b.WagerID IN (
+            SELECT DISTINCT WagerID
+            FROM bets
+            WHERE LegCount <= 1 OR (LegCount > 1 AND WLCA != 'Cashout')
+        )
+        GROUP BY l.LeagueName
+        ORDER BY TotalDollarsAtStake DESC;
     """
 
     # Get data from the database for the stacked bar chart
-    principal_volume_by_league_data = get_data_from_db(principal_volume_by_league_query)
+    stacked_principal_volume_data = get_data_from_db(stacked_principal_volume_query)
 
-    if principal_volume_by_league_data:
+    if stacked_principal_volume_data:
         # Convert the data to a DataFrame for plotting
-        df_principal_volume_by_league = pd.DataFrame(principal_volume_by_league_data)
+        df_stacked_principal_volume = pd.DataFrame(stacked_principal_volume_data)
 
         # Check if the DataFrame is not empty
-        if not df_principal_volume_by_league.empty:
+        if not df_stacked_principal_volume.empty:
             # Pivot the data for stacked bar chart
-            df_pivot = df_principal_volume_by_league.pivot_table(
+            df_pivot = df_stacked_principal_volume.pivot_table(
                 index='Month',
                 columns='LeagueName',
                 values='TotalDollarsAtStake',
                 aggfunc='sum'
-            ).fillna(0)  # Replace NaN with 0 for plotting
-
-            # Ensure all values are numeric
-            df_pivot = df_pivot.apply(pd.to_numeric, errors='coerce')
+            ).fillna(0)  # Replace NaN with 0
 
             # Sort index by time
             df_pivot.index = pd.to_datetime(df_pivot.index)
@@ -341,12 +355,13 @@ if page == "Principal Volume":
             # Plot the stacked bar chart
             st.subheader("Total Principal Volume by Month (Stacked by LeagueName)")
             plt.figure(figsize=(12, 6))
-            df_pivot.plot(kind='bar', stacked=True, figsize=(12, 6))
+            ax = df_pivot.plot(kind='bar', stacked=True, figsize=(12, 6), colormap="tab20c")
 
             plt.ylabel('Total Principal ($)')
             plt.title('Total Principal Volume by Month (Stacked by LeagueName)')
             plt.xticks(rotation=45, ha='right')
             plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
+            plt.tight_layout()
 
             st.pyplot(plt)
         else:
@@ -354,24 +369,7 @@ if page == "Principal Volume":
     else:
         st.error("Failed to retrieve data from the database.")
 
-    # SQL query to get the total principal volume by LeagueName (overall)
-    league_principal_volume_query = """
-    SELECT 
-        l.LeagueName,
-        SUM(b.DollarsAtStake) AS TotalDollarsAtStake
-    FROM bets b
-    JOIN legs l ON b.WagerID = l.WagerID
-    WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA != 'Cashout'
-    AND b.WagerID IN (
-        SELECT DISTINCT WagerID
-        FROM bets
-        WHERE LegCount <= 1 OR (LegCount > 1 AND WLCA != 'Cashout')
-    )
-    GROUP BY l.LeagueName
-    ORDER BY TotalDollarsAtStake DESC;
-    """
-
-    # Get data from the database for the horizontal bar chart
+    # Get data from the database for the second chart
     league_principal_volume_data = get_data_from_db(league_principal_volume_query)
 
     if league_principal_volume_data:
@@ -390,19 +388,21 @@ if page == "Principal Volume":
             # Plot the second bar chart
             st.subheader("Principal Volume by League")
             plt.figure(figsize=(12, 6))
-            plt.barh(df_league_principal_volume['LeagueName'], df_league_principal_volume['TotalDollarsAtStake'])
-            plt.xlabel('Total Principal ($)')
+            plt.bar(df_league_principal_volume['LeagueName'], df_league_principal_volume['TotalDollarsAtStake'])
+            plt.ylabel('Total Principal ($)')
             plt.title('Total Principal Volume by LeagueName (GreenAleph)')
+            plt.xticks(rotation=45, ha='right')
 
-            # Add value labels next to each bar, rounded to whole numbers
+            # Add value labels above each bar, rounded to whole numbers
             for index, value in enumerate(df_league_principal_volume['TotalDollarsAtStake']):
-                plt.text(value, index, f"${value:,.0f}", va='center', ha='left')
+                plt.text(index, value, f"${value:,.0f}", ha='center', va='bottom')
 
             st.pyplot(plt)
         else:
             st.warning("No data available for 'GreenAleph' principal volume by league.")
     else:
         st.error("Failed to retrieve data from the database.")
+
 
 
 
