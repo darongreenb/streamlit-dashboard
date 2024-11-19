@@ -314,7 +314,7 @@ if page == "Principal Volume":
     ORDER BY Month, TotalDollarsAtStake DESC;
     """
 
-    # Get data from the database
+    # Get data from the database for the stacked bar chart
     principal_volume_by_league_data = get_data_from_db(principal_volume_by_league_query)
 
     if principal_volume_by_league_data:
@@ -337,9 +337,6 @@ if page == "Principal Volume":
             # Sort index by time
             df_pivot.index = pd.to_datetime(df_pivot.index)
             df_pivot.sort_index(inplace=True)
-
-            # Debugging: Output DataFrame for verification
-            st.write("Debug: Pivot DataFrame", df_pivot)
 
             # Plot the stacked bar chart
             st.subheader("Total Principal Volume by Month (Stacked by LeagueName)")
@@ -374,7 +371,7 @@ if page == "Principal Volume":
     ORDER BY TotalDollarsAtStake DESC;
     """
 
-    # Get data from the database for the second chart
+    # Get data from the database for the horizontal bar chart
     league_principal_volume_data = get_data_from_db(league_principal_volume_query)
 
     if league_principal_volume_data:
@@ -406,6 +403,7 @@ if page == "Principal Volume":
             st.warning("No data available for 'GreenAleph' principal volume by league.")
     else:
         st.error("Failed to retrieve data from the database.")
+
 
 
 
