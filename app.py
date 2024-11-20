@@ -301,67 +301,91 @@ if page == "Main Page":
 if page == "Principal Volume":
     st.title("Principal Volume (GA1)")
 
-    # SQL query to get the total principal (dollars at stake) by month for 'GreenAleph' without including cashouts
-    principal_volume_query = """
-        SELECT 
-            DATE_FORMAT(DateTimePlaced, '%Y-%m') AS Month,
-            SUM(DollarsAtStake) AS TotalDollarsAtStake
-        FROM bets
-        WHERE WhichBankroll = 'GreenAleph' AND WLCA != 'Cashout'
-        GROUP BY Month
-        ORDER BY Month;
+    # SQL query to get the total principal (dollars at stake) by month and LeagueName for 'GreenAleph'
+    stacked_principal_volume_query = """
+        WITH DistinctBets AS (
+            SELECT DISTINCT WagerID, DollarsAtStake, DateTimePlaced
+            FROM bets
+            WHERE WLCA != 'Cashout'
+              AND WhichBankroll = 'GreenAleph'
+        ),
+        MonthlySums AS (
+            SELECT 
+                DATE_FORMAT(db.DateTimePlaced, '%Y-%m') AS Month,
+                l.LeagueName,
+                SUM(db.DollarsAtStake) AS TotalDollarsAtStake
+            FROM 
+                DistinctBets db
+            JOIN 
+                (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
+            GROUP BY 
+                Month, l.LeagueName
+        )
+        SELECT * FROM MonthlySums
+        ORDER BY Month, LeagueName;
     """
 
     # SQL query to get the total principal volume by LeagueName for 'GreenAleph', summing each WagerID only once
     league_principal_volume_query = """
+        WITH DistinctBets AS (
+            SELECT DISTINCT WagerID, DollarsAtStake
+            FROM bets
+            WHERE WLCA != 'Cashout'
+              AND WhichBankroll = 'GreenAleph'
+        )
         SELECT 
             l.LeagueName,
-            SUM(b.DollarsAtStake) AS TotalDollarsAtStake
-        FROM bets b
-        JOIN legs l ON b.WagerID = l.WagerID
-        WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA != 'Cashout'
-        AND b.WagerID IN (
-            SELECT DISTINCT WagerID
-            FROM bets
-            WHERE LegCount <= 1 OR (LegCount > 1 AND WLCA != 'Cashout')
-        )
+            SUM(db.DollarsAtStake) AS TotalDollarsAtStake
+        FROM 
+            DistinctBets db
+        JOIN 
+            (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
         GROUP BY l.LeagueName
         ORDER BY TotalDollarsAtStake DESC;
     """
 
-    # Get data from the database for the first chart
-    principal_volume_data = get_data_from_db(principal_volume_query)
+    # Get data from the database for the stacked bar chart
+    stacked_principal_volume_data = get_data_from_db(stacked_principal_volume_query)
 
-    if principal_volume_data:
+    if stacked_principal_volume_data:
         # Convert the data to a DataFrame for plotting
-        df_principal_volume = pd.DataFrame(principal_volume_data)
+        df_stacked_principal_volume = pd.DataFrame(stacked_principal_volume_data)
 
         # Check if the DataFrame is not empty
-        if not df_principal_volume.empty:
-            df_principal_volume['Month'] = pd.to_datetime(df_principal_volume['Month'])
-            df_principal_volume.set_index('Month', inplace=True)
-            df_principal_volume.sort_index(inplace=True)
+        if not df_stacked_principal_volume.empty:
+            # Pivot the data for stacked bar chart
+            df_pivot = df_stacked_principal_volume.pivot_table(
+                index='Month',
+                columns='LeagueName',
+                values='TotalDollarsAtStake',
+                aggfunc='sum'
+            ).fillna(0)  # Replace NaN with 0
 
+            # Ensure all data is numeric
+            df_pivot = df_pivot.apply(pd.to_numeric, errors='coerce').fillna(0)
 
-            # Prepare x-axis labels
-            x_labels = [date.strftime('%Y-%m') if isinstance(date, pd.Timestamp) else date for date in df_principal_volume.index]
+            # Sort index by time
+            df_pivot.index = pd.to_datetime(df_pivot.index, format='%Y-%m')
+            df_pivot.sort_index(inplace=True)
 
-            # Plot the first bar chart
-            st.subheader("Total Principal Volume by Month for 'GreenAleph'")
+            # Plot the stacked bar chart
+            st.subheader("Total Principal Volume by Month (Stacked by LeagueName)")
             plt.figure(figsize=(12, 6))
-            bars = plt.bar(x_labels, df_principal_volume['TotalDollarsAtStake'])
+            ax = df_pivot.plot(kind='bar', stacked=True, figsize=(12, 6), colormap="tab20c")
+
             plt.ylabel('Total Principal ($)')
-            plt.title('Total Principal Volume by Month (GreenAleph)')
-            plt.xticks(rotation=45, ha='right')
+            plt.title('Total Principal Volume by Month (Stacked by LeagueName)')
+            plt.xticks(ticks=range(len(df_pivot.index)), labels=df_pivot.index.strftime('%Y-%m'), rotation=45, ha='right')
+            plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
 
-            # Add value labels above each bar, rounded to whole numbers
-            for bar in bars:
-                yval = bar.get_height()
-                plt.text(bar.get_x() + bar.get_width()/2, yval, f"${yval:,.0f}", ha='center', va='bottom')
+            # Add value labels above each bar (stacked total)
+            for idx, total in enumerate(df_pivot.sum(axis=1)):
+                plt.text(idx, total, f"${total:,.0f}", ha='center', va='bottom')
 
+            plt.tight_layout()
             st.pyplot(plt)
         else:
-            st.warning("No data available for 'GreenAleph' principal volume.")
+            st.warning("No data available for 'GreenAleph' principal volume by month and LeagueName.")
     else:
         st.error("Failed to retrieve data from the database.")
 
