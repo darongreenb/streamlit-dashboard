@@ -380,7 +380,7 @@ if page == "Principal Volume":
 
             # Add value labels above each bar (stacked total)
             for idx, total in enumerate(df_pivot.sum(axis=1)):
-                plt.text(idx, total, f"${total:,.0f}", ha='center', va='bottom')
+                plt.text(idx, total, f"{total:,.0f}", ha='center', va='bottom')
 
             plt.tight_layout()
             st.pyplot(plt)
