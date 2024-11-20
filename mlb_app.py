@@ -920,6 +920,10 @@ elif page == "NBA Charts":
 
 
 
+
+
+
+
 elif page == "NFL Charts":
     # NFL Charts
     st.title('NFL Active Bets - GA1')
@@ -1138,7 +1142,7 @@ elif page == "NFL Charts":
                             spine.set_linewidth(1.2)
                 
                         # Extend y-axis range
-                        ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 5000, max(combined_df['TotalPotentialPayout']) + 10000)
+                        ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 20000, max(combined_df['TotalPotentialPayout']) + 30000)
                 
                         # Adjust layout
                         plt.tight_layout()
@@ -1194,7 +1198,7 @@ elif page == "NFL Charts":
             ax.set_ylabel("Number of Parlays", fontsize=14, fontweight='bold')
             
             # Rotate x-axis labels
-            plt.xticks(rotation=45, ha='right', fontsize=12)
+            plt.xticks(rotation=45, ha='right', fontsize=12, fontweight='bold')
             
             # Annotate each bar with the count of parlays
             for bar in bars:
@@ -1265,7 +1269,7 @@ elif page == "NFL Charts":
                     ax.set_ylabel("Total Dollars At Stake ($)", fontsize=14, fontweight='bold')
                     
                     # Rotate x-axis labels
-                    plt.xticks(rotation=45, ha='right', fontsize=12)
+                    plt.xticks(rotation=45, ha='right', fontsize=12, fontweight='bold')
                     
                     # Annotate each bar with the dollar value
                     for bar in bars:
@@ -1290,7 +1294,6 @@ elif page == "NFL Charts":
 
                     # Display the plot in Streamlit
                     st.pyplot(fig)
-
 
 
 
