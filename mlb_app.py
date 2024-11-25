@@ -525,21 +525,25 @@ if page == "Principal Volume":
     if league_principal_volume_data:
         df_league = pd.DataFrame(league_principal_volume_data)
         if not df_league.empty:
+            # Ensure the data is numeric and sort in ascending order
             df_league = ensure_numeric(df_league, ['TotalDollarsAtStake'])
-
+            df_league = df_league.sort_values(by='TotalDollarsAtStake', ascending=True)
+    
             st.subheader("Principal Volume by League")
             plt.figure(figsize=(12, 6))
             bar_colors = [league_colors.get(league, 'blue') for league in df_league['LeagueName']]
             plt.bar(df_league['LeagueName'], df_league['TotalDollarsAtStake'], color=bar_colors, edgecolor='black')
+    
             plt.ylabel('Total Principal ($)')
             plt.title('Total Principal Volume by LeagueName')
             plt.xticks(rotation=45, ha='right')
-
+    
             st.pyplot(plt)
         else:
             st.warning("No data available for 'GreenAleph' principal volume by league.")
     else:
         st.error("Failed to retrieve league data from the database.")
+
 
 
 
