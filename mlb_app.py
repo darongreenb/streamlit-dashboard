@@ -300,6 +300,17 @@ if page == "Main Page":
 if page == "Principal Volume":
     st.title("Principal Volume (GA1)")
 
+    # Define custom color mapping
+    league_colors = {
+        'ATP': 'green',
+        'WTA': 'yellow',
+        'NBA': 'darkorange',
+        'NCAA Men\'s Basketball': 'lightcoral',  # Light orange
+        'Olympics': 'gray',
+        'NFL': 'purple',
+        'MLB': 'black'
+    }
+
     # SQL query to get the total principal (dollars at stake) by month and LeagueName for 'GreenAleph'
     stacked_principal_volume_query = """
         WITH DistinctBets AS (
@@ -372,12 +383,36 @@ if page == "Principal Volume":
         ORDER BY Day, LeagueName;
     """
 
-    # Fetch data for monthly, weekly, and daily breakdowns
+    # SQL query for Principal Volume by League
+    league_principal_volume_query = """
+        WITH DistinctBets AS (
+            SELECT DISTINCT WagerID, DollarsAtStake
+            FROM bets
+            WHERE WLCA != 'Cashout'
+              AND WhichBankroll = 'GreenAleph'
+        )
+        SELECT 
+            l.LeagueName,
+            SUM(db.DollarsAtStake) AS TotalDollarsAtStake
+        FROM 
+            DistinctBets db
+        JOIN 
+            (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
+        GROUP BY l.LeagueName
+        ORDER BY TotalDollarsAtStake DESC;
+    """
+
+    # Fetch data
     stacked_principal_volume_data = get_data_from_db(stacked_principal_volume_query)
     weekly_principal_volume_data = get_data_from_db(stacked_principal_volume_weekly_query)
     daily_principal_volume_data = get_data_from_db(stacked_principal_volume_daily_query)
+    league_principal_volume_data = get_data_from_db(league_principal_volume_query)
 
-    # Plot the stacked bar chart by Month
+    # Helper function to assign colors
+    def assign_colors(columns):
+        return [league_colors.get(col, 'blue') for col in columns]
+
+    # Monthly plot
     if stacked_principal_volume_data:
         df_monthly = pd.DataFrame(stacked_principal_volume_data)
         if not df_monthly.empty:
@@ -388,25 +423,22 @@ if page == "Principal Volume":
                 aggfunc='sum'
             ).fillna(0)
 
-            # Ensure data is numeric
-            df_pivot_monthly = df_pivot_monthly.apply(pd.to_numeric, errors='coerce').fillna(0)
-
-            # Ensure index is datetime
             df_pivot_monthly.index = pd.to_datetime(df_pivot_monthly.index, format='%Y-%m', errors='coerce')
             df_pivot_monthly.sort_index(inplace=True)
 
             st.subheader("Total Principal Volume by Month (Stacked by LeagueName)")
             plt.figure(figsize=(12, 6))
-            ax = df_pivot_monthly.plot(kind='bar', stacked=True, figsize=(12, 6), colormap="tab20c")
+            ax = df_pivot_monthly.plot(
+                kind='bar', 
+                stacked=True, 
+                figsize=(12, 6), 
+                color=assign_colors(df_pivot_monthly.columns)
+            )
 
             plt.ylabel('Total Principal ($)')
             plt.title('Total Principal Volume by Month (Stacked by LeagueName)')
             plt.xticks(ticks=range(len(df_pivot_monthly.index)), labels=df_pivot_monthly.index.strftime('%Y-%m'), rotation=45, ha='right')
             plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
-
-            for idx, total in enumerate(df_pivot_monthly.sum(axis=1)):
-                plt.text(idx, total, f"{total:,.0f}", ha='center', va='bottom')
-
             plt.tight_layout()
             st.pyplot(plt)
         else:
@@ -414,7 +446,7 @@ if page == "Principal Volume":
     else:
         st.error("Failed to retrieve monthly data from the database.")
 
-    # Plot the stacked bar chart by Week
+    # Weekly plot
     if weekly_principal_volume_data:
         df_weekly = pd.DataFrame(weekly_principal_volume_data)
         if not df_weekly.empty:
@@ -425,25 +457,22 @@ if page == "Principal Volume":
                 aggfunc='sum'
             ).fillna(0)
 
-            # Ensure data is numeric
-            df_pivot_weekly = df_pivot_weekly.apply(pd.to_numeric, errors='coerce').fillna(0)
-
-            # Ensure index is datetime
             df_pivot_weekly.index = pd.to_datetime(df_pivot_weekly.index, errors='coerce')
             df_pivot_weekly.sort_index(inplace=True)
 
             st.subheader("Total Principal Volume by Week (Stacked by LeagueName)")
             plt.figure(figsize=(12, 6))
-            ax = df_pivot_weekly.plot(kind='bar', stacked=True, figsize=(12, 6), colormap="tab20c")
+            ax = df_pivot_weekly.plot(
+                kind='bar', 
+                stacked=True, 
+                figsize=(12, 6), 
+                color=assign_colors(df_pivot_weekly.columns)
+            )
 
             plt.ylabel('Total Principal ($)')
             plt.title('Total Principal Volume by Week (Stacked by LeagueName)')
-            plt.xticks(ticks=range(len(df_pivot_weekly.index)), labels=df_pivot_weekly.index.strftime('%Y-%m-%d'), rotation=45, ha='right')
+            plt.xticks(rotation=45, ha='right')
             plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
-
-            for idx, total in enumerate(df_pivot_weekly.sum(axis=1)):
-                plt.text(idx, total, f"{total:,.0f}", ha='center', va='bottom')
-
             plt.tight_layout()
             st.pyplot(plt)
         else:
@@ -451,7 +480,7 @@ if page == "Principal Volume":
     else:
         st.error("Failed to retrieve weekly data from the database.")
 
-    # Plot the stacked bar chart by Day
+    # Daily plot
     if daily_principal_volume_data:
         df_daily = pd.DataFrame(daily_principal_volume_data)
         if not df_daily.empty:
@@ -462,31 +491,55 @@ if page == "Principal Volume":
                 aggfunc='sum'
             ).fillna(0)
 
-            # Ensure data is numeric
-            df_pivot_daily = df_pivot_daily.apply(pd.to_numeric, errors='coerce').fillna(0)
-
-            # Ensure index is datetime
             df_pivot_daily.index = pd.to_datetime(df_pivot_daily.index, format='%Y-%m-%d', errors='coerce')
             df_pivot_daily.sort_index(inplace=True)
 
             st.subheader("Total Principal Volume by Day (Stacked by LeagueName)")
             plt.figure(figsize=(12, 6))
-            ax = df_pivot_daily.plot(kind='bar', stacked=True, figsize=(12, 6), colormap="tab20c")
+            ax = df_pivot_daily.plot(
+                kind='bar', 
+                stacked=True, 
+                figsize=(12, 6), 
+                color=assign_colors(df_pivot_daily.columns)
+            )
 
             plt.ylabel('Total Principal ($)')
             plt.title('Total Principal Volume by Day (Stacked by LeagueName)')
-            plt.xticks(ticks=range(len(df_pivot_daily.index)), labels=df_pivot_daily.index.strftime('%Y-%m-%d'), rotation=45, ha='right')
+            # Show only monthly labels
+            monthly_labels = [label if i % 30 == 0 else '' for i, label in enumerate(df_pivot_daily.index.strftime('%Y-%m-%d'))]
+            plt.xticks(ticks=range(len(df_pivot_daily.index)), labels=monthly_labels, rotation=45, ha='right')
             plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
-
-            for idx, total in enumerate(df_pivot_daily.sum(axis=1)):
-                plt.text(idx, total, f"{total:,.0f}", ha='center', va='bottom')
-
             plt.tight_layout()
             st.pyplot(plt)
         else:
             st.warning("No data available for 'GreenAleph' principal volume by day.")
     else:
         st.error("Failed to retrieve daily data from the database.")
+
+    # Principal Volume by League plot
+    if league_principal_volume_data:
+        df_league = pd.DataFrame(league_principal_volume_data)
+        if not df_league.empty:
+            df_league['TotalDollarsAtStake'] = df_league['TotalDollarsAtStake'].astype(float)
+
+                        st.subheader("Principal Volume by League")
+            plt.figure(figsize=(12, 6))
+            
+            # Use custom colors for the bar chart
+            bar_colors = [league_colors.get(league, 'blue') for league in df_league['LeagueName']]
+            
+            plt.bar(df_league['LeagueName'], df_league['TotalDollarsAtStake'], color=bar_colors, edgecolor='black')
+            plt.ylabel('Total Principal ($)')
+            plt.title('Total Principal Volume by LeagueName')
+            plt.xticks(rotation=45, ha='right')
+
+            st.pyplot(plt)
+        else:
+            st.warning("No data available for 'GreenAleph' principal volume by league.")
+    else:
+        st.error("Failed to retrieve league data from the database.")
+
+
 
 
 
