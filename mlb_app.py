@@ -461,22 +461,28 @@ if page == "Principal Volume":
                 values='TotalDollarsAtStake',
                 aggfunc='sum'
             ).fillna(0)
-
-            df_pivot_weekly.index = pd.to_datetime(df_pivot_weekly.index, errors='coerce')
+    
+            # Ensure the index is datetime and sort
+            df_pivot_weekly.index = pd.to_datetime(df_pivot_weekly.index, errors='coerce').strftime('%Y-%m')
             df_pivot_weekly.sort_index(inplace=True)
-
+    
             st.subheader("Total Principal Volume by Week (Stacked by LeagueName)")
             plt.figure(figsize=(12, 6))
             ax = df_pivot_weekly.plot(
-                kind='bar', 
-                stacked=True, 
-                figsize=(12, 6), 
+                kind='bar',
+                stacked=True,
+                figsize=(12, 6),
                 color=assign_colors(df_pivot_weekly.columns)
             )
-
+    
             plt.ylabel('Total Principal ($)')
             plt.title('Total Principal Volume by Week (Stacked by LeagueName)')
-            plt.xticks(rotation=45, ha='right')
+            plt.xticks(
+                ticks=range(len(df_pivot_weekly.index)),
+                labels=df_pivot_weekly.index,
+                rotation=45,
+                ha='right'
+            )
             plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
             plt.tight_layout()
             st.pyplot(plt)
@@ -484,6 +490,7 @@ if page == "Principal Volume":
             st.warning("No data available for 'GreenAleph' principal volume by week.")
     else:
         st.error("Failed to retrieve weekly data from the database.")
+
 
     # Daily plot
     if daily_principal_volume_data:
