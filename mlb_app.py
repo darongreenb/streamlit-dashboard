@@ -311,7 +311,7 @@ if page == "Principal Volume":
         'MLB': 'black'
     }
 
-    # SQL query to get the total principal (dollars at stake) by month and LeagueName for 'GreenAleph'
+    # SQL queries
     stacked_principal_volume_query = """
         WITH DistinctBets AS (
             SELECT DISTINCT WagerID, DollarsAtStake, DateTimePlaced
@@ -335,7 +335,6 @@ if page == "Principal Volume":
         ORDER BY Month, LeagueName;
     """
 
-    # SQL query to get weekly breakdown
     stacked_principal_volume_weekly_query = """
         WITH DistinctBets AS (
             SELECT DISTINCT WagerID, DollarsAtStake, DateTimePlaced
@@ -359,7 +358,6 @@ if page == "Principal Volume":
         ORDER BY WeekStart, LeagueName;
     """
 
-    # SQL query to get daily breakdown
     stacked_principal_volume_daily_query = """
         WITH DistinctBets AS (
             SELECT DISTINCT WagerID, DollarsAtStake, DateTimePlaced
@@ -383,7 +381,6 @@ if page == "Principal Volume":
         ORDER BY Day, LeagueName;
     """
 
-    # SQL query for Principal Volume by League
     league_principal_volume_query = """
         WITH DistinctBets AS (
             SELECT DISTINCT WagerID, DollarsAtStake
@@ -408,6 +405,12 @@ if page == "Principal Volume":
     daily_principal_volume_data = get_data_from_db(stacked_principal_volume_daily_query)
     league_principal_volume_data = get_data_from_db(league_principal_volume_query)
 
+    # Helper function to ensure data is numeric
+    def ensure_numeric(df, column_list):
+        for column in column_list:
+            df[column] = pd.to_numeric(df[column], errors='coerce').fillna(0)
+        return df
+
     # Helper function to assign colors
     def assign_colors(columns):
         return [league_colors.get(col, 'blue') for col in columns]
@@ -416,6 +419,7 @@ if page == "Principal Volume":
     if stacked_principal_volume_data:
         df_monthly = pd.DataFrame(stacked_principal_volume_data)
         if not df_monthly.empty:
+            df_monthly = ensure_numeric(df_monthly, ['TotalDollarsAtStake'])
             df_pivot_monthly = df_monthly.pivot_table(
                 index='Month',
                 columns='LeagueName',
@@ -450,6 +454,7 @@ if page == "Principal Volume":
     if weekly_principal_volume_data:
         df_weekly = pd.DataFrame(weekly_principal_volume_data)
         if not df_weekly.empty:
+            df_weekly = ensure_numeric(df_weekly, ['TotalDollarsAtStake'])
             df_pivot_weekly = df_weekly.pivot_table(
                 index='WeekStart',
                 columns='LeagueName',
@@ -484,6 +489,7 @@ if page == "Principal Volume":
     if daily_principal_volume_data:
         df_daily = pd.DataFrame(daily_principal_volume_data)
         if not df_daily.empty:
+            df_daily = ensure_numeric(df_daily, ['TotalDollarsAtStake'])
             df_pivot_daily = df_daily.pivot_table(
                 index='Day',
                 columns='LeagueName',
@@ -505,7 +511,6 @@ if page == "Principal Volume":
 
             plt.ylabel('Total Principal ($)')
             plt.title('Total Principal Volume by Day (Stacked by LeagueName)')
-            # Show only monthly labels
             monthly_labels = [label if i % 30 == 0 else '' for i, label in enumerate(df_pivot_daily.index.strftime('%Y-%m-%d'))]
             plt.xticks(ticks=range(len(df_pivot_daily.index)), labels=monthly_labels, rotation=45, ha='right')
             plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
@@ -520,14 +525,11 @@ if page == "Principal Volume":
     if league_principal_volume_data:
         df_league = pd.DataFrame(league_principal_volume_data)
         if not df_league.empty:
-            df_league['TotalDollarsAtStake'] = df_league['TotalDollarsAtStake'].astype(float)
+            df_league = ensure_numeric(df_league, ['TotalDollarsAtStake'])
 
             st.subheader("Principal Volume by League")
             plt.figure(figsize=(12, 6))
-            
-            # Use custom colors for the bar chart
             bar_colors = [league_colors.get(league, 'blue') for league in df_league['LeagueName']]
-            
             plt.bar(df_league['LeagueName'], df_league['TotalDollarsAtStake'], color=bar_colors, edgecolor='black')
             plt.ylabel('Total Principal ($)')
             plt.title('Total Principal Volume by LeagueName')
