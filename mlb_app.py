@@ -306,9 +306,9 @@ if page == "Principal Volume":
         'WTA': 'yellow',
         'NBA': 'darkorange',
         'NCAA Men\'s Basketball': 'lightcoral',  # Light orange
-        'Olympics': 'gray',
+        'Olympics': 'black',
         'NFL': 'purple',
-        'MLB': 'black'
+        'MLB': 'gray'
     }
 
     # SQL queries
