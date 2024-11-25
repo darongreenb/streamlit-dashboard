@@ -40,7 +40,7 @@ else:
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Main Page", "Principal Volume", "Betting Frequency", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "NBA Participant Positions", "NFL Participant Positions"])
+page = st.sidebar.radio("Go to", ["Main Page", "ume", "Betting Frequency", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "NBA Participant Positions", "NFL Participant Positions"])
 
 
 # Check if the user is on the "Main Page" page
@@ -388,6 +388,125 @@ if page == "Principal Volume":
             st.warning("No data available for 'GreenAleph' principal volume by month and LeagueName.")
     else:
         st.error("Failed to retrieve data from the database.")
+
+    # SQL query for weekly breakdown
+    stacked_principal_volume_weekly_query = """
+        WITH DistinctBets AS (
+            SELECT DISTINCT WagerID, DollarsAtStake, DateTimePlaced
+            FROM bets
+            WHERE WLCA != 'Cashout'
+              AND WhichBankroll = 'GreenAleph'
+        ),
+        WeeklySums AS (
+            SELECT 
+                DATE_FORMAT(db.DateTimePlaced, '%Y-%u') AS Week, -- Week of the year
+                l.LeagueName,
+                SUM(db.DollarsAtStake) AS TotalDollarsAtStake
+            FROM 
+                DistinctBets db
+            JOIN 
+                (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
+            GROUP BY 
+                Week, l.LeagueName
+        )
+        SELECT * FROM WeeklySums
+        ORDER BY Week, LeagueName;
+    """
+    
+    # SQL query for daily breakdown
+    stacked_principal_volume_daily_query = """
+        WITH DistinctBets AS (
+            SELECT DISTINCT WagerID, DollarsAtStake, DateTimePlaced
+            FROM bets
+            WHERE WLCA != 'Cashout'
+              AND WhichBankroll = 'GreenAleph'
+        ),
+        DailySums AS (
+            SELECT 
+                DATE_FORMAT(db.DateTimePlaced, '%Y-%m-%d') AS Day,
+                l.LeagueName,
+                SUM(db.DollarsAtStake) AS TotalDollarsAtStake
+            FROM 
+                DistinctBets db
+            JOIN 
+                (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
+            GROUP BY 
+                Day, l.LeagueName
+        )
+        SELECT * FROM DailySums
+        ORDER BY Day, LeagueName;
+    """
+    
+    # Fetch data for weekly and daily breakdowns
+    weekly_principal_volume_data = get_data_from_db(stacked_principal_volume_weekly_query)
+    daily_principal_volume_data = get_data_from_db(stacked_principal_volume_daily_query)
+    
+    # Plot the stacked bar chart by Week
+    if weekly_principal_volume_data:
+        df_weekly = pd.DataFrame(weekly_principal_volume_data)
+        if not df_weekly.empty:
+            df_pivot_weekly = df_weekly.pivot_table(
+                index='Week',
+                columns='LeagueName',
+                values='TotalDollarsAtStake',
+                aggfunc='sum'
+            ).fillna(0)
+            df_pivot_weekly.index = pd.to_datetime(df_pivot_weekly.index + '-1', format='%Y-%U-%w')  # Convert week-year to datetime
+            df_pivot_weekly.sort_index(inplace=True)
+    
+            st.subheader("Total Principal Volume by Week (Stacked by LeagueName)")
+            plt.figure(figsize=(12, 6))
+            ax = df_pivot_weekly.plot(kind='bar', stacked=True, figsize=(12, 6), colormap="tab20c")
+    
+            plt.ylabel('Total Principal ($)')
+            plt.title('Total Principal Volume by Week (Stacked by LeagueName)')
+            plt.xticks(ticks=range(len(df_pivot_weekly.index)), labels=df_pivot_weekly.index.strftime('%Y-%m-%d'), rotation=45, ha='right')
+            plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
+    
+            # Add value labels above each bar (stacked total)
+            for idx, total in enumerate(df_pivot_weekly.sum(axis=1)):
+                plt.text(idx, total, f"{total:,.0f}", ha='center', va='bottom')
+    
+            plt.tight_layout()
+            st.pyplot(plt)
+        else:
+            st.warning("No data available for 'GreenAleph' principal volume by week and LeagueName.")
+    else:
+        st.error("Failed to retrieve weekly data from the database.")
+    
+    # Plot the stacked bar chart by Day
+    if daily_principal_volume_data:
+        df_daily = pd.DataFrame(daily_principal_volume_data)
+        if not df_daily.empty:
+            df_pivot_daily = df_daily.pivot_table(
+                index='Day',
+                columns='LeagueName',
+                values='TotalDollarsAtStake',
+                aggfunc='sum'
+            ).fillna(0)
+            df_pivot_daily.index = pd.to_datetime(df_pivot_daily.index, format='%Y-%m-%d')
+            df_pivot_daily.sort_index(inplace=True)
+    
+            st.subheader("Total Principal Volume by Day (Stacked by LeagueName)")
+            plt.figure(figsize=(12, 6))
+            ax = df_pivot_daily.plot(kind='bar', stacked=True, figsize=(12, 6), colormap="tab20c")
+    
+            plt.ylabel('Total Principal ($)')
+            plt.title('Total Principal Volume by Day (Stacked by LeagueName)')
+            plt.xticks(ticks=range(len(df_pivot_daily.index)), labels=df_pivot_daily.index.strftime('%Y-%m-%d'), rotation=45, ha='right')
+            plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
+    
+            # Add value labels above each bar (stacked total)
+            for idx, total in enumerate(df_pivot_daily.sum(axis=1)):
+                plt.text(idx, total, f"{total:,.0f}", ha='center', va='bottom')
+    
+            plt.tight_layout()
+            st.pyplot(plt)
+        else:
+            st.warning("No data available for 'GreenAleph' principal volume by day and LeagueName.")
+    else:
+        st.error("Failed to retrieve daily data from the database.")
+
 
     # Get data from the database for the second chart
     league_principal_volume_data = get_data_from_db(league_principal_volume_query)
