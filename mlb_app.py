@@ -522,7 +522,7 @@ if page == "Principal Volume":
         if not df_league.empty:
             df_league['TotalDollarsAtStake'] = df_league['TotalDollarsAtStake'].astype(float)
 
-                        st.subheader("Principal Volume by League")
+            st.subheader("Principal Volume by League")
             plt.figure(figsize=(12, 6))
             
             # Use custom colors for the bar chart
