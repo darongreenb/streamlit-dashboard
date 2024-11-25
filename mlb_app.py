@@ -380,100 +380,94 @@ if page == "Principal Volume":
     if stacked_principal_volume_data:
         df_monthly = pd.DataFrame(stacked_principal_volume_data)
         if not df_monthly.empty:
+            # Pivot data for the plot
             df_pivot_monthly = df_monthly.pivot_table(
                 index='Month',
                 columns='LeagueName',
                 values='TotalDollarsAtStake',
                 aggfunc='sum'
             ).fillna(0)
-            df_pivot_monthly.index = pd.to_datetime(df_pivot_monthly.index, format='%Y-%m')
-            df_pivot_monthly.sort_index(inplace=True)
+            
+            # Ensure data is numeric
+            df_pivot_monthly = df_pivot_monthly.apply(pd.to_numeric, errors='coerce').fillna(0)
+            
+            # Ensure index is datetime
+            try:
+                df_pivot_monthly.index = pd.to_datetime(df_pivot_monthly.index, format='%Y-%m')
+                df_pivot_monthly.sort_index(inplace=True)
+            except Exception as e:
+                st.error(f"Error parsing dates: {e}")
 
             st.subheader("Total Principal Volume by Month (Stacked by LeagueName)")
-            plt.figure(figsize=(12, 6))
-            ax = df_pivot_monthly.plot(kind='bar', stacked=True, figsize=(12, 6), colormap="tab20c")
+            if not df_pivot_monthly.empty:
+                plt.figure(figsize=(12, 6))
+                ax = df_pivot_monthly.plot(kind='bar', stacked=True, figsize=(12, 6), colormap="tab20c")
 
-            plt.ylabel('Total Principal ($)')
-            plt.title('Total Principal Volume by Month (Stacked by LeagueName)')
-            plt.xticks(ticks=range(len(df_pivot_monthly.index)), labels=df_pivot_monthly.index.strftime('%Y-%m'), rotation=45, ha='right')
-            plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
+                plt.ylabel('Total Principal ($)')
+                plt.title('Total Principal Volume by Month (Stacked by LeagueName)')
+                plt.xticks(ticks=range(len(df_pivot_monthly.index)), labels=df_pivot_monthly.index.strftime('%Y-%m'), rotation=45, ha='right')
+                plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
 
-            # Add value labels above each bar (stacked total)
-            for idx, total in enumerate(df_pivot_monthly.sum(axis=1)):
-                plt.text(idx, total, f"{total:,.0f}", ha='center', va='bottom')
+                # Add value labels above each bar (stacked total)
+                for idx, total in enumerate(df_pivot_monthly.sum(axis=1)):
+                    plt.text(idx, total, f"{total:,.0f}", ha='center', va='bottom')
 
-            plt.tight_layout()
-            st.pyplot(plt)
+                plt.tight_layout()
+                st.pyplot(plt)
+            else:
+                st.warning("No data available for 'GreenAleph' principal volume by month and LeagueName.")
         else:
             st.warning("No data available for 'GreenAleph' principal volume by month and LeagueName.")
     else:
         st.error("Failed to retrieve monthly data from the database.")
 
-    # Plot the stacked bar chart by Week
-    if weekly_principal_volume_data:
-        df_weekly = pd.DataFrame(weekly_principal_volume_data)
-        if not df_weekly.empty:
-            df_pivot_weekly = df_weekly.pivot_table(
-                index='Week',
-                columns='LeagueName',
-                values='TotalDollarsAtStake',
-                aggfunc='sum'
-            ).fillna(0)
-            df_pivot_weekly.index = pd.to_datetime(df_pivot_weekly.index + '-1', format='%Y-%U-%w')
-            df_pivot_weekly.sort_index(inplace=True)
+    # Repeat the same process for weekly and daily plots (with appropriate adjustments for the data index)
+    for query_name, principal_volume_data, index_label, title_label, format_label in [
+        ("Weekly", weekly_principal_volume_data, "Week", "by Week", "%Y-%U-%w"),
+        ("Daily", daily_principal_volume_data, "Day", "by Day", "%Y-%m-%d"),
+    ]:
+        if principal_volume_data:
+            df_data = pd.DataFrame(principal_volume_data)
+            if not df_data.empty:
+                df_pivot = df_data.pivot_table(
+                    index=index_label,
+                    columns='LeagueName',
+                    values='TotalDollarsAtStake',
+                    aggfunc='sum'
+                ).fillna(0)
+                
+                # Ensure data is numeric
+                df_pivot = df_pivot.apply(pd.to_numeric, errors='coerce').fillna(0)
+                
+                # Ensure index is datetime
+                try:
+                    df_pivot.index = pd.to_datetime(df_pivot.index, format=format_label)
+                    df_pivot.sort_index(inplace=True)
+                except Exception as e:
+                    st.error(f"Error parsing dates in {query_name} data: {e}")
 
-            st.subheader("Total Principal Volume by Week (Stacked by LeagueName)")
-            plt.figure(figsize=(12, 6))
-            ax = df_pivot_weekly.plot(kind='bar', stacked=True, figsize=(12, 6), colormap="tab20c")
+                st.subheader(f"Total Principal Volume {title_label} (Stacked by LeagueName)")
+                if not df_pivot.empty:
+                    plt.figure(figsize=(12, 6))
+                    ax = df_pivot.plot(kind='bar', stacked=True, figsize=(12, 6), colormap="tab20c")
 
-            plt.ylabel('Total Principal ($)')
-            plt.title('Total Principal Volume by Week (Stacked by LeagueName)')
-            plt.xticks(ticks=range(len(df_pivot_weekly.index)), labels=df_pivot_weekly.index.strftime('%Y-%m-%d'), rotation=45, ha='right')
-            plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
+                    plt.ylabel('Total Principal ($)')
+                    plt.title(f'Total Principal Volume {title_label} (Stacked by LeagueName)')
+                    plt.xticks(ticks=range(len(df_pivot.index)), labels=df_pivot.index.strftime(format_label), rotation=45, ha='right')
+                    plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
 
-            # Add value labels above each bar (stacked total)
-            for idx, total in enumerate(df_pivot_weekly.sum(axis=1)):
-                plt.text(idx, total, f"{total:,.0f}", ha='center', va='bottom')
+                    # Add value labels above each bar (stacked total)
+                    for idx, total in enumerate(df_pivot.sum(axis=1)):
+                        plt.text(idx, total, f"{total:,.0f}", ha='center', va='bottom')
 
-            plt.tight_layout()
-            st.pyplot(plt)
+                    plt.tight_layout()
+                    st.pyplot(plt)
+                else:
+                    st.warning(f"No data available for 'GreenAleph' principal volume {title_label}.")
+            else:
+                st.warning(f"No data available for 'GreenAleph' principal volume {title_label}.")
         else:
-            st.warning("No data available for 'GreenAleph' principal volume by week and LeagueName.")
-    else:
-        st.error("Failed to retrieve weekly data from the database.")
-
-    # Plot the stacked bar chart by Day
-    if daily_principal_volume_data:
-        df_daily = pd.DataFrame(daily_principal_volume_data)
-        if not df_daily.empty:
-            df_pivot_daily = df_daily.pivot_table(
-                index='Day',
-                columns='LeagueName',
-                values='TotalDollarsAtStake',
-                aggfunc='sum'
-            ).fillna(0)
-            df_pivot_daily.index = pd.to_datetime(df_pivot_daily.index, format='%Y-%m-%d')
-            df_pivot_daily.sort_index(inplace=True)
-
-            st.subheader("Total Principal Volume by Day (Stacked by LeagueName)")
-            plt.figure(figsize=(12, 6))
-            ax = df_pivot_daily.plot(kind='bar', stacked=True, figsize=(12, 6), colormap="tab20c")
-
-            plt.ylabel('Total Principal ($)')
-            plt.title('Total Principal Volume by Day (Stacked by LeagueName)')
-            plt.xticks(ticks=range(len(df_pivot_daily.index)), labels=df_pivot_daily.index.strftime('%Y-%m-%d'), rotation=45, ha='right')
-            plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
-
-            # Add value labels above each bar (stacked total)
-            for idx, total in enumerate(df_pivot_daily.sum(axis=1)):
-                plt.text(idx, total, f"{total:,.0f}", ha='center', va='bottom')
-
-            plt.tight_layout()
-            st.pyplot(plt)
-        else:
-            st.warning("No data available for 'GreenAleph' principal volume by day and LeagueName.")
-    else:
-        st.error("Failed to retrieve daily data from the database.")
+            st.error(f"Failed to retrieve {query_name.lower()} data from the database.")
 
 
 
