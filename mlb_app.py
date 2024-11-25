@@ -396,7 +396,7 @@ if page == "Principal Volume":
         JOIN 
             (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
         GROUP BY l.LeagueName
-        ORDER BY TotalDollarsAtStake ASC;
+        ORDER BY TotalDollarsAtStake DESC;
     """
 
     # Fetch data
@@ -476,12 +476,7 @@ if page == "Principal Volume":
 
             plt.ylabel('Total Principal ($)')
             plt.title('Total Principal Volume by Week (Stacked by LeagueName)')
-            plt.xticks(
-                ticks=range(len(df_pivot_weekly.index)),
-                labels=df_pivot_weekly.index.strftime('%Y-%m'),
-                rotation=45,
-                ha='right'
-            )
+            plt.xticks(rotation=45, ha='right')
             plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
             plt.tight_layout()
             st.pyplot(plt)
@@ -516,12 +511,8 @@ if page == "Principal Volume":
 
             plt.ylabel('Total Principal ($)')
             plt.title('Total Principal Volume by Day (Stacked by LeagueName)')
-            plt.xticks(
-                ticks=range(len(df_pivot_daily.index)),
-                labels=df_pivot_daily.index.strftime('%Y-%m'),
-                rotation=45,
-                ha='right'
-            )
+            monthly_labels = [label if i % 30 == 0 else '' for i, label in enumerate(df_pivot_daily.index.strftime('%Y-%m-%d'))]
+            plt.xticks(ticks=range(len(df_pivot_daily.index)), labels=monthly_labels, rotation=45, ha='right')
             plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
             plt.tight_layout()
             st.pyplot(plt)
@@ -534,22 +525,25 @@ if page == "Principal Volume":
     if league_principal_volume_data:
         df_league = pd.DataFrame(league_principal_volume_data)
         if not df_league.empty:
+            # Ensure the data is numeric and sort in ascending order
             df_league = ensure_numeric(df_league, ['TotalDollarsAtStake'])
             df_league = df_league.sort_values(by='TotalDollarsAtStake', ascending=True)
-
+    
             st.subheader("Principal Volume by League")
             plt.figure(figsize=(12, 6))
             bar_colors = [league_colors.get(league, 'blue') for league in df_league['LeagueName']]
             plt.bar(df_league['LeagueName'], df_league['TotalDollarsAtStake'], color=bar_colors, edgecolor='black')
+    
             plt.ylabel('Total Principal ($)')
             plt.title('Total Principal Volume by LeagueName')
             plt.xticks(rotation=45, ha='right')
-
+    
             st.pyplot(plt)
         else:
             st.warning("No data available for 'GreenAleph' principal volume by league.")
     else:
         st.error("Failed to retrieve league data from the database.")
+
 
 
 
