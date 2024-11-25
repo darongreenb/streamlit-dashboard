@@ -367,7 +367,7 @@ if page == "Principal Volume":
         ),
         DailySums AS (
             SELECT 
-                DATE_FORMAT(db.DateTimePlaced, '%Y-%m-%d') AS Day,
+                DATE_FORMAT(db.DateTimePlaced, '%Y-%m') AS Day,
                 l.LeagueName,
                 SUM(db.DollarsAtStake) AS TotalDollarsAtStake
             FROM 
@@ -497,7 +497,7 @@ if page == "Principal Volume":
                 aggfunc='sum'
             ).fillna(0)
 
-            df_pivot_daily.index = pd.to_datetime(df_pivot_daily.index, format='%Y-%m-%d', errors='coerce')
+            df_pivot_daily.index = pd.to_datetime(df_pivot_daily.index, format='%Y-%m', errors='coerce')
             df_pivot_daily.sort_index(inplace=True)
 
             st.subheader("Total Principal Volume by Day (Stacked by LeagueName)")
@@ -511,7 +511,7 @@ if page == "Principal Volume":
 
             plt.ylabel('Total Principal ($)')
             plt.title('Total Principal Volume by Day (Stacked by LeagueName)')
-            monthly_labels = [label if i % 30 == 0 else '' for i, label in enumerate(df_pivot_daily.index.strftime('%Y-%m-%d'))]
+            monthly_labels = [label if i % 30 == 0 else '' for i, label in enumerate(df_pivot_daily.index.strftime('%Y-%m'))]
             plt.xticks(ticks=range(len(df_pivot_daily.index)), labels=monthly_labels, rotation=45, ha='right')
             plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
             plt.tight_layout()
