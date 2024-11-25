@@ -40,7 +40,7 @@ else:
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Main Page", "ume", "Betting Frequency", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "NBA Participant Positions", "NFL Participant Positions"])
+page = st.sidebar.radio("Go to", ["Main Page", "Principal Volume", "Betting Frequency", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "NBA Participant Positions", "NFL Participant Positions"])
 
 
 # Check if the user is on the "Main Page" page
