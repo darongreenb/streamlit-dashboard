@@ -261,10 +261,16 @@ else:
         days = daily_profit_df.index.strftime('%Y-%m')  # Format x-axis labels as months
         cumulative_profits = daily_profit_df['CumulativeNetProfit']
     
-        # Plot segments of the line with color based on whether cumulative profit is above or below zero
+        # Loop to plot segments of the line with color based on whether cumulative profit is above or below zero
         for i in range(1, len(cumulative_profits)):
-            color = 'green' if cumulative_profits[i] >= 0 else 'red'
-            ax.plot(days[i-1:i+1], cumulative_profits[i-1:i+1], color=color, linewidth=3)
+            current_date = daily_profit_df.index[i]
+            previous_date = daily_profit_df.index[i - 1]
+            current_value = cumulative_profits.iloc[i]
+            previous_value = cumulative_profits.iloc[i - 1]
+            
+            color = 'green' if current_value >= 0 else 'red'
+            ax.plot([previous_date.strftime('%Y-%m'), current_date.strftime('%Y-%m')],
+                    [previous_value, current_value], color=color, linewidth=3)
     
         # Enhancing the plot aesthetics
         ax.set_ylabel('Cumulative Realized Profit ($)', fontsize=16, fontweight='bold')
@@ -277,7 +283,7 @@ else:
         plt.yticks(fontsize=14, fontweight='bold')
     
         # Add only the final value label on the right side
-        final_day = days[-1]
+        final_day = daily_profit_df.index[-1].strftime('%Y-%m')
         final_profit = cumulative_profits.iloc[-1]
         ax.annotate(f"${final_profit:,.0f}", xy=(final_day, final_profit),
                     xytext=(0, 8), textcoords="offset points",
@@ -287,6 +293,7 @@ else:
         st.pyplot(fig)
     else:
         st.warning("No data available for daily cumulative realized profit.")
+
 
 
 
