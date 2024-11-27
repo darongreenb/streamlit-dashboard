@@ -232,6 +232,17 @@ if page == "Main Page":
     """
     
 
+# SQL query for Daily Profit
+daily_profit_query = """
+    SELECT 
+        DATE(DateTimePlaced) AS Date,
+        SUM(NetProfit) AS TotalNetProfit
+    FROM bets
+    WHERE WhichBankroll = 'GreenAleph'
+    GROUP BY Date
+    ORDER BY Date;
+"""
+
 # Fetch and process data for Cumulative Realized Profit by Day
 daily_profit_data = get_data_from_db(daily_profit_query)
 if daily_profit_data is None:
@@ -257,19 +268,15 @@ else:
         # Plot the Cumulative Realized Profit by Day line graph
         fig, ax = plt.subplots(figsize=(14, 8))
     
-        # Separate data for segments above and below zero
-        days = daily_profit_df.index.strftime('%Y-%m')  # Format x-axis labels as months
-        cumulative_profits = daily_profit_df['CumulativeNetProfit']
-    
         # Loop to plot segments of the line with color based on whether cumulative profit is above or below zero
-        for i in range(1, len(cumulative_profits)):
-            current_date = daily_profit_df.index[i]
+        for i in range(1, len(daily_profit_df)):
             previous_date = daily_profit_df.index[i - 1]
-            current_value = cumulative_profits.iloc[i]
-            previous_value = cumulative_profits.iloc[i - 1]
+            current_date = daily_profit_df.index[i]
+            previous_value = daily_profit_df['CumulativeNetProfit'].iloc[i - 1]
+            current_value = daily_profit_df['CumulativeNetProfit'].iloc[i]
             
             color = 'green' if current_value >= 0 else 'red'
-            ax.plot([previous_date.strftime('%Y-%m'), current_date.strftime('%Y-%m')],
+            ax.plot([previous_date, current_date],
                     [previous_value, current_value], color=color, linewidth=3)
     
         # Enhancing the plot aesthetics
@@ -278,14 +285,15 @@ else:
         ax.axhline(0, color='black', linewidth=1)  # Add horizontal line at y=0
         ax.set_ylim(y_min, y_max)  # Set y-axis limits
     
-        # Set x-axis labels with rotation and larger font size
+        # Format x-axis labels to show months even with daily data
+        ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%Y-%m'))
         plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
         plt.yticks(fontsize=14, fontweight='bold')
     
         # Add only the final value label on the right side
-        final_day = daily_profit_df.index[-1].strftime('%Y-%m')
-        final_profit = cumulative_profits.iloc[-1]
-        ax.annotate(f"${final_profit:,.0f}", xy=(final_day, final_profit),
+        final_date = daily_profit_df.index[-1]
+        final_profit = daily_profit_df['CumulativeNetProfit'].iloc[-1]
+        ax.annotate(f"${final_profit:,.0f}", xy=(final_date, final_profit),
                     xytext=(0, 8), textcoords="offset points",
                     ha='center', fontsize=14, fontweight='bold', color='black')
     
