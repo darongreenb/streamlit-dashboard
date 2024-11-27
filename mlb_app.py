@@ -231,6 +231,7 @@ if page == "Main Page":
         ORDER BY Month;
     """
     
+
 # Fetch and process data for Cumulative Realized Profit by Month
 monthly_profit_data = get_data_from_db(monthly_profit_query)
 if monthly_profit_data is None:
@@ -273,8 +274,8 @@ else:
             else:
                 # Handle zero-crossing with interpolation
                 crossing_point = y_values[0] / (y_values[0] - y_values[1])
-                crossing_month = pd.to_datetime(months[i - 1]) + (
-                    pd.to_datetime(months[i]) - pd.to_datetime(months[i - 1])
+                crossing_month = pd.to_datetime(monthly_profit_df.index[i - 1]) + (
+                    pd.to_datetime(monthly_profit_df.index[i]) - pd.to_datetime(monthly_profit_df.index[i - 1])
                 ) * crossing_point
 
                 # Plot the first segment up to the crossing point
@@ -318,9 +319,6 @@ else:
         st.pyplot(fig)
     else:
         st.warning("No data available for monthly cumulative realized profit.")
-
-
-
 
 
 
