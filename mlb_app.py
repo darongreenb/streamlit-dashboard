@@ -236,6 +236,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
+import matplotlib.pyplot as plt
+import pandas as pd
+import streamlit as st
+
 # Fetch and process data for Cumulative Realized Profit by Month
 monthly_profit_data = get_data_from_db(monthly_profit_query)
 if monthly_profit_data is None:
@@ -286,7 +290,8 @@ else:
                 ax.plot([x_start, x_end], [y_start, y_end], color=color, linewidth=3)
             else:
                 # Handle zero-crossing with interpolation
-                zero_crossing_x = x_start + (x_end - x_start) * abs(y_start) / (abs(y_start) + abs(y_end))
+                crossing_point = abs(y_start) / (abs(y_start) + abs(y_end))
+                zero_crossing_x = x_start + (x_end - x_start) * crossing_point
 
                 # Plot the first segment to the zero-crossing
                 ax.plot([x_start, zero_crossing_x], [y_start, 0], color='green' if y_start >= 0 else 'red', linewidth=3)
@@ -315,7 +320,6 @@ else:
         st.pyplot(fig)
     else:
         st.warning("No data available for monthly cumulative realized profit.")
-
 
 
 
