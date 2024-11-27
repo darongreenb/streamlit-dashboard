@@ -231,6 +231,7 @@ if page == "Main Page":
         ORDER BY Month;
     """
     
+
 # Fetch and process data for Cumulative Realized Profit by Day
 daily_profit_query = """
     SELECT 
@@ -255,6 +256,10 @@ else:
         daily_profit_df['Date'] = pd.to_datetime(daily_profit_df['Date'])
         daily_profit_df.set_index('Date', inplace=True)
         daily_profit_df.sort_index(inplace=True)
+        
+        # Filter data to start from November 2023
+        start_date = pd.Timestamp('2023-11-01')
+        daily_profit_df = daily_profit_df[daily_profit_df.index >= start_date]
     
         # Calculate cumulative sum for the TotalNetProfit column
         daily_profit_df['CumulativeNetProfit'] = daily_profit_df['TotalNetProfit'].cumsum()
@@ -284,7 +289,6 @@ else:
         ax.set_ylim(y_min, y_max)  # Set y-axis limits
     
         # Generate monthly x-axis ticks starting from 2023-11
-        start_date = pd.Timestamp('2023-11-01')
         end_date = daily_profit_df.index[-1]
         monthly_ticks = pd.date_range(start=start_date, end=end_date, freq='MS')  # Monthly start
     
@@ -304,8 +308,6 @@ else:
         st.pyplot(fig)
     else:
         st.warning("No data available for daily cumulative realized profit.")
-
-
 
 
 
