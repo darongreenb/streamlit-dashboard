@@ -231,62 +231,94 @@ if page == "Main Page":
         ORDER BY Month;
     """
     
-    # Fetch and process data for Cumulative Realized Profit by Month
-    monthly_profit_data = get_data_from_db(monthly_profit_query)
-    if monthly_profit_data is None:
-        st.error("Failed to fetch monthly realized profit data from the database.")
+# Fetch and process data for Cumulative Realized Profit by Month
+monthly_profit_data = get_data_from_db(monthly_profit_query)
+if monthly_profit_data is None:
+    st.error("Failed to fetch monthly realized profit data from the database.")
+else:
+    # Convert data to DataFrame
+    monthly_profit_df = pd.DataFrame(monthly_profit_data)
+
+    # Ensure the DataFrame is not empty
+    if not monthly_profit_df.empty:
+        # Convert Month column to datetime and set as index
+        monthly_profit_df['Month'] = pd.to_datetime(monthly_profit_df['Month'])
+        monthly_profit_df.set_index('Month', inplace=True)
+        monthly_profit_df.sort_index(inplace=True)
+
+        # Calculate cumulative sum for the TotalNetProfit column
+        monthly_profit_df['CumulativeNetProfit'] = monthly_profit_df['TotalNetProfit'].cumsum()
+
+        # Determine y-axis limits with a buffer around min and max values
+        y_min = monthly_profit_df['CumulativeNetProfit'].min() - 6000
+        y_max = monthly_profit_df['CumulativeNetProfit'].max() + 6000
+
+        # Plot the Cumulative Realized Profit by Month line graph
+        fig, ax = plt.subplots(figsize=(14, 8))
+
+        # Prepare data for plotting with transitions across the x-axis
+        months = monthly_profit_df.index.strftime('%Y-%m')
+        cumulative_profits = monthly_profit_df['CumulativeNetProfit']
+
+        # Iterate through segments and split at zero crossings
+        for i in range(1, len(cumulative_profits)):
+            x_values = [months[i - 1], months[i]]
+            y_values = [cumulative_profits[i - 1], cumulative_profits[i]]
+
+            # Determine color based on y-values crossing the x-axis
+            if y_values[0] >= 0 and y_values[1] >= 0:
+                color = 'green'
+            elif y_values[0] < 0 and y_values[1] < 0:
+                color = 'red'
+            else:
+                # Handle zero-crossing with interpolation
+                crossing_point = y_values[0] / (y_values[0] - y_values[1])
+                crossing_month = pd.to_datetime(months[i - 1]) + (
+                    pd.to_datetime(months[i]) - pd.to_datetime(months[i - 1])
+                ) * crossing_point
+
+                # Plot the first segment up to the crossing point
+                ax.plot(
+                    [months[i - 1], crossing_month.strftime('%Y-%m')],
+                    [y_values[0], 0],
+                    color='green' if y_values[0] >= 0 else 'red',
+                    linewidth=3,
+                )
+
+                # Plot the second segment from the crossing point
+                ax.plot(
+                    [crossing_month.strftime('%Y-%m'), months[i]],
+                    [0, y_values[1]],
+                    color='red' if y_values[1] < 0 else 'green',
+                    linewidth=3,
+                )
+                continue
+
+            # Plot the segment
+            ax.plot(x_values, y_values, color=color, linewidth=3)
+
+        # Enhancing the plot aesthetics
+        ax.set_ylabel('Cumulative Realized Profit ($)', fontsize=16, fontweight='bold')
+        ax.set_title('Cumulative Realized Profit by Month (GreenAleph)', fontsize=20, fontweight='bold')
+        ax.axhline(0, color='black', linewidth=1)  # Add horizontal line at y=0
+        ax.set_ylim(y_min, y_max)  # Set y-axis limits
+
+        # Set x-axis labels with rotation and larger font size
+        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+        plt.yticks(fontsize=14, fontweight='bold')
+
+        # Add only the final value label on the right side
+        final_month = months[-1]
+        final_profit = cumulative_profits.iloc[-1]
+        ax.annotate(f"${final_profit:,.0f}", xy=(final_month, final_profit),
+                    xytext=(0, 8), textcoords="offset points",
+                    ha='center', fontsize=14, fontweight='bold', color='black')
+
+        plt.tight_layout()
+        st.pyplot(fig)
     else:
-        # Convert data to DataFrame
-        monthly_profit_df = pd.DataFrame(monthly_profit_data)
-    
-        # Ensure the DataFrame is not empty
-        if not monthly_profit_df.empty:
-            # Convert Month column to datetime and set as index
-            monthly_profit_df['Month'] = pd.to_datetime(monthly_profit_df['Month'])
-            monthly_profit_df.set_index('Month', inplace=True)
-            monthly_profit_df.sort_index(inplace=True)
-    
-            # Calculate cumulative sum for the TotalNetProfit column
-            monthly_profit_df['CumulativeNetProfit'] = monthly_profit_df['TotalNetProfit'].cumsum()
-    
-            # Determine y-axis limits with a buffer around min and max values
-            y_min = monthly_profit_df['CumulativeNetProfit'].min() - 6000
-            y_max = monthly_profit_df['CumulativeNetProfit'].max() + 6000
-    
-            # Plot the Cumulative Realized Profit by Month line graph
-            #st.subheader("Cumulative Realized Profit by Month for 'GreenAleph'")
-            fig, ax = plt.subplots(figsize=(14, 8))
-    
-            # Separate data for segments above and below zero
-            months = monthly_profit_df.index.strftime('%Y-%m')
-            cumulative_profits = monthly_profit_df['CumulativeNetProfit']
-    
-            # Plot segments of the line with color based on whether cumulative profit is above or below zero
-            for i in range(1, len(cumulative_profits)):
-                color = 'green' if cumulative_profits[i] >= 0 else 'red'
-                ax.plot(months[i-1:i+1], cumulative_profits[i-1:i+1], color=color, linewidth=3)
-    
-            # Enhancing the plot aesthetics
-            ax.set_ylabel('Cumulative Realized Profit ($)', fontsize=16, fontweight='bold')
-            ax.set_title('Cumulative Realized Profit by Month (GreenAleph)', fontsize=20, fontweight='bold')
-            ax.axhline(0, color='black', linewidth=1)  # Add horizontal line at y=0
-            ax.set_ylim(y_min, y_max)  # Set y-axis limits
-    
-            # Set x-axis labels with rotation and larger font size
-            plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
-            plt.yticks(fontsize=14, fontweight='bold')
-    
-            # Add only the final value label on the right side
-            final_month = months[-1]
-            final_profit = cumulative_profits.iloc[-1]
-            ax.annotate(f"${final_profit:,.0f}", xy=(final_month, final_profit),
-                        xytext=(0, 8), textcoords="offset points",
-                        ha='center', fontsize=14, fontweight='bold', color='black')
-    
-            plt.tight_layout()
-            st.pyplot(fig)
-        else:
-            st.warning("No data available for monthly cumulative realized profit.")
+        st.warning("No data available for monthly cumulative realized profit.")
+
 
 
 
