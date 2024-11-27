@@ -231,62 +231,75 @@ if page == "Main Page":
         ORDER BY Month;
     """
     
-    # Fetch and process data for Cumulative Realized Profit by Month
-    monthly_profit_data = get_data_from_db(monthly_profit_query)
-    if monthly_profit_data is None:
-        st.error("Failed to fetch monthly realized profit data from the database.")
+# SQL query for Daily Profit
+daily_profit_query = """
+    SELECT 
+        DATE(DateTimePlaced) AS Date,
+        SUM(NetProfit) AS TotalNetProfit
+    FROM bets
+    WHERE WhichBankroll = 'GreenAleph'
+    GROUP BY Date
+    ORDER BY Date;
+"""
+
+# Fetch and process data for Cumulative Realized Profit by Day
+daily_profit_data = get_data_from_db(daily_profit_query)
+if daily_profit_data is None:
+    st.error("Failed to fetch daily realized profit data from the database.")
+else:
+    # Convert data to DataFrame
+    daily_profit_df = pd.DataFrame(daily_profit_data)
+    
+    # Ensure the DataFrame is not empty
+    if not daily_profit_df.empty:
+        # Convert Date column to datetime and set as index
+        daily_profit_df['Date'] = pd.to_datetime(daily_profit_df['Date'])
+        daily_profit_df.set_index('Date', inplace=True)
+        daily_profit_df.sort_index(inplace=True)
+    
+        # Calculate cumulative sum for the TotalNetProfit column
+        daily_profit_df['CumulativeNetProfit'] = daily_profit_df['TotalNetProfit'].cumsum()
+    
+        # Determine y-axis limits with a buffer around min and max values
+        y_min = daily_profit_df['CumulativeNetProfit'].min() - 6000
+        y_max = daily_profit_df['CumulativeNetProfit'].max() + 6000
+    
+        # Plot the Cumulative Realized Profit by Day line graph
+        fig, ax = plt.subplots(figsize=(14, 8))
+    
+        # Loop to plot segments of the line with color based on whether cumulative profit is above or below zero
+        for i in range(1, len(daily_profit_df)):
+            previous_date = daily_profit_df.index[i - 1]
+            current_date = daily_profit_df.index[i]
+            previous_value = daily_profit_df['CumulativeNetProfit'].iloc[i - 1]
+            current_value = daily_profit_df['CumulativeNetProfit'].iloc[i]
+            
+            color = 'green' if current_value >= 0 else 'red'
+            ax.plot([previous_date, current_date],
+                    [previous_value, current_value], color=color, linewidth=3)
+    
+        # Enhancing the plot aesthetics
+        ax.set_ylabel('Cumulative Realized Profit ($)', fontsize=16, fontweight='bold')
+        ax.set_title('Cumulative Realized Profit by Day (GreenAleph)', fontsize=20, fontweight='bold')
+        ax.axhline(0, color='black', linewidth=1)  # Add horizontal line at y=0
+        ax.set_ylim(y_min, y_max)  # Set y-axis limits
+    
+        # Format x-axis labels to show months even with daily data
+        ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%Y-%m'))
+        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+        plt.yticks(fontsize=14, fontweight='bold')
+    
+        # Add only the final value label on the right side
+        final_date = daily_profit_df.index[-1]
+        final_profit = daily_profit_df['CumulativeNetProfit'].iloc[-1]
+        ax.annotate(f"${final_profit:,.0f}", xy=(final_date, final_profit),
+                    xytext=(0, 8), textcoords="offset points",
+                    ha='center', fontsize=14, fontweight='bold', color='black')
+    
+        plt.tight_layout()
+        st.pyplot(fig)
     else:
-        # Convert data to DataFrame
-        monthly_profit_df = pd.DataFrame(monthly_profit_data)
-    
-        # Ensure the DataFrame is not empty
-        if not monthly_profit_df.empty:
-            # Convert Month column to datetime and set as index
-            monthly_profit_df['Month'] = pd.to_datetime(monthly_profit_df['Month'])
-            monthly_profit_df.set_index('Month', inplace=True)
-            monthly_profit_df.sort_index(inplace=True)
-    
-            # Calculate cumulative sum for the TotalNetProfit column
-            monthly_profit_df['CumulativeNetProfit'] = monthly_profit_df['TotalNetProfit'].cumsum()
-    
-            # Determine y-axis limits with a buffer around min and max values
-            y_min = monthly_profit_df['CumulativeNetProfit'].min() - 6000
-            y_max = monthly_profit_df['CumulativeNetProfit'].max() + 6000
-    
-            # Plot the Cumulative Realized Profit by Month line graph
-            #st.subheader("Cumulative Realized Profit by Month for 'GreenAleph'")
-            fig, ax = plt.subplots(figsize=(14, 8))
-    
-            # Separate data for segments above and below zero
-            months = monthly_profit_df.index.strftime('%Y-%m')
-            cumulative_profits = monthly_profit_df['CumulativeNetProfit']
-    
-            # Plot segments of the line with color based on whether cumulative profit is above or below zero
-            for i in range(1, len(cumulative_profits)):
-                color = 'green' if cumulative_profits[i] >= 0 else 'red'
-                ax.plot(months[i-1:i+1], cumulative_profits[i-1:i+1], color=color, linewidth=3)
-    
-            # Enhancing the plot aesthetics
-            ax.set_ylabel('Cumulative Realized Profit ($)', fontsize=16, fontweight='bold')
-            ax.set_title('Cumulative Realized Profit by Month (GreenAleph)', fontsize=20, fontweight='bold')
-            ax.axhline(0, color='black', linewidth=1)  # Add horizontal line at y=0
-            ax.set_ylim(y_min, y_max)  # Set y-axis limits
-    
-            # Set x-axis labels with rotation and larger font size
-            plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
-            plt.yticks(fontsize=14, fontweight='bold')
-    
-            # Add only the final value label on the right side
-            final_month = months[-1]
-            final_profit = cumulative_profits.iloc[-1]
-            ax.annotate(f"${final_profit:,.0f}", xy=(final_month, final_profit),
-                        xytext=(0, 8), textcoords="offset points",
-                        ha='center', fontsize=14, fontweight='bold', color='black')
-    
-            plt.tight_layout()
-            st.pyplot(fig)
-        else:
-            st.warning("No data available for monthly cumulative realized profit.")
+        st.warning("No data available for daily cumulative realized profit.")
 
 
 
@@ -297,107 +310,263 @@ if page == "Main Page":
 
 
 
-# Adding the new "Principal Volume" page
+
 if page == "Principal Volume":
     st.title("Principal Volume (GA1)")
 
-    # SQL query to get the total principal (dollars at stake) by month for 'GreenAleph' without including cashouts
-    principal_volume_query = """
-        SELECT 
-            DATE_FORMAT(DateTimePlaced, '%Y-%m') AS Month,
-            SUM(DollarsAtStake) AS TotalDollarsAtStake
-        FROM bets
-        WHERE WhichBankroll = 'GreenAleph' AND WLCA != 'Cashout'
-        GROUP BY Month
-        ORDER BY Month;
+    # Define custom color mapping
+    league_colors = {
+        'ATP': 'green',
+        'WTA': 'yellow',
+        'NBA': 'darkorange',
+        'NCAA Men\'s Basketball': 'lightcoral',  # Light orange
+        'Olympics': 'black',
+        'NFL': 'purple',
+        'MLB': 'gray'
+    }
+
+    # SQL queries
+    stacked_principal_volume_query = """
+        WITH DistinctBets AS (
+            SELECT DISTINCT WagerID, DollarsAtStake, DateTimePlaced
+            FROM bets
+            WHERE WLCA != 'Cashout'
+              AND WhichBankroll = 'GreenAleph'
+        ),
+        MonthlySums AS (
+            SELECT 
+                DATE_FORMAT(db.DateTimePlaced, '%Y-%m') AS Month,
+                l.LeagueName,
+                SUM(db.DollarsAtStake) AS TotalDollarsAtStake
+            FROM 
+                DistinctBets db
+            JOIN 
+                (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
+            GROUP BY 
+                Month, l.LeagueName
+        )
+        SELECT * FROM MonthlySums
+        ORDER BY Month, LeagueName;
     """
 
-    # SQL query to get the total principal volume by LeagueName for 'GreenAleph', summing each WagerID only once
+    stacked_principal_volume_weekly_query = """
+        WITH DistinctBets AS (
+            SELECT DISTINCT WagerID, DollarsAtStake, DateTimePlaced
+            FROM bets
+            WHERE WLCA != 'Cashout'
+              AND WhichBankroll = 'GreenAleph'
+        ),
+        WeeklySums AS (
+            SELECT 
+                STR_TO_DATE(CONCAT(YEAR(db.DateTimePlaced), ' ', WEEK(db.DateTimePlaced, 3), ' 1'), '%X %V %w') AS WeekStart, 
+                l.LeagueName,
+                SUM(db.DollarsAtStake) AS TotalDollarsAtStake
+            FROM 
+                DistinctBets db
+            JOIN 
+                (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
+            GROUP BY 
+                WeekStart, l.LeagueName
+        )
+        SELECT * FROM WeeklySums
+        ORDER BY WeekStart, LeagueName;
+    """
+
+    stacked_principal_volume_daily_query = """
+        WITH DistinctBets AS (
+            SELECT DISTINCT WagerID, DollarsAtStake, DateTimePlaced
+            FROM bets
+            WHERE WLCA != 'Cashout'
+              AND WhichBankroll = 'GreenAleph'
+        ),
+        DailySums AS (
+            SELECT 
+                DATE_FORMAT(db.DateTimePlaced, '%Y-%m-%d') AS Day,
+                l.LeagueName,
+                SUM(db.DollarsAtStake) AS TotalDollarsAtStake
+            FROM 
+                DistinctBets db
+            JOIN 
+                (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
+            GROUP BY 
+                Day, l.LeagueName
+        )
+        SELECT * FROM DailySums
+        ORDER BY Day, LeagueName;
+    """
+
     league_principal_volume_query = """
+        WITH DistinctBets AS (
+            SELECT DISTINCT WagerID, DollarsAtStake
+            FROM bets
+            WHERE WLCA != 'Cashout'
+              AND WhichBankroll = 'GreenAleph'
+        )
         SELECT 
             l.LeagueName,
-            SUM(b.DollarsAtStake) AS TotalDollarsAtStake
-        FROM bets b
-        JOIN legs l ON b.WagerID = l.WagerID
-        WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA != 'Cashout'
-        AND b.WagerID IN (
-            SELECT DISTINCT WagerID
-            FROM bets
-            WHERE LegCount <= 1 OR (LegCount > 1 AND WLCA != 'Cashout')
-        )
+            SUM(db.DollarsAtStake) AS TotalDollarsAtStake
+        FROM 
+            DistinctBets db
+        JOIN 
+            (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
         GROUP BY l.LeagueName
         ORDER BY TotalDollarsAtStake DESC;
     """
 
-    # Get data from the database for the first chart
-    principal_volume_data = get_data_from_db(principal_volume_query)
-
-    if principal_volume_data:
-        # Convert the data to a DataFrame for plotting
-        df_principal_volume = pd.DataFrame(principal_volume_data)
-
-        # Check if the DataFrame is not empty
-        if not df_principal_volume.empty:
-            df_principal_volume['Month'] = pd.to_datetime(df_principal_volume['Month'])
-            df_principal_volume.set_index('Month', inplace=True)
-            df_principal_volume.sort_index(inplace=True)
-
-
-            # Prepare x-axis labels
-            x_labels = [date.strftime('%Y-%m') if isinstance(date, pd.Timestamp) else date for date in df_principal_volume.index]
-
-            # Plot the first bar chart
-            st.subheader("Total Principal Volume by Month for 'GreenAleph'")
-            plt.figure(figsize=(12, 6))
-            bars = plt.bar(x_labels, df_principal_volume['TotalDollarsAtStake'])
-            plt.ylabel('Total Principal ($)')
-            plt.title('Total Principal Volume by Month (GreenAleph)')
-            plt.xticks(rotation=45, ha='right')
-
-            # Add value labels above each bar, rounded to whole numbers
-            for bar in bars:
-                yval = bar.get_height()
-                plt.text(bar.get_x() + bar.get_width()/2, yval, f"${yval:,.0f}", ha='center', va='bottom')
-
-            st.pyplot(plt)
-        else:
-            st.warning("No data available for 'GreenAleph' principal volume.")
-    else:
-        st.error("Failed to retrieve data from the database.")
-
-    # Get data from the database for the second chart
+    # Fetch data
+    stacked_principal_volume_data = get_data_from_db(stacked_principal_volume_query)
+    weekly_principal_volume_data = get_data_from_db(stacked_principal_volume_weekly_query)
+    daily_principal_volume_data = get_data_from_db(stacked_principal_volume_daily_query)
     league_principal_volume_data = get_data_from_db(league_principal_volume_query)
 
+    # Helper function to ensure data is numeric
+    def ensure_numeric(df, column_list):
+        for column in column_list:
+            df[column] = pd.to_numeric(df[column], errors='coerce').fillna(0)
+        return df
+
+    # Helper function to assign colors
+    def assign_colors(columns):
+        return [league_colors.get(col, 'blue') for col in columns]
+
+    # Monthly plot
+    if stacked_principal_volume_data:
+        df_monthly = pd.DataFrame(stacked_principal_volume_data)
+        if not df_monthly.empty:
+            df_monthly = ensure_numeric(df_monthly, ['TotalDollarsAtStake'])
+            df_pivot_monthly = df_monthly.pivot_table(
+                index='Month',
+                columns='LeagueName',
+                values='TotalDollarsAtStake',
+                aggfunc='sum'
+            ).fillna(0)
+
+            df_pivot_monthly.index = pd.to_datetime(df_pivot_monthly.index, format='%Y-%m', errors='coerce')
+            df_pivot_monthly.sort_index(inplace=True)
+
+            st.subheader("Total Principal Volume by Month (Stacked by LeagueName)")
+            plt.figure(figsize=(12, 6))
+            ax = df_pivot_monthly.plot(
+                kind='bar', 
+                stacked=True, 
+                figsize=(12, 6), 
+                color=assign_colors(df_pivot_monthly.columns)
+            )
+
+            plt.ylabel('Total Principal ($)')
+            plt.title('Total Principal Volume by Month (Stacked by LeagueName)')
+            plt.xticks(ticks=range(len(df_pivot_monthly.index)), labels=df_pivot_monthly.index.strftime('%Y-%m'), rotation=45, ha='right')
+            plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
+            plt.tight_layout()
+            st.pyplot(plt)
+        else:
+            st.warning("No data available for 'GreenAleph' principal volume by month.")
+    else:
+        st.error("Failed to retrieve monthly data from the database.")
+
+    # Weekly plot
+    if weekly_principal_volume_data:
+        df_weekly = pd.DataFrame(weekly_principal_volume_data)
+        if not df_weekly.empty:
+            df_weekly = ensure_numeric(df_weekly, ['TotalDollarsAtStake'])
+            df_pivot_weekly = df_weekly.pivot_table(
+                index='WeekStart',
+                columns='LeagueName',
+                values='TotalDollarsAtStake',
+                aggfunc='sum'
+            ).fillna(0)
+    
+            # Ensure the index is datetime and sort
+            df_pivot_weekly.index = pd.to_datetime(df_pivot_weekly.index, errors='coerce').strftime('%Y-%m')
+            df_pivot_weekly.sort_index(inplace=True)
+    
+            st.subheader("Total Principal Volume by Week (Stacked by LeagueName)")
+            plt.figure(figsize=(12, 6))
+            ax = df_pivot_weekly.plot(
+                kind='bar',
+                stacked=True,
+                figsize=(12, 6),
+                color=assign_colors(df_pivot_weekly.columns)
+            )
+    
+            plt.ylabel('Total Principal ($)')
+            plt.title('Total Principal Volume by Week (Stacked by LeagueName)')
+            plt.xticks(
+                ticks=range(len(df_pivot_weekly.index)),
+                labels=df_pivot_weekly.index,
+                rotation=45,
+                ha='right'
+            )
+            plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
+            plt.tight_layout()
+            st.pyplot(plt)
+        else:
+            st.warning("No data available for 'GreenAleph' principal volume by week.")
+    else:
+        st.error("Failed to retrieve weekly data from the database.")
+
+
+    # Daily plot
+    if daily_principal_volume_data:
+        df_daily = pd.DataFrame(daily_principal_volume_data)
+        if not df_daily.empty:
+            df_daily = ensure_numeric(df_daily, ['TotalDollarsAtStake'])
+            df_pivot_daily = df_daily.pivot_table(
+                index='Day',
+                columns='LeagueName',
+                values='TotalDollarsAtStake',
+                aggfunc='sum'
+            ).fillna(0)
+
+            df_pivot_daily.index = pd.to_datetime(df_pivot_daily.index, format='%Y-%m-%d', errors='coerce')
+            df_pivot_daily.sort_index(inplace=True)
+
+            st.subheader("Total Principal Volume by Day (Stacked by LeagueName)")
+            plt.figure(figsize=(12, 6))
+            ax = df_pivot_daily.plot(
+                kind='bar', 
+                stacked=True, 
+                figsize=(12, 6), 
+                color=assign_colors(df_pivot_daily.columns)
+            )
+
+            plt.ylabel('Total Principal ($)')
+            plt.title('Total Principal Volume by Day (Stacked by LeagueName)')
+            monthly_labels = [label if i % 30 == 0 else '' for i, label in enumerate(df_pivot_daily.index.strftime('%Y-%m-%d'))]
+            plt.xticks(ticks=range(len(df_pivot_daily.index)), labels=monthly_labels, rotation=45, ha='right')
+            plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
+            plt.tight_layout()
+            st.pyplot(plt)
+        else:
+            st.warning("No data available for 'GreenAleph' principal volume by day.")
+    else:
+        st.error("Failed to retrieve daily data from the database.")
+
+    # Principal Volume by League plot
     if league_principal_volume_data:
-        # Convert the data to a DataFrame for plotting
-        df_league_principal_volume = pd.DataFrame(league_principal_volume_data)
-
-        # Ensure correct data types for plotting
-        df_league_principal_volume['LeagueName'] = df_league_principal_volume['LeagueName'].astype(str)
-        df_league_principal_volume['TotalDollarsAtStake'] = df_league_principal_volume['TotalDollarsAtStake'].astype(float)
-
-        # Sort by TotalDollarsAtStake in ascending order
-        df_league_principal_volume = df_league_principal_volume.sort_values(by='TotalDollarsAtStake', ascending=True)
-
-        # Check if the DataFrame is not empty
-        if not df_league_principal_volume.empty:
-            # Plot the second bar chart
+        df_league = pd.DataFrame(league_principal_volume_data)
+        if not df_league.empty:
+            # Ensure the data is numeric and sort in ascending order
+            df_league = ensure_numeric(df_league, ['TotalDollarsAtStake'])
+            df_league = df_league.sort_values(by='TotalDollarsAtStake', ascending=True)
+    
             st.subheader("Principal Volume by League")
             plt.figure(figsize=(12, 6))
-            plt.bar(df_league_principal_volume['LeagueName'], df_league_principal_volume['TotalDollarsAtStake'])
+            bar_colors = [league_colors.get(league, 'blue') for league in df_league['LeagueName']]
+            plt.bar(df_league['LeagueName'], df_league['TotalDollarsAtStake'], color=bar_colors, edgecolor='black')
+    
             plt.ylabel('Total Principal ($)')
-            plt.title('Total Principal Volume by LeagueName (GreenAleph)')
+            plt.title('Total Principal Volume by LeagueName')
             plt.xticks(rotation=45, ha='right')
-
-            # Add value labels above each bar, rounded to whole numbers
-            for index, value in enumerate(df_league_principal_volume['TotalDollarsAtStake']):
-                plt.text(index, value, f"${value:,.0f}", ha='center', va='bottom')
-
+    
             st.pyplot(plt)
         else:
             st.warning("No data available for 'GreenAleph' principal volume by league.")
     else:
-        st.error("Failed to retrieve data from the database.")
+        st.error("Failed to retrieve league data from the database.")
+
+
+
 
 
 
@@ -503,6 +672,9 @@ if page == "Betting Frequency":
             st.warning("No data available for 'GreenAleph' betting frequency by league.")
     else:
         st.error("Failed to retrieve data from the database.")
+
+
+
 
 
 
@@ -1005,87 +1177,120 @@ elif page == "NFL Charts":
                 AND b.WLCA = 'Active'
                 ;
             """
-
-            # Fetch the combined data
-            combined_data = get_data_from_db(combined_query)
-            
-            # Check if data is fetched successfully
-            if combined_data is None:
-                st.error("Failed to fetch data from the database.")
+            # Fetch EventLabel data
+            event_label_data = get_data_from_db(event_label_query)
+            if event_label_data is None:
+                st.error("Failed to fetch EventLabel data from the database.")
             else:
-                # Create a DataFrame from the fetched data
-                combined_df = pd.DataFrame(combined_data)
-            
-                # Calculate Implied Probability
-                combined_df['ImpliedProbability'] = (combined_df['TotalDollarsAtStake'] / combined_df['TotalPotentialPayout']) * 100
-            
-                # Modify TotalDollarsAtStake for the chart (to show negative values)
-                combined_df['TotalDollarsAtStake'] = -combined_df['TotalDollarsAtStake'].astype(float).round(0)
-                combined_df['TotalPotentialPayout'] = combined_df['TotalPotentialPayout'].astype(float).round(0)
-            
-                # Sort the DataFrame by 'TotalDollarsAtStake' in ascending order
-                combined_df = combined_df.sort_values('TotalDollarsAtStake', ascending=True)
-            
-                # Define colors for DollarsAtStake and PotentialPayout
-                color_dollars_at_stake = 'lightblue'  # Light blue for DollarsAtStake
-                color_potential_payout = 'beige'  # Beige for PotentialPayout
-            
-                # Plot the combined bar chart
-                fig, ax = plt.subplots(figsize=(18, 12))
-            
-                # Plot TotalDollarsAtStake moving downward from the x-axis
-                bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], 
-                               color=color_dollars_at_stake, width=0.4, edgecolor='black')
-            
-                # Plot TotalPotentialPayout moving upward from the x-axis
-                bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], 
-                               color=color_potential_payout, width=0.4, edgecolor='black')
-            
-                # Add labels and title
-                ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
-                ax.set_title(f'Active Principal & Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
-            
-                # Annotate Implied Probability on TotalDollarsAtStake bars
-                for i, bar1 in enumerate(bars1):
-                    implied_prob = combined_df.iloc[i]['ImpliedProbability']
-                    height = bar1.get_height()
-                    ax.annotate(f'{implied_prob:.1f}%', xy=(bar1.get_x() + bar1.get_width() / 2, height),
-                                xytext=(0, -15),  # Move the labels further down below the bars
-                                textcoords="offset points",
-                                ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
-            
-                # Annotate TotalPotentialPayout above bars
-                for bar2 in bars2:
-                    height2 = bar2.get_height()
-                    ax.annotate(f'{height2:,.0f}', xy=(bar2.get_x() + bar2.get_width() / 2, height2),
-                                xytext=(0, 3), textcoords="offset points",
-                                ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
-            
-                # Rotate x-axis labels to 45 degrees
-                plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
-            
-                # Add legend
-                ax.legend([bars2, bars1], ['Potential Payout', 'Implied Probability (%)'])
-            
-                # Add horizontal line at y=0 for reference
-                ax.axhline(0, color='black', linewidth=0.8)
-            
-                # Set background color to white
-                ax.set_facecolor('white')
-            
-                # Add border around the plot
-                for spine in ax.spines.values():
-                    spine.set_edgecolor('black')
-                    spine.set_linewidth(1.2)
-            
-                # Extend y-axis range
-                ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 20000, max(combined_df['TotalPotentialPayout']) + 30000)
-            
-                # Adjust layout
-                plt.tight_layout()
-            
-                # Use Streamlit to display the combined chart
-                st.pyplot(fig)
+                event_labels = [row['EventLabel'] for row in event_label_data]
+                event_label_option = st.selectbox('Select EventLabel', sorted(event_labels))
+
+                if event_label_option:
+                    # Define the combined query
+                    combined_query = f"""
+                    WITH DistinctBets AS (
+                        SELECT DISTINCT WagerID, DollarsAtStake, PotentialPayout
+                        FROM bets
+                        WHERE WhichBankroll = 'GreenAleph'
+                          AND WLCA = 'Active'
+                          AND LegCount = 1
+                    )
+                    SELECT 
+                        l.ParticipantName,
+                        SUM(db.DollarsAtStake) AS TotalDollarsAtStake,
+                        SUM(db.PotentialPayout) AS TotalPotentialPayout
+                    FROM 
+                        DistinctBets db
+                    JOIN 
+                        legs l ON db.WagerID = l.WagerID
+                    WHERE
+                        l.LeagueName = 'NFL'
+                        AND l.EventType = '{event_type_option}'
+                        AND l.EventLabel = '{event_label_option}'
+                    GROUP BY 
+                        l.ParticipantName;
+                    """
+
+                    # Fetch the combined data
+                    combined_data = get_data_from_db(combined_query)
+
+                    # Check if data is fetched successfully
+                    if combined_data is None:
+                        st.error("Failed to fetch data from the database.")
+                    else:
+                        # Create a DataFrame from the fetched data
+                        combined_df = pd.DataFrame(combined_data)
+                    
+                        # Calculate Implied Probability
+                        combined_df['ImpliedProbability'] = (combined_df['TotalDollarsAtStake'] / combined_df['TotalPotentialPayout']) * 100
+                    
+                        # Modify TotalDollarsAtStake for the chart (to show negative values)
+                        combined_df['TotalDollarsAtStake'] = -combined_df['TotalDollarsAtStake'].astype(float).round(0)
+                        combined_df['TotalPotentialPayout'] = combined_df['TotalPotentialPayout'].astype(float).round(0)
+                    
+                        # Sort the DataFrame by 'TotalDollarsAtStake' in ascending order
+                        combined_df = combined_df.sort_values('TotalDollarsAtStake', ascending=True)
+                    
+                        # Define colors for DollarsAtStake and PotentialPayout
+                        color_dollars_at_stake = 'lightblue'  # Light blue for DollarsAtStake
+                        color_potential_payout = 'beige'  # Beige for PotentialPayout
+                    
+                        # Plot the combined bar chart
+                        fig, ax = plt.subplots(figsize=(18, 12))
+                    
+                        # Plot TotalDollarsAtStake moving downward from the x-axis
+                        bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], 
+                                       color=color_dollars_at_stake, width=0.4, edgecolor='black')
+                    
+                        # Plot TotalPotentialPayout moving upward from the x-axis
+                        bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], 
+                                       color=color_potential_payout, width=0.4, edgecolor='black')
+                    
+                        # Add labels and title
+                        ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
+                        ax.set_title(f'Active Principal & Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
+                    
+                        # Annotate Implied Probability on TotalDollarsAtStake bars
+                        for i, bar1 in enumerate(bars1):
+                            implied_prob = combined_df.iloc[i]['ImpliedProbability']
+                            height = bar1.get_height()
+                            ax.annotate(f'{implied_prob:.1f}%', xy=(bar1.get_x() + bar1.get_width() / 2, height),
+                                        xytext=(0, -15),  # Move the labels further down below the bars
+                                        textcoords="offset points",
+                                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
+                    
+                        # Annotate TotalPotentialPayout above bars
+                        for bar2 in bars2:
+                            height2 = bar2.get_height()
+                            ax.annotate(f'{height2:,.0f}', xy=(bar2.get_x() + bar2.get_width() / 2, height2),
+                                        xytext=(0, 3), textcoords="offset points",
+                                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
+                    
+                        # Rotate x-axis labels to 45 degrees
+                        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+                    
+                        # Add legend
+                        ax.legend([bars2, bars1], ['Potential Payout', 'Implied Probability (%)'])
+                    
+                        # Add horizontal line at y=0 for reference
+                        ax.axhline(0, color='black', linewidth=0.8)
+                    
+                        # Set background color to white
+                        ax.set_facecolor('white')
+                    
+                        # Add border around the plot
+                        for spine in ax.spines.values():
+                            spine.set_edgecolor('black')
+                            spine.set_linewidth(1.2)
+                    
+                        # Extend y-axis range
+                        ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 20000, max(combined_df['TotalPotentialPayout']) + 30000)
+                    
+                        # Adjust layout
+                        plt.tight_layout()
+                    
+                        # Use Streamlit to display the combined chart
+                        st.pyplot(fig)
 
     # Add a new section at the bottom for tracking NFL parlays
     st.header("NFL Parlays - GA1")
@@ -1231,6 +1436,7 @@ elif page == "NFL Charts":
 
                     # Display the plot in Streamlit
                     st.pyplot(fig)
+
 
 
 
@@ -1943,3 +2149,6 @@ elif page == "NFL Participant Positions":
 
     
     
+
+
+
