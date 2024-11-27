@@ -232,99 +232,62 @@ if page == "Main Page":
     """
     
 
-import matplotlib.pyplot as plt
-import pandas as pd
-import streamlit as st
-
-import matplotlib.pyplot as plt
-import pandas as pd
-import streamlit as st
-
-import matplotlib.pyplot as plt
-import pandas as pd
-import streamlit as st
-
 # Fetch and process data for Cumulative Realized Profit by Day
-daily_profit_data = get_data_from_db(daily_profit_query)  # Change to fetch daily data
+daily_profit_data = get_data_from_db(daily_profit_query)
 if daily_profit_data is None:
     st.error("Failed to fetch daily realized profit data from the database.")
 else:
     # Convert data to DataFrame
     daily_profit_df = pd.DataFrame(daily_profit_data)
-
+    
     # Ensure the DataFrame is not empty
     if not daily_profit_df.empty:
         # Convert Date column to datetime and set as index
-        try:
-            daily_profit_df['Date'] = pd.to_datetime(daily_profit_df['Date'])
-        except Exception as e:
-            st.error(f"Error converting Date column to datetime: {e}")
-            st.stop()
-
+        daily_profit_df['Date'] = pd.to_datetime(daily_profit_df['Date'])
         daily_profit_df.set_index('Date', inplace=True)
         daily_profit_df.sort_index(inplace=True)
-
+    
         # Calculate cumulative sum for the TotalNetProfit column
         daily_profit_df['CumulativeNetProfit'] = daily_profit_df['TotalNetProfit'].cumsum()
-
-        # Ensure the index is a DatetimeIndex
-        if not isinstance(daily_profit_df.index, pd.DatetimeIndex):
-            st.error("The index of daily_profit_df must be a DatetimeIndex.")
-            st.stop()
-
+    
         # Determine y-axis limits with a buffer around min and max values
         y_min = daily_profit_df['CumulativeNetProfit'].min() - 6000
         y_max = daily_profit_df['CumulativeNetProfit'].max() + 6000
-
+    
         # Plot the Cumulative Realized Profit by Day line graph
         fig, ax = plt.subplots(figsize=(14, 8))
-
-        # Prepare data for plotting
+    
+        # Separate data for segments above and below zero
+        days = daily_profit_df.index.strftime('%Y-%m')  # Format x-axis labels as months
         cumulative_profits = daily_profit_df['CumulativeNetProfit']
-        dates = daily_profit_df.index
-
+    
+        # Plot segments of the line with color based on whether cumulative profit is above or below zero
         for i in range(1, len(cumulative_profits)):
-            # Define the segment start and end points
-            x_start, x_end = dates[i - 1], dates[i]
-            y_start, y_end = cumulative_profits[i - 1], cumulative_profits[i]
-
-            if (y_start >= 0 and y_end >= 0) or (y_start < 0 and y_end < 0):
-                # No zero-crossing, plot as a single segment
-                color = 'green' if y_start >= 0 else 'red'
-                ax.plot([x_start, x_end], [y_start, y_end], color=color, linewidth=3)
-            else:
-                # Handle zero-crossing with interpolation
-                crossing_point = abs(y_start) / (abs(y_start) + abs(y_end))
-                zero_crossing_x = x_start + (x_end - x_start) * crossing_point
-
-                # Plot the first segment to the zero-crossing
-                ax.plot([x_start, zero_crossing_x], [y_start, 0], color='green' if y_start >= 0 else 'red', linewidth=3)
-
-                # Plot the second segment from the zero-crossing
-                ax.plot([zero_crossing_x, x_end], [0, y_end], color='red' if y_end < 0 else 'green', linewidth=3)
-
+            color = 'green' if cumulative_profits[i] >= 0 else 'red'
+            ax.plot(days[i-1:i+1], cumulative_profits[i-1:i+1], color=color, linewidth=3)
+    
         # Enhancing the plot aesthetics
         ax.set_ylabel('Cumulative Realized Profit ($)', fontsize=16, fontweight='bold')
         ax.set_title('Cumulative Realized Profit by Day (GreenAleph)', fontsize=20, fontweight='bold')
         ax.axhline(0, color='black', linewidth=1)  # Add horizontal line at y=0
         ax.set_ylim(y_min, y_max)  # Set y-axis limits
-
+    
         # Set x-axis labels with rotation and larger font size
-        ax.xaxis.set_major_locator(plt.MaxNLocator(10))  # Show fewer x-axis labels for readability
         plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
         plt.yticks(fontsize=14, fontweight='bold')
-
+    
         # Add only the final value label on the right side
-        final_date = dates[-1].strftime('%Y-%m')
+        final_day = days[-1]
         final_profit = cumulative_profits.iloc[-1]
-        ax.annotate(f"${final_profit:,.0f}", xy=(dates[-1], final_profit),
+        ax.annotate(f"${final_profit:,.0f}", xy=(final_day, final_profit),
                     xytext=(0, 8), textcoords="offset points",
                     ha='center', fontsize=14, fontweight='bold', color='black')
-
+    
         plt.tight_layout()
         st.pyplot(fig)
     else:
         st.warning("No data available for daily cumulative realized profit.")
+
 
 
 
