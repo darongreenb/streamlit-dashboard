@@ -232,6 +232,10 @@ if page == "Main Page":
     """
     
 
+import matplotlib.pyplot as plt
+import pandas as pd
+import streamlit as st
+
 # Fetch and process data for Cumulative Realized Profit by Month
 monthly_profit_data = get_data_from_db(monthly_profit_query)
 if monthly_profit_data is None:
@@ -267,50 +271,28 @@ else:
         # Plot the Cumulative Realized Profit by Month line graph
         fig, ax = plt.subplots(figsize=(14, 8))
 
-        # Prepare data for plotting with transitions across the x-axis
-        months = monthly_profit_df.index.strftime('%Y-%m')
+        # Prepare data for plotting
         cumulative_profits = monthly_profit_df['CumulativeNetProfit']
+        months = monthly_profit_df.index
 
-        # Iterate through segments and split at zero crossings
         for i in range(1, len(cumulative_profits)):
-            x_values = [months[i - 1], months[i]]
-            y_values = [cumulative_profits[i - 1], cumulative_profits[i]]
+            # Define the segment start and end points
+            x_start, x_end = months[i - 1], months[i]
+            y_start, y_end = cumulative_profits[i - 1], cumulative_profits[i]
 
-            # Determine color based on y-values crossing the x-axis
-            if y_values[0] >= 0 and y_values[1] >= 0:
-                color = 'green'
-            elif y_values[0] < 0 and y_values[1] < 0:
-                color = 'red'
+            if (y_start >= 0 and y_end >= 0) or (y_start < 0 and y_end < 0):
+                # No zero-crossing, plot as a single segment
+                color = 'green' if y_start >= 0 else 'red'
+                ax.plot([x_start, x_end], [y_start, y_end], color=color, linewidth=3)
             else:
                 # Handle zero-crossing with interpolation
-                try:
-                    crossing_point = y_values[0] / (y_values[0] - y_values[1])
-                    crossing_month = monthly_profit_df.index[i - 1] + (
-                        (monthly_profit_df.index[i] - monthly_profit_df.index[i - 1]) * crossing_point
-                    )
+                zero_crossing_x = x_start + (x_end - x_start) * abs(y_start) / (abs(y_start) + abs(y_end))
 
-                    # Plot the first segment up to the crossing point
-                    ax.plot(
-                        [months[i - 1], crossing_month.strftime('%Y-%m')],
-                        [y_values[0], 0],
-                        color='green' if y_values[0] >= 0 else 'red',
-                        linewidth=3,
-                    )
+                # Plot the first segment to the zero-crossing
+                ax.plot([x_start, zero_crossing_x], [y_start, 0], color='green' if y_start >= 0 else 'red', linewidth=3)
 
-                    # Plot the second segment from the crossing point
-                    ax.plot(
-                        [crossing_month.strftime('%Y-%m'), months[i]],
-                        [0, y_values[1]],
-                        color='red' if y_values[1] < 0 else 'green',
-                        linewidth=3,
-                    )
-                except Exception as e:
-                    st.error(f"Error during zero-crossing calculation: {e}")
-                    st.stop()
-                continue
-
-            # Plot the segment
-            ax.plot(x_values, y_values, color=color, linewidth=3)
+                # Plot the second segment from the zero-crossing
+                ax.plot([zero_crossing_x, x_end], [0, y_end], color='red' if y_end < 0 else 'green', linewidth=3)
 
         # Enhancing the plot aesthetics
         ax.set_ylabel('Cumulative Realized Profit ($)', fontsize=16, fontweight='bold')
@@ -323,7 +305,7 @@ else:
         plt.yticks(fontsize=14, fontweight='bold')
 
         # Add only the final value label on the right side
-        final_month = months[-1]
+        final_month = months[-1].strftime('%Y-%m')
         final_profit = cumulative_profits.iloc[-1]
         ax.annotate(f"${final_profit:,.0f}", xy=(final_month, final_profit),
                     xytext=(0, 8), textcoords="offset points",
@@ -333,10 +315,6 @@ else:
         st.pyplot(fig)
     else:
         st.warning("No data available for monthly cumulative realized profit.")
-
-
-
-
 
 
 
