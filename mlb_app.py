@@ -243,12 +243,22 @@ else:
     # Ensure the DataFrame is not empty
     if not monthly_profit_df.empty:
         # Convert Month column to datetime and set as index
-        monthly_profit_df['Month'] = pd.to_datetime(monthly_profit_df['Month'])
+        try:
+            monthly_profit_df['Month'] = pd.to_datetime(monthly_profit_df['Month'])
+        except Exception as e:
+            st.error(f"Error converting Month column to datetime: {e}")
+            st.stop()
+
         monthly_profit_df.set_index('Month', inplace=True)
         monthly_profit_df.sort_index(inplace=True)
 
         # Calculate cumulative sum for the TotalNetProfit column
         monthly_profit_df['CumulativeNetProfit'] = monthly_profit_df['TotalNetProfit'].cumsum()
+
+        # Ensure the index is a DatetimeIndex
+        if not isinstance(monthly_profit_df.index, pd.DatetimeIndex):
+            st.error("The index of monthly_profit_df must be a DatetimeIndex.")
+            st.stop()
 
         # Determine y-axis limits with a buffer around min and max values
         y_min = monthly_profit_df['CumulativeNetProfit'].min() - 6000
@@ -273,26 +283,30 @@ else:
                 color = 'red'
             else:
                 # Handle zero-crossing with interpolation
-                crossing_point = y_values[0] / (y_values[0] - y_values[1])
-                crossing_month = pd.to_datetime(monthly_profit_df.index[i - 1]) + (
-                    pd.to_datetime(monthly_profit_df.index[i]) - pd.to_datetime(monthly_profit_df.index[i - 1])
-                ) * crossing_point
+                try:
+                    crossing_point = y_values[0] / (y_values[0] - y_values[1])
+                    crossing_month = monthly_profit_df.index[i - 1] + (
+                        (monthly_profit_df.index[i] - monthly_profit_df.index[i - 1]) * crossing_point
+                    )
 
-                # Plot the first segment up to the crossing point
-                ax.plot(
-                    [months[i - 1], crossing_month.strftime('%Y-%m')],
-                    [y_values[0], 0],
-                    color='green' if y_values[0] >= 0 else 'red',
-                    linewidth=3,
-                )
+                    # Plot the first segment up to the crossing point
+                    ax.plot(
+                        [months[i - 1], crossing_month.strftime('%Y-%m')],
+                        [y_values[0], 0],
+                        color='green' if y_values[0] >= 0 else 'red',
+                        linewidth=3,
+                    )
 
-                # Plot the second segment from the crossing point
-                ax.plot(
-                    [crossing_month.strftime('%Y-%m'), months[i]],
-                    [0, y_values[1]],
-                    color='red' if y_values[1] < 0 else 'green',
-                    linewidth=3,
-                )
+                    # Plot the second segment from the crossing point
+                    ax.plot(
+                        [crossing_month.strftime('%Y-%m'), months[i]],
+                        [0, y_values[1]],
+                        color='red' if y_values[1] < 0 else 'green',
+                        linewidth=3,
+                    )
+                except Exception as e:
+                    st.error(f"Error during zero-crossing calculation: {e}")
+                    st.stop()
                 continue
 
             # Plot the segment
@@ -319,8 +333,6 @@ else:
         st.pyplot(fig)
     else:
         st.warning("No data available for monthly cumulative realized profit.")
-
-
 
 
 
