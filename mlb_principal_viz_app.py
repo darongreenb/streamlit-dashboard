@@ -231,7 +231,7 @@ if page == "Main Page":
         ORDER BY Month;
     """
     
-# SQL query for Daily Profit
+# Fetch and process data for Cumulative Realized Profit by Day
 daily_profit_query = """
     SELECT 
         DATE(DateTimePlaced) AS Date,
@@ -242,7 +242,6 @@ daily_profit_query = """
     ORDER BY Date;
 """
 
-# Fetch and process data for Cumulative Realized Profit by Day
 daily_profit_data = get_data_from_db(daily_profit_query)
 if daily_profit_data is None:
     st.error("Failed to fetch daily realized profit data from the database.")
@@ -284,9 +283,14 @@ else:
         ax.axhline(0, color='black', linewidth=1)  # Add horizontal line at y=0
         ax.set_ylim(y_min, y_max)  # Set y-axis limits
     
-        # Format x-axis labels to show months even with daily data
-        ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%Y-%m'))
-        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+        # Generate monthly x-axis ticks starting from 2023-11
+        start_date = pd.Timestamp('2023-11-01')
+        end_date = daily_profit_df.index[-1]
+        monthly_ticks = pd.date_range(start=start_date, end=end_date, freq='MS')  # Monthly start
+    
+        # Format x-axis labels
+        ax.set_xticks(monthly_ticks)
+        ax.set_xticklabels([tick.strftime('%Y-%m') for tick in monthly_ticks], rotation=45, ha='right', fontsize=14, fontweight='bold')
         plt.yticks(fontsize=14, fontweight='bold')
     
         # Add only the final value label on the right side
@@ -300,8 +304,6 @@ else:
         st.pyplot(fig)
     else:
         st.warning("No data available for daily cumulative realized profit.")
-
-
 
 
 
