@@ -136,6 +136,7 @@ if page == "Main Page":
     if deployed_data and len(deployed_data) > 0 and 'TotalDollarsDeployed' in deployed_data[0]:
         total_dollars_deployed = deployed_data[0]['TotalDollarsDeployed']
         total_dollars_deployed = round(float(total_dollars_deployed)) if total_dollars_deployed is not None else 0
+        total_dollars_deployed += 15000
         goal_amount = 500000
         progress_percentage = min(total_dollars_deployed / goal_amount, 1)
         label_position_percentage = progress_percentage * 50
