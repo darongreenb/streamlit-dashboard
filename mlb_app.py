@@ -296,7 +296,7 @@ else:
         final_date = daily_profit_df.index[-1]
         final_profit = daily_profit_df['CumulativeNetProfit'].iloc[-1]
         ax.annotate(f"${final_profit:,.0f}", xy=(final_date, final_profit),
-                    xytext=(0, 8), textcoords="offset points",
+                    xytext=(0, 10), textcoords="offset points",
                     ha='center', fontsize=14, fontweight='bold', color='black')
     
         plt.tight_layout()
