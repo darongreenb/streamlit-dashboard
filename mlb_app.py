@@ -283,7 +283,7 @@ else:
     
         # Enhancing the plot aesthetics
         ax.set_ylabel('Cumulative Realized Profit ($)', fontsize=16, fontweight='bold')
-        ax.set_title('Cumulative Realized Profit by Day (GreenAleph)', fontsize=20, fontweight='bold')
+        ax.set_title('Cumulative Realized Profit by Day (GA1)', fontsize=20, fontweight='bold')
         ax.axhline(0, color='black', linewidth=1)  # Add horizontal line at y=0
         ax.set_ylim(y_min, y_max)  # Set y-axis limits
     
