@@ -1,4 +1,3 @@
-
 import streamlit as st
 import mysql.connector
 import pandas as pd
@@ -233,76 +232,66 @@ if page == "Main Page":
         ORDER BY Month;
     """
     
-
-# SQL query for Daily Profit
-daily_profit_query = """
-    SELECT 
-        DATE(DateTimePlaced) AS Date,
-        SUM(NetProfit) AS TotalNetProfit
-    FROM bets
-    WHERE WhichBankroll = 'GreenAleph'
-    GROUP BY Date
-    ORDER BY Date;
-"""
-
-# Fetch and process data for Cumulative Realized Profit by Day
-daily_profit_data = get_data_from_db(daily_profit_query)
-if daily_profit_data is None:
-    st.error("Failed to fetch daily realized profit data from the database.")
-else:
-    # Convert data to DataFrame
-    daily_profit_df = pd.DataFrame(daily_profit_data)
-    
-    # Ensure the DataFrame is not empty
-    if not daily_profit_df.empty:
-        # Convert Date column to datetime and set as index
-        daily_profit_df['Date'] = pd.to_datetime(daily_profit_df['Date'])
-        daily_profit_df.set_index('Date', inplace=True)
-        daily_profit_df.sort_index(inplace=True)
-    
-        # Calculate cumulative sum for the TotalNetProfit column
-        daily_profit_df['CumulativeNetProfit'] = daily_profit_df['TotalNetProfit'].cumsum()
-    
-        # Determine y-axis limits with a buffer around min and max values
-        y_min = daily_profit_df['CumulativeNetProfit'].min() - 6000
-        y_max = daily_profit_df['CumulativeNetProfit'].max() + 6000
-    
-        # Plot the Cumulative Realized Profit by Day line graph
-        fig, ax = plt.subplots(figsize=(14, 8))
-    
-        # Loop to plot segments of the line with color based on whether cumulative profit is above or below zero
-        for i in range(1, len(daily_profit_df)):
-            previous_date = daily_profit_df.index[i - 1]
-            current_date = daily_profit_df.index[i]
-            previous_value = daily_profit_df['CumulativeNetProfit'].iloc[i - 1]
-            current_value = daily_profit_df['CumulativeNetProfit'].iloc[i]
-            
-            color = 'green' if current_value >= 0 else 'red'
-            ax.plot([previous_date, current_date],
-                    [previous_value, current_value], color=color, linewidth=3)
-    
-        # Enhancing the plot aesthetics
-        ax.set_ylabel('Cumulative Realized Profit ($)', fontsize=16, fontweight='bold')
-        ax.set_title('Cumulative Realized Profit by Day (GA1)', fontsize=20, fontweight='bold')
-        ax.axhline(0, color='black', linewidth=1)  # Add horizontal line at y=0
-        ax.set_ylim(y_min, y_max)  # Set y-axis limits
-    
-        # Format x-axis labels to show months even with daily data
-        ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%Y-%m'))
-        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
-        plt.yticks(fontsize=14, fontweight='bold')
-    
-        # Add only the final value label on the right side
-        final_date = daily_profit_df.index[-1]
-        final_profit = daily_profit_df['CumulativeNetProfit'].iloc[-1]
-        ax.annotate(f"${final_profit:,.0f}", xy=(final_date, final_profit),
-                    xytext=(0, 15), textcoords="offset points",
-                    ha='center', fontsize=14, fontweight='bold', color='black')
-    
-        plt.tight_layout()
-        st.pyplot(fig)
+    # Fetch and process data for Cumulative Realized Profit by Month
+    monthly_profit_data = get_data_from_db(monthly_profit_query)
+    if monthly_profit_data is None:
+        st.error("Failed to fetch monthly realized profit data from the database.")
     else:
-        st.warning("No data available for daily cumulative realized profit.")
+        # Convert data to DataFrame
+        monthly_profit_df = pd.DataFrame(monthly_profit_data)
+    
+        # Ensure the DataFrame is not empty
+        if not monthly_profit_df.empty:
+            # Convert Month column to datetime and set as index
+            monthly_profit_df['Month'] = pd.to_datetime(monthly_profit_df['Month'])
+            monthly_profit_df.set_index('Month', inplace=True)
+            monthly_profit_df.sort_index(inplace=True)
+    
+            # Calculate cumulative sum for the TotalNetProfit column
+            monthly_profit_df['CumulativeNetProfit'] = monthly_profit_df['TotalNetProfit'].cumsum()
+    
+            # Determine y-axis limits with a buffer around min and max values
+            y_min = monthly_profit_df['CumulativeNetProfit'].min() - 6000
+            y_max = monthly_profit_df['CumulativeNetProfit'].max() + 6000
+    
+            # Plot the Cumulative Realized Profit by Month line graph
+            #st.subheader("Cumulative Realized Profit by Month for 'GreenAleph'")
+            fig, ax = plt.subplots(figsize=(14, 8))
+    
+            # Separate data for segments above and below zero
+            months = monthly_profit_df.index.strftime('%Y-%m')
+            cumulative_profits = monthly_profit_df['CumulativeNetProfit']
+    
+            # Plot segments of the line with color based on whether cumulative profit is above or below zero
+            for i in range(1, len(cumulative_profits)):
+                color = 'green' if cumulative_profits[i] >= 0 else 'red'
+                ax.plot(months[i-1:i+1], cumulative_profits[i-1:i+1], color=color, linewidth=3)
+    
+            # Enhancing the plot aesthetics
+            ax.set_ylabel('Cumulative Realized Profit ($)', fontsize=16, fontweight='bold')
+            ax.set_title('Cumulative Realized Profit by Month', fontsize=20, fontweight='bold')
+            ax.axhline(0, color='black', linewidth=1)  # Add horizontal line at y=0
+            ax.set_ylim(y_min, y_max)  # Set y-axis limits
+    
+            # Set x-axis labels with rotation and larger font size
+            plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+            plt.yticks(fontsize=14, fontweight='bold')
+    
+            # Add only the final value label on the right side
+            final_month = months[-1]
+            final_profit = cumulative_profits.iloc[-1]
+            ax.annotate(f"${final_profit:,.0f}", xy=(final_month, final_profit),
+                        xytext=(0, 8), textcoords="offset points",
+                        ha='center', fontsize=14, fontweight='bold', color='black')
+    
+            plt.tight_layout()
+            st.pyplot(fig)
+        else:
+            st.warning("No data available for monthly cumulative realized profit.")
+
+
+
+
 
 
 
@@ -442,7 +431,7 @@ if page == "Principal Volume":
             df_pivot_monthly.index = pd.to_datetime(df_pivot_monthly.index, format='%Y-%m', errors='coerce')
             df_pivot_monthly.sort_index(inplace=True)
 
-            st.subheader("Total Principal Volume by Month (Stacked by LeagueName)")
+            st.subheader("Principal Volume by Month")
             plt.figure(figsize=(12, 6))
             ax = df_pivot_monthly.plot(
                 kind='bar', 
@@ -452,7 +441,7 @@ if page == "Principal Volume":
             )
 
             plt.ylabel('Total Principal ($)')
-            plt.title('Total Principal Volume by Month (Stacked by LeagueName)')
+            plt.title('Principal Volume by Month')
             plt.xticks(ticks=range(len(df_pivot_monthly.index)), labels=df_pivot_monthly.index.strftime('%Y-%m'), rotation=45, ha='right')
             plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
             plt.tight_layout()
@@ -478,7 +467,7 @@ if page == "Principal Volume":
             df_pivot_weekly.index = pd.to_datetime(df_pivot_weekly.index, errors='coerce').strftime('%Y-%m')
             df_pivot_weekly.sort_index(inplace=True)
     
-            st.subheader("Total Principal Volume by Week (Stacked by LeagueName)")
+            st.subheader("Principal Volume by Week")
             plt.figure(figsize=(12, 6))
             ax = df_pivot_weekly.plot(
                 kind='bar',
@@ -619,7 +608,7 @@ if page == "Betting Frequency":
             x_labels = [date.strftime('%Y-%m') if isinstance(date, pd.Timestamp) else date for date in df_frequency.index]
 
             # Plot the first bar chart
-            st.subheader("Number of Bets Placed by Month for 'GreenAleph'")
+            st.subheader("Number of Bets Placed by Month")
             plt.figure(figsize=(12, 6))
             bars = plt.bar(x_labels, df_frequency['NumberOfBets'])
             plt.ylabel('Number of Bets')
@@ -742,7 +731,7 @@ elif page == "NBA Charts":
         bars = ax.bar(first_chart_df['EventType'], first_chart_df['TotalDollarsAtStake'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(first_chart_df['EventType']))], width=0.6, edgecolor='black')
 
         # Add labels and title
-        ax.set_title('Total Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
+        ax.set_title('Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
         ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
 
         # Annotate each bar with the value (no dollar sign)
@@ -863,7 +852,7 @@ elif page == "NBA Charts":
                     
                         # Add labels and title
                         ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
-                        ax.set_title(f'Active Principal & Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
+                        ax.set_title(f'Active Principal & Potential Payout (Straight Bets Only)', fontsize=18, fontweight='bold')
                     
                         # Annotate Implied Probability on TotalDollarsAtStake bars
                         for i, bar1 in enumerate(bars1):
@@ -1127,7 +1116,7 @@ elif page == "NFL Charts":
         bars = ax.bar(first_chart_df['EventType'], first_chart_df['TotalDollarsAtStake'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(first_chart_df['EventType']))], width=0.6, edgecolor='black')
 
         # Add labels and title
-        ax.set_title('Total Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
+        ax.set_title('Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
         ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
 
         # Annotate each bar with the value (no dollar sign)
@@ -1246,7 +1235,7 @@ elif page == "NFL Charts":
                     
                         # Add labels and title
                         ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
-                        ax.set_title(f'Active Principal & Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
+                        ax.set_title(f'Active Principal & Potential Payout (Straight Bets Only)', fontsize=18, fontweight='bold')
                     
                         # Annotate Implied Probability on TotalDollarsAtStake bars
                         for i, bar1 in enumerate(bars1):
@@ -1843,7 +1832,7 @@ elif page == "MLB Charts":
                 
                         # Add labels and title
                         ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
-                        ax.set_title(f'Total Active Principal & Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
+                        ax.set_title(f'Total Active Principal & Potential Payout (Straight Bets Only)', fontsize=18, fontweight='bold')
                 
                         # Annotate each bar with the TotalDollarsAtStake value below the bar
                         for bar1 in bars1:
@@ -2147,4 +2136,9 @@ elif page == "NFL Participant Positions":
 
     
     
+
+
+
+
+
 
