@@ -851,7 +851,7 @@ elif page == "NBA Charts":
                                        color=color_potential_payout, width=0.4, edgecolor='black')
                     
                         # Add labels and title
-                        ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
+                        ax.set_ylabel('USD ($) in MM', fontsize=16, fontweight='bold')
                         ax.set_title(f'Active Principal & Potential Payout (Straight Bets Only)', fontsize=18, fontweight='bold')
                     
                         # Annotate Implied Probability on TotalDollarsAtStake bars
@@ -1234,7 +1234,7 @@ elif page == "NFL Charts":
                                        color=color_potential_payout, width=0.4, edgecolor='black')
                     
                         # Add labels and title
-                        ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
+                        ax.set_ylabel('USD ($) in MM', fontsize=16, fontweight='bold')
                         ax.set_title(f'Active Principal & Potential Payout (Straight Bets Only)', fontsize=18, fontweight='bold')
                     
                         # Annotate Implied Probability on TotalDollarsAtStake bars
