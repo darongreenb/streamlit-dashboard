@@ -731,7 +731,7 @@ elif page == "NBA Charts":
         bars = ax.bar(first_chart_df['EventType'], first_chart_df['TotalDollarsAtStake'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(first_chart_df['EventType']))], width=0.6, edgecolor='black')
 
         # Add labels and title
-        ax.set_title('Total Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
+        ax.set_title('Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
         ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
 
         # Annotate each bar with the value (no dollar sign)
@@ -852,7 +852,7 @@ elif page == "NBA Charts":
                     
                         # Add labels and title
                         ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
-                        ax.set_title(f'Active Principal & Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
+                        ax.set_title(f'Active Principal & Potential Payout (Straight Bets Only)', fontsize=18, fontweight='bold')
                     
                         # Annotate Implied Probability on TotalDollarsAtStake bars
                         for i, bar1 in enumerate(bars1):
@@ -1116,7 +1116,7 @@ elif page == "NFL Charts":
         bars = ax.bar(first_chart_df['EventType'], first_chart_df['TotalDollarsAtStake'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(first_chart_df['EventType']))], width=0.6, edgecolor='black')
 
         # Add labels and title
-        ax.set_title('Total Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
+        ax.set_title('Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
         ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
 
         # Annotate each bar with the value (no dollar sign)
@@ -1235,7 +1235,7 @@ elif page == "NFL Charts":
                     
                         # Add labels and title
                         ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
-                        ax.set_title(f'Active Principal & Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
+                        ax.set_title(f'Active Principal & Potential Payout (Straight Bets Only)', fontsize=18, fontweight='bold')
                     
                         # Annotate Implied Probability on TotalDollarsAtStake bars
                         for i, bar1 in enumerate(bars1):
@@ -1832,7 +1832,7 @@ elif page == "MLB Charts":
                 
                         # Add labels and title
                         ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
-                        ax.set_title(f'Total Active Principal & Potential Payout by ParticipantName for {event_type_option} - {event_label_option} (GA1, Straight Bets Only)', fontsize=18, fontweight='bold')
+                        ax.set_title(f'Total Active Principal & Potential Payout (Straight Bets Only)', fontsize=18, fontweight='bold')
                 
                         # Annotate each bar with the TotalDollarsAtStake value below the bar
                         for bar1 in bars1:
