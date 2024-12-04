@@ -269,7 +269,7 @@ if page == "Main Page":
     
             # Enhancing the plot aesthetics
             ax.set_ylabel('Cumulative Realized Profit ($)', fontsize=16, fontweight='bold')
-            ax.set_title('Cumulative Realized Profit by Month (GreenAleph)', fontsize=20, fontweight='bold')
+            ax.set_title('Cumulative Realized Profit by Month', fontsize=20, fontweight='bold')
             ax.axhline(0, color='black', linewidth=1)  # Add horizontal line at y=0
             ax.set_ylim(y_min, y_max)  # Set y-axis limits
     
@@ -431,7 +431,7 @@ if page == "Principal Volume":
             df_pivot_monthly.index = pd.to_datetime(df_pivot_monthly.index, format='%Y-%m', errors='coerce')
             df_pivot_monthly.sort_index(inplace=True)
 
-            st.subheader("Total Principal Volume by Month (Stacked by LeagueName)")
+            st.subheader("Principal Volume by Month")
             plt.figure(figsize=(12, 6))
             ax = df_pivot_monthly.plot(
                 kind='bar', 
@@ -441,7 +441,7 @@ if page == "Principal Volume":
             )
 
             plt.ylabel('Total Principal ($)')
-            plt.title('Total Principal Volume by Month (Stacked by LeagueName)')
+            plt.title('Principal Volume by Month')
             plt.xticks(ticks=range(len(df_pivot_monthly.index)), labels=df_pivot_monthly.index.strftime('%Y-%m'), rotation=45, ha='right')
             plt.legend(title='LeagueName', bbox_to_anchor=(1.05, 1), loc='upper left')
             plt.tight_layout()
@@ -467,7 +467,7 @@ if page == "Principal Volume":
             df_pivot_weekly.index = pd.to_datetime(df_pivot_weekly.index, errors='coerce').strftime('%Y-%m')
             df_pivot_weekly.sort_index(inplace=True)
     
-            st.subheader("Total Principal Volume by Week (Stacked by LeagueName)")
+            st.subheader("Principal Volume by Week")
             plt.figure(figsize=(12, 6))
             ax = df_pivot_weekly.plot(
                 kind='bar',
@@ -608,7 +608,7 @@ if page == "Betting Frequency":
             x_labels = [date.strftime('%Y-%m') if isinstance(date, pd.Timestamp) else date for date in df_frequency.index]
 
             # Plot the first bar chart
-            st.subheader("Number of Bets Placed by Month for 'GreenAleph'")
+            st.subheader("Number of Bets Placed by Month")
             plt.figure(figsize=(12, 6))
             bars = plt.bar(x_labels, df_frequency['NumberOfBets'])
             plt.ylabel('Number of Bets')
