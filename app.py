@@ -1292,7 +1292,6 @@ elif page == "NFL Charts":
                         # Use Streamlit to display the combined chart
                         st.pyplot(fig)
 
-
     # Add a new section at the bottom for tracking NFL parlays
     st.header("NFL Parlays - GA1")
     
