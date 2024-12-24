@@ -1183,7 +1183,7 @@ elif page == "NFL Charts":
 
                     # Adjust the WLCA condition based on the filter
                     wlca_condition = (
-                        "WLCA = 'Active'" if wlca_filter == "Active" else "WLCA IN ('Win', 'Loss', 'Cashout')"
+                        "WLCA = 'Active'" if wlca_filter == "Active" else "WLCA IN ('Win', 'Loss', 'Active')"
                     )
 
                     # Define the combined query with the adjusted WLCA condition
