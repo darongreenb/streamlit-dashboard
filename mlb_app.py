@@ -1178,7 +1178,7 @@ elif page == "NFL Charts":
                         "Filter by Bet Status",
                         options=["Active", "All"],
                         index=0,  # Default to "Active"
-                        help="Choose whether to display active bets only or include bets with win, loss, and cashout statuses."
+                        help="Choose whether to display active bets only or include bets with win, loss, and active statuses."
                     )
 
                     # Adjust the WLCA condition based on the filter
