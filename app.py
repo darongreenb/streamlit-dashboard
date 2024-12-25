@@ -1264,7 +1264,7 @@ elif page == "NFL Charts":
                             height2 = bar2.get_height()
                             ax.annotate(f'{height2:,.0f}', xy=(bar2.get_x() + bar2.get_width() / 2, height2),
                                         xytext=(0, 3), textcoords="offset points",
-                                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
+                                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black', rotation = 45)
 
                         # Rotate x-axis labels to 45 degrees
                         plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
