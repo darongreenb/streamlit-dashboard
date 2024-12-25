@@ -739,7 +739,7 @@ elif page == "NBA Charts":
             height = bar.get_height()
             ax.annotate(f'{height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
                         xytext=(0, 3), textcoords="offset points",
-                        ha='center', va='bottom', fontsize=14, fontweight='bold', color='black')
+                        ha='center', va='bottom', fontsize=14, fontweight='bold', color='black', rotation = 45)
 
         # Rotate the x-axis labels to 45 degrees
         plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
@@ -888,7 +888,7 @@ elif page == "NBA Charts":
                             spine.set_linewidth(1.2)
                     
                         # Extend y-axis range
-                        ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 20000, max(combined_df['TotalPotentialPayout']) + 30000)
+                        ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 30000, max(combined_df['TotalPotentialPayout']) + 40000)
                     
                         # Adjust layout
                         plt.tight_layout()
