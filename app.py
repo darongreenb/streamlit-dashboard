@@ -1284,7 +1284,7 @@ elif page == "NFL Charts":
                             spine.set_linewidth(1.2)
 
                         # Extend y-axis range
-                        ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 40000, max(combined_df['TotalPotentialPayout']) + 80000)
+                        ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 60000, max(combined_df['TotalPotentialPayout']) + 80000)
 
                         # Adjust layout
                         plt.tight_layout()
