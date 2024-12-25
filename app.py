@@ -861,7 +861,7 @@ elif page == "NBA Charts":
                             ax.annotate(f'{implied_prob:.1f}%', xy=(bar1.get_x() + bar1.get_width() / 2, height),
                                         xytext=(0, -15),  # Move the labels further down below the bars
                                         textcoords="offset points",
-                                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black', rotation = 45)
+                                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
                     
                         # Annotate TotalPotentialPayout above bars
                         for bar2 in bars2:
