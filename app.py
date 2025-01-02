@@ -1146,6 +1146,19 @@ elif page == "NFL Charts":
         # Use Streamlit to display the first chart
         st.pyplot(fig)
 
+        # Add a filter for WLCA status
+        wlca_filter = st.radio(
+            "Filter by Bet Status",
+            options=["Active", "All"],
+            index=0,  # Default to "Active"
+            help="Choose whether to display Active bets only or include bets with Win, Loss, and Active statuses."
+        )
+
+        # Adjust the WLCA condition based on the filter
+        wlca_condition = (
+            "WLCA = 'Active'" if wlca_filter == "Active" else "WLCA IN ('Win', 'Loss', 'Active')"
+        )
+
         # Filter for EventType
         event_type_option = st.selectbox('Select EventType', sorted(first_chart_df[first_chart_df['EventType'] != 'Total']['EventType'].unique()))
 
@@ -1161,7 +1174,7 @@ elif page == "NFL Charts":
                 l.LeagueName = 'NFL'
                 AND l.EventType = '{event_type_option}'
                 AND b.WhichBankroll = 'GreenAleph'
-                AND b.WLCA = 'Active'
+                AND {wlca_condition}
                 ;
             """
             # Fetch EventLabel data
@@ -1173,19 +1186,6 @@ elif page == "NFL Charts":
                 event_label_option = st.selectbox('Select EventLabel', sorted(event_labels))
 
                 if event_label_option:
-                    # Add a filter for WLCA status
-                    wlca_filter = st.radio(
-                        "Filter by Bet Status",
-                        options=["Active", "All"],
-                        index=0,  # Default to "Active"
-                        help="Choose whether to display Active bets only or include bets with Win, Loss, and Active statuses."
-                    )
-
-                    # Adjust the WLCA condition based on the filter
-                    wlca_condition = (
-                        "WLCA = 'Active'" if wlca_filter == "Active" else "WLCA IN ('Win', 'Loss', 'Active')"
-                    )
-
                     # Define the combined query with the adjusted WLCA condition
                     combined_query = f"""
                     WITH DistinctBets AS (
@@ -1264,7 +1264,7 @@ elif page == "NFL Charts":
                             height2 = bar2.get_height()
                             ax.annotate(f'{height2:,.0f}', xy=(bar2.get_x() + bar2.get_width() / 2, height2),
                                         xytext=(0, 3), textcoords="offset points",
-                                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black', rotation = 45)
+                                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
 
                         # Rotate x-axis labels to 45 degrees
                         plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
@@ -1291,6 +1291,7 @@ elif page == "NFL Charts":
 
                         # Use Streamlit to display the combined chart
                         st.pyplot(fig)
+
 
     # Add a new section at the bottom for tracking NFL parlays
     st.header("NFL Parlays - GA1")
