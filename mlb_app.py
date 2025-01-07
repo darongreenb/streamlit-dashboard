@@ -1173,6 +1173,7 @@ elif page == "NFL Charts":
             JOIN legs l ON b.WagerID = l.WagerID
             WHERE 
                 b.WhichBankroll = 'GreenAleph'
+                AND l.LeagueName = 'NFL'
                 AND l.EventType = '{event_type_option}'
                 AND b.LegCount = 1
             """
