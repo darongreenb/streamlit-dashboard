@@ -1291,7 +1291,7 @@ elif page == "NFL Charts":
                         ax.legend([bars2, bars1], ['Potential Payout', 'Implied Probability (%)'])
 
                         # Add horizontal breakeven line
-                        ax.axhline(breakeven_value, color='red', linestyle='dashed', linewidth=1.5, label=f'Breakeven: ${breakeven_value:,.0f}')
+                        ax.axhline(breakeven_value, color='blue', linestyle='dashed', linewidth=1.5, label=f'Breakeven: ${breakeven_value:,.0f}')
                         ax.legend(loc='best')
 
                         # Add horizontal line at y=0 for reference
