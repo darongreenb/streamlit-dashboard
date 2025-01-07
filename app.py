@@ -1163,7 +1163,26 @@ elif page == "NFL Charts":
         event_type_option = st.selectbox('Select EventType', sorted(first_chart_df[first_chart_df['EventType'] != 'Total']['EventType'].unique()))
 
         if event_type_option:
-            # SQL query to fetch data for the EventLabel dropdown
+            # SQL query to calculate breakeven value
+            breakeven_query = f"""
+            SELECT
+                -1 * SUM(CASE WHEN WLCA = 'Cashout' THEN NetProfit ELSE 0 END)
+                + -1 * SUM(CASE WHEN WLCA = 'Win' THEN NetProfit ELSE 0 END)
+                + SUM(CASE WHEN WLCA = 'Active' THEN DollarsAtStake ELSE 0 END) AS Breakeven
+            FROM bets b
+            JOIN legs l ON b.WagerID = l.WagerID
+            WHERE 
+                b.WhichBankroll = 'GreenAleph'
+                AND l.LeagueName = 'NFL'
+                AND l.EventType = '{event_type_option}'
+                AND b.LegCount = 1
+            """
+
+            # Fetch breakeven value
+            breakeven_data = get_data_from_db(breakeven_query)
+            breakeven_value = breakeven_data[0]['Breakeven'] if breakeven_data else 0
+
+            # SQL query to fetch data for EventLabel dropdown
             event_label_query = f"""
             SELECT DISTINCT l.EventLabel
             FROM 
@@ -1271,6 +1290,10 @@ elif page == "NFL Charts":
 
                         # Add legend
                         ax.legend([bars2, bars1], ['Potential Payout', 'Implied Probability (%)'])
+
+                        # Add horizontal breakeven line
+                        ax.axhline(breakeven_value, color='blue', linestyle='dashed', linewidth=1.5, label=f'Breakeven: ${breakeven_value:,.0f}')
+                        ax.legend(loc='best')
 
                         # Add horizontal line at y=0 for reference
                         ax.axhline(0, color='black', linewidth=0.8)
