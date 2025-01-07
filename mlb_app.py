@@ -1252,7 +1252,7 @@ elif page == "NFL Charts":
 
                         # Define colors for DollarsAtStake and PotentialPayout
                         color_dollars_at_stake = 'lightblue'  # Light blue for DollarsAtStake
-                        color_potential_payout = 'beige'  # Beige for PotentialPayout
+                        color_potential_payout = 'pink'  # pink for PotentialPayout
 
                         # Plot the combined bar chart
                         fig, ax = plt.subplots(figsize=(18, 12))
