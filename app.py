@@ -1146,6 +1146,19 @@ elif page == "NFL Charts":
         # Use Streamlit to display the first chart
         st.pyplot(fig)
 
+    # Fetch all unique EventType values from the database
+    all_event_types_query = """
+    SELECT DISTINCT EventType
+    FROM legs
+    WHERE LeagueName = 'NFL';
+    """
+    all_event_types_data = get_data_from_db(all_event_types_query)
+
+    if all_event_types_data is None:
+        st.error("Failed to fetch EventType data from the database.")
+    else:
+        all_event_types = [row['EventType'] for row in all_event_types_data]
+
         # Add a filter for WLCA status
         wlca_filter = st.radio(
             "Filter by Bet Status",
@@ -1160,7 +1173,7 @@ elif page == "NFL Charts":
         )
 
         # Filter for EventType
-        event_type_option = st.selectbox('Select EventType', sorted(first_chart_df[first_chart_df['EventType'] != 'Total']['EventType'].unique()))
+        event_type_option = st.selectbox('Select EventType', sorted(all_event_types))
 
         if event_type_option:
             # SQL query to calculate breakeven value
@@ -1196,6 +1209,7 @@ elif page == "NFL Charts":
                 AND {wlca_condition}
                 ;
             """
+
             # Fetch EventLabel data
             event_label_data = get_data_from_db(event_label_query)
             if event_label_data is None:
@@ -1245,24 +1259,22 @@ elif page == "NFL Charts":
 
                         # Modify TotalDollarsAtStake for the chart (to show negative values)
                         combined_df['TotalDollarsAtStake'] = -combined_df['TotalDollarsAtStake'].astype(float).round(0)
-                        combined_df['TotalPotentialPayout'] = combined_df['TotalPotentialPayout'].astype(float).round(0)
-
-                        # Sort the DataFrame by 'TotalDollarsAtStake' in ascending order
+                                                # Sort the DataFrame by 'TotalDollarsAtStake' in ascending order
                         combined_df = combined_df.sort_values('TotalDollarsAtStake', ascending=True)
 
                         # Define colors for DollarsAtStake and PotentialPayout
                         color_dollars_at_stake = 'lightblue'  # Light blue for DollarsAtStake
-                        color_potential_payout = 'orange'  # orange for PotentialPayout
+                        color_potential_payout = 'orange'  # Orange for PotentialPayout
 
                         # Plot the combined bar chart
                         fig, ax = plt.subplots(figsize=(18, 12))
 
                         # Plot TotalDollarsAtStake moving downward from the x-axis
-                        bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], 
+                        bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'],
                                        color=color_dollars_at_stake, width=0.4, edgecolor='black')
 
                         # Plot TotalPotentialPayout moving upward from the x-axis
-                        bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], 
+                        bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'],
                                        color=color_potential_payout, width=0.4, edgecolor='black')
 
                         # Add labels and title
