@@ -1056,19 +1056,108 @@ elif page == "NFL Charts":
     # NFL Charts
     st.title('NFL Active Bets - GA1')
 
-    # Fetch all distinct EventTypes for NFL, regardless of WLCA status
-    event_type_query = """
-        SELECT DISTINCT l.EventType
-        FROM legs l
-        WHERE l.LeagueName = 'NFL';
-    """
-    all_event_types = get_data_from_db(event_type_query)
+    # SQL query to fetch data for the first bar chart
+    first_chart_query = """
+    WITH DistinctBets AS (
+        SELECT DISTINCT WagerID, DollarsAtStake
+        FROM bets
+        WHERE WhichBankroll = 'GreenAleph'
+          AND WLCA = 'Active'
+    ),
+    EventTypeSums AS (
+        SELECT 
+            l.EventType,
+            ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
+        FROM 
+            DistinctBets db
+        JOIN 
+            (SELECT DISTINCT WagerID, EventType, LeagueName FROM legs) l ON db.WagerID = l.WagerID
+        WHERE
+            l.LeagueName = 'NFL'
+        GROUP BY 
+            l.EventType
+    )
+    SELECT * FROM EventTypeSums
 
-    if all_event_types is None or len(all_event_types) == 0:
-        st.error("Failed to fetch EventTypes from the database.")
+    UNION ALL
+
+    SELECT 
+        'Total' AS EventType,
+        ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
+    FROM 
+        DistinctBets db
+    JOIN 
+        (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
+    WHERE
+        l.LeagueName = 'NFL';
+    """
+
+    # Fetch the data for the first bar chart
+    first_chart_data = get_data_from_db(first_chart_query)
+
+    # Check if data is fetched successfully
+    if first_chart_data is None:
+        st.error("Failed to fetch data from the database.")
     else:
-        # Convert the fetched EventTypes to a list
-        all_event_type_options = [row['EventType'] for row in all_event_types]
+        # Create a DataFrame from the fetched data
+        first_chart_df = pd.DataFrame(first_chart_data)
+
+        # Display the fetched data
+        first_chart_df['TotalDollarsAtStake'] = first_chart_df['TotalDollarsAtStake'].astype(float).round(0)
+
+        # Sort the DataFrame by 'TotalDollarsAtStake' in ascending order
+        first_chart_df = first_chart_df.sort_values('TotalDollarsAtStake', ascending=True)
+
+        # Define pastel colors for the first chart
+        pastel_colors = ['#a0d8f1', '#f4a261', '#e76f51', '#8ecae6', '#219ebc', '#023047', '#ffb703', '#fb8500', '#d4a5a5', '#9ab0a8']
+
+        # Plot the first bar chart
+        fig, ax = plt.subplots(figsize=(15, 10))
+        bars = ax.bar(first_chart_df['EventType'], first_chart_df['TotalDollarsAtStake'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(first_chart_df['EventType']))], width=0.6, edgecolor='black')
+
+        # Add labels and title
+        ax.set_title('Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
+        ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
+
+        # Annotate each bar with the value (no dollar sign)
+        for bar in bars:
+            height = bar.get_height()
+            ax.annotate(f'{height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                        xytext=(0, 3), textcoords="offset points",
+                        ha='center', va='bottom', fontsize=14, fontweight='bold', color='black')
+
+        # Rotate the x-axis labels to 45 degrees
+        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+
+        # Add horizontal line at y=0 for reference
+        ax.axhline(0, color='black', linewidth=0.8)
+
+        # Set background color to white
+        ax.set_facecolor('white')
+
+        # Add border around the plot
+        for spine in ax.spines.values():
+            spine.set_edgecolor('black')
+            spine.set_linewidth(1.2)
+
+        # Adjust layout
+        plt.tight_layout()
+
+        # Use Streamlit to display the first chart
+        st.pyplot(fig)
+
+    # Fetch all unique EventType values from the database
+    all_event_types_query = """
+    SELECT DISTINCT EventType
+    FROM legs
+    WHERE LeagueName = 'NFL';
+    """
+    all_event_types_data = get_data_from_db(all_event_types_query)
+
+    if all_event_types_data is None:
+        st.error("Failed to fetch EventType data from the database.")
+    else:
+        all_event_types = [row['EventType'] for row in all_event_types_data]
 
         # Add a filter for WLCA status
         wlca_filter = st.radio(
@@ -1083,8 +1172,8 @@ elif page == "NFL Charts":
             "WLCA = 'Active'" if wlca_filter == "Active" else "WLCA IN ('Win', 'Loss', 'Active')"
         )
 
-        # Display the EventType dropdown with all options
-        event_type_option = st.selectbox('Select EventType', sorted(all_event_type_options))
+        # Filter for EventType
+        event_type_option = st.selectbox('Select EventType', sorted(all_event_types))
 
         if event_type_option:
             # SQL query to calculate breakeven value
@@ -1106,24 +1195,26 @@ elif page == "NFL Charts":
             breakeven_data = get_data_from_db(breakeven_query)
             breakeven_value = breakeven_data[0]['Breakeven'] if breakeven_data else 0
 
-            # SQL query to fetch EventLabels for the selected EventType
+            # SQL query to fetch data for EventLabel dropdown
             event_label_query = f"""
             SELECT DISTINCT l.EventLabel
-            FROM bets b
-            JOIN legs l ON b.WagerID = l.WagerID
+            FROM 
+                bets b
+            JOIN 
+                legs l ON b.WagerID = l.WagerID
             WHERE
                 l.LeagueName = 'NFL'
                 AND l.EventType = '{event_type_option}'
                 AND b.WhichBankroll = 'GreenAleph'
-                AND {wlca_condition};
+                AND {wlca_condition}
+                ;
             """
-            # Fetch EventLabels
-            event_label_data = get_data_from_db(event_label_query)
 
-            if event_label_data is None or len(event_label_data) == 0:
-                st.warning("No EventLabels available for the selected EventType and filter.")
+            # Fetch EventLabel data
+            event_label_data = get_data_from_db(event_label_query)
+            if event_label_data is None:
+                st.error("Failed to fetch EventLabel data from the database.")
             else:
-                # Populate EventLabel options
                 event_labels = [row['EventLabel'] for row in event_label_data]
                 event_label_option = st.selectbox('Select EventLabel', sorted(event_labels))
 
@@ -1168,9 +1259,7 @@ elif page == "NFL Charts":
 
                         # Modify TotalDollarsAtStake for the chart (to show negative values)
                         combined_df['TotalDollarsAtStake'] = -combined_df['TotalDollarsAtStake'].astype(float).round(0)
-                        combined_df['TotalPotentialPayout'] = combined_df['TotalPotentialPayout'].astype(float).round(0)
-
-                        # Sort the DataFrame by 'TotalDollarsAtStake' in ascending order
+                                                # Sort the DataFrame by 'TotalDollarsAtStake' in ascending order
                         combined_df = combined_df.sort_values('TotalDollarsAtStake', ascending=True)
 
                         # Define colors for DollarsAtStake and PotentialPayout
@@ -1181,11 +1270,11 @@ elif page == "NFL Charts":
                         fig, ax = plt.subplots(figsize=(18, 12))
 
                         # Plot TotalDollarsAtStake moving downward from the x-axis
-                        bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], 
+                        bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'],
                                        color=color_dollars_at_stake, width=0.4, edgecolor='black')
 
                         # Plot TotalPotentialPayout moving upward from the x-axis
-                        bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], 
+                        bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'],
                                        color=color_potential_payout, width=0.4, edgecolor='black')
 
                         # Add labels and title
@@ -1237,6 +1326,11 @@ elif page == "NFL Charts":
 
                         # Use Streamlit to display the combined chart
                         st.pyplot(fig)
+
+# Ensure other charts or functionalities are included below
+# You can reintroduce additional charts or data tables here if needed
+
+
 
 
 
