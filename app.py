@@ -1305,7 +1305,7 @@ elif page == "NFL Charts":
 
                         # Add horizontal breakeven line
                         ax.axhline(breakeven_value, color='blue', linestyle='dashed', linewidth=1.5, label=f'Breakeven: ${breakeven_value:,.0f}')
-                        ax.legend(loc='best')
+                        ax.legend(loc='best', fontsize=18, title_fontsize=18, title='Legend')
 
                         # Add horizontal line at y=0 for reference
                         ax.axhline(0, color='black', linewidth=0.8)
