@@ -1056,169 +1056,164 @@ elif page == "NFL Charts":
     # NFL Charts
     st.title('NFL Active Bets - GA1')
 
-    # SQL query to fetch data for the first bar chart
-    first_chart_query = """
-    WITH DistinctBets AS (
-        SELECT DISTINCT WagerID, DollarsAtStake
-        FROM bets
-        WHERE WhichBankroll = 'GreenAleph'
-          AND WLCA = 'Active'
-    ),
-    EventTypeSums AS (
-        SELECT 
-            l.EventType,
-            ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
-        FROM 
-            DistinctBets db
-        JOIN 
-            (SELECT DISTINCT WagerID, EventType, LeagueName FROM legs) l ON db.WagerID = l.WagerID
-        WHERE
-            l.LeagueName = 'NFL'
-        GROUP BY 
-            l.EventType
+    # Add a filter for WLCA status
+    wlca_filter = st.radio(
+        "Filter by Bet Status",
+        options=["Active", "All"],
+        index=0,  # Default to "Active"
+        help="Choose whether to display Active bets only or include bets with Win, Loss, and Active statuses."
     )
-    SELECT * FROM EventTypeSums
 
-    UNION ALL
+    # Adjust the WLCA condition based on the filter
+    wlca_condition = (
+        "WLCA = 'Active'" if wlca_filter == "Active" else "WLCA IN ('Win', 'Loss', 'Active')"
+    )
 
-    SELECT 
-        'Total' AS EventType,
-        ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
-    FROM 
-        DistinctBets db
-    JOIN 
-        (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
-    WHERE
-        l.LeagueName = 'NFL';
+    # SQL query to fetch all EventTypes, independent of WLCA
+    all_eventtypes_query = """
+    SELECT DISTINCT EventType
+    FROM legs
+    WHERE LeagueName = 'NFL';
     """
 
-    # Fetch the data for the first bar chart
-    first_chart_data = get_data_from_db(first_chart_query)
+    # Fetch all EventTypes
+    all_eventtypes_data = get_data_from_db(all_eventtypes_query)
 
-    # Check if data is fetched successfully
-    if first_chart_data is None:
-        st.error("Failed to fetch data from the database.")
+    if all_eventtypes_data is None or len(all_eventtypes_data) == 0:
+        st.error("Failed to fetch EventType options from the database.")
     else:
-        # Create a DataFrame from the fetched data
-        first_chart_df = pd.DataFrame(first_chart_data)
-
-        # Display the fetched data
-        first_chart_df['TotalDollarsAtStake'] = first_chart_df['TotalDollarsAtStake'].astype(float).round(0)
-
-        # Sort the DataFrame by 'TotalDollarsAtStake' in ascending order
-        first_chart_df = first_chart_df.sort_values('TotalDollarsAtStake', ascending=True)
-
-        # Define pastel colors for the first chart
-        pastel_colors = ['#a0d8f1', '#f4a261', '#e76f51', '#8ecae6', '#219ebc', '#023047', '#ffb703', '#fb8500', '#d4a5a5', '#9ab0a8']
-
-        # Plot the first bar chart
-        fig, ax = plt.subplots(figsize=(15, 10))
-        bars = ax.bar(first_chart_df['EventType'], first_chart_df['TotalDollarsAtStake'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(first_chart_df['EventType']))], width=0.6, edgecolor='black')
-
-        # Add labels and title
-        ax.set_title('Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
-        ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
-
-        # Annotate each bar with the value (no dollar sign)
-        for bar in bars:
-            height = bar.get_height()
-            ax.annotate(f'{height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
-                        xytext=(0, 3), textcoords="offset points",
-                        ha='center', va='bottom', fontsize=14, fontweight='bold', color='black')
-
-        # Rotate the x-axis labels to 45 degrees
-        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
-
-        # Add horizontal line at y=0 for reference
-        ax.axhline(0, color='black', linewidth=0.8)
-
-        # Set background color to white
-        ax.set_facecolor('white')
-
-        # Add border around the plot
-        for spine in ax.spines.values():
-            spine.set_edgecolor('black')
-            spine.set_linewidth(1.2)
-
-        # Adjust layout
-        plt.tight_layout()
-
-        # Use Streamlit to display the first chart
-        st.pyplot(fig)
-
-        # Add a filter for WLCA status
-        wlca_filter = st.radio(
-            "Filter by Bet Status",
-            options=["Active", "All"],
-            index=0,  # Default to "Active"
-            help="Choose whether to display Active bets only or include bets with Win, Loss, and Active statuses."
-        )
-
-        # Adjust the WLCA condition based on the filter
-        wlca_condition = (
-            "WLCA = 'Active'" if wlca_filter == "Active" else "WLCA IN ('Win', 'Loss', 'Active')"
-        )
-
-        # Filter for EventType
-        event_type_option = st.selectbox('Select EventType', sorted(first_chart_df[first_chart_df['EventType'] != 'Total']['EventType'].unique()))
+        # Extract EventTypes and make them available as filter options
+        all_eventtypes = [row['EventType'] for row in all_eventtypes_data]
+        event_type_option = st.selectbox('Select EventType', sorted(all_eventtypes))
 
         if event_type_option:
-            # SQL query to fetch data for the EventLabel dropdown
+            # SQL query to fetch EventLabel options for the selected EventType
             event_label_query = f"""
             SELECT DISTINCT l.EventLabel
-            FROM 
-                bets b
-            JOIN 
-                legs l ON b.WagerID = l.WagerID
+            FROM bets b
+            JOIN legs l ON b.WagerID = l.WagerID
             WHERE
                 l.LeagueName = 'NFL'
                 AND l.EventType = '{event_type_option}'
                 AND b.WhichBankroll = 'GreenAleph'
-                AND WLCA IN ('Win', 'Loss', 'Active');
+                AND {wlca_condition};
             """
-            # Fetch EventLabel data
+
+            # Fetch EventLabel options
             event_label_data = get_data_from_db(event_label_query)
-            if event_label_data is None:
-                st.error("Failed to fetch EventLabel data from the database.")
+            if event_label_data is None or len(event_label_data) == 0:
+                st.warning("No EventLabels found for the selected EventType and filter.")
+                event_label_option = None
             else:
                 event_labels = [row['EventLabel'] for row in event_label_data]
                 event_label_option = st.selectbox('Select EventLabel', sorted(event_labels))
 
-                if event_label_option:
-                    # Define the combined query with the adjusted WLCA condition
-                    combined_query = f"""
-                    WITH DistinctBets AS (
-                        SELECT DISTINCT WagerID, DollarsAtStake, PotentialPayout
-                        FROM bets
-                        WHERE WhichBankroll = 'GreenAleph'
-                          AND {wlca_condition}
-                          AND LegCount = 1
-                    )
-                    SELECT 
-                        l.ParticipantName,
-                        SUM(db.DollarsAtStake) AS TotalDollarsAtStake,
-                        SUM(db.PotentialPayout) AS TotalPotentialPayout
-                    FROM 
-                        DistinctBets db
-                    JOIN 
-                        legs l ON db.WagerID = l.WagerID
-                    WHERE
-                        l.LeagueName = 'NFL'
-                        AND l.EventType = '{event_type_option}'
-                        AND l.EventLabel = '{event_label_option}'
-                    GROUP BY 
-                        l.ParticipantName;
-                    """
+            if event_label_option:
+                # SQL query to fetch data for the Active Principal & Potential Payout chart
+                combined_query = f"""
+                WITH DistinctBets AS (
+                    SELECT DISTINCT WagerID, DollarsAtStake, PotentialPayout
+                    FROM bets
+                    WHERE WhichBankroll = 'GreenAleph'
+                      AND {wlca_condition}
+                      AND LegCount = 1
+                )
+                SELECT 
+                    l.ParticipantName,
+                    SUM(db.DollarsAtStake) AS TotalDollarsAtStake,
+                    SUM(db.PotentialPayout) AS TotalPotentialPayout
+                FROM 
+                    DistinctBets db
+                JOIN 
+                    legs l ON db.WagerID = l.WagerID
+                WHERE
+                    l.LeagueName = 'NFL'
+                    AND l.EventType = '{event_type_option}'
+                    AND l.EventLabel = '{event_label_option}'
+                GROUP BY 
+                    l.ParticipantName;
+                """
 
-                    # Fetch the combined data
-                    combined_data = get_data_from_db(combined_query)
+                # Fetch the chart data
+                combined_data = get_data_from_db(combined_query)
 
-                    # Check if data is fetched successfully
-                    if combined_data is None or len(combined_data) == 0:
-                        st.warning("No relevant bets found for the selected filters.")
-                    else:
-                        # Proceed with the chart rendering logic here...
-                        ...
+                if combined_data is None or len(combined_data) == 0:
+                    st.warning("No data available for the selected filters.")
+                else:
+                    # Create a DataFrame from the fetched data
+                    combined_df = pd.DataFrame(combined_data)
+
+                    # Calculate Implied Probability
+                    combined_df['ImpliedProbability'] = (combined_df['TotalDollarsAtStake'] / combined_df['TotalPotentialPayout']) * 100
+
+                    # Modify TotalDollarsAtStake for the chart (to show negative values)
+                    combined_df['TotalDollarsAtStake'] = -combined_df['TotalDollarsAtStake'].astype(float).round(0)
+                    combined_df['TotalPotentialPayout'] = combined_df['TotalPotentialPayout'].astype(float).round(0)
+
+                    # Sort the DataFrame by 'TotalDollarsAtStake' in ascending order
+                    combined_df = combined_df.sort_values('TotalDollarsAtStake', ascending=True)
+
+                    # Define colors for DollarsAtStake and PotentialPayout
+                    color_dollars_at_stake = 'lightblue'  # Light blue for DollarsAtStake
+                    color_potential_payout = 'orange'  # Orange for PotentialPayout
+
+                    # Plot the combined bar chart
+                    fig, ax = plt.subplots(figsize=(18, 12))
+
+                    # Plot TotalDollarsAtStake moving downward from the x-axis
+                    bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], 
+                                   color=color_dollars_at_stake, width=0.4, edgecolor='black')
+
+                    # Plot TotalPotentialPayout moving upward from the x-axis
+                    bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], 
+                                   color=color_potential_payout, width=0.4, edgecolor='black')
+
+                    # Add labels and title
+                    ax.set_ylabel('USD ($)', fontsize=16, fontweight='bold')
+                    ax.set_title(f'Active Principal & Potential Payout (Straight Bets Only) - {wlca_filter}', fontsize=18, fontweight='bold')
+
+                    # Annotate Implied Probability on TotalDollarsAtStake bars
+                    for i, bar1 in enumerate(bars1):
+                        implied_prob = combined_df.iloc[i]['ImpliedProbability']
+                        height = bar1.get_height()
+                        ax.annotate(f'{implied_prob:.1f}%', xy=(bar1.get_x() + bar1.get_width() / 2, height),
+                                    xytext=(0, -15),  # Move the labels further down below the bars
+                                    textcoords="offset points",
+                                    ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
+
+                    # Annotate TotalPotentialPayout above bars
+                    for bar2 in bars2:
+                        height2 = bar2.get_height()
+                        ax.annotate(f'{height2:,.0f}', xy=(bar2.get_x() + bar2.get_width() / 2, height2),
+                                    xytext=(0, 3), textcoords="offset points",
+                                    ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
+
+                    # Rotate x-axis labels to 45 degrees
+                    plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+
+                    # Add legend
+                    ax.legend([bars2, bars1], ['Potential Payout', 'Implied Probability (%)'])
+
+                    # Add horizontal line at y=0 for reference
+                    ax.axhline(0, color='black', linewidth=0.8)
+
+                    # Set background color to white
+                    ax.set_facecolor('white')
+
+                    # Add border around the plot
+                    for spine in ax.spines.values():
+                        spine.set_edgecolor('black')
+                        spine.set_linewidth(1.2)
+
+                    # Extend y-axis range
+                    ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 60000, max(combined_df['TotalPotentialPayout']) + 80000)
+
+                    # Adjust layout
+                    plt.tight_layout()
+
+                    # Use Streamlit to display the combined chart
+                    st.pyplot(fig)
+
 
 
 
