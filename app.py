@@ -1180,7 +1180,7 @@ elif page == "NFL Charts":
             breakeven_query = f"""
             SELECT
                 -1 * SUM(CASE WHEN WLCA = 'Cashout' THEN NetProfit ELSE 0 END)
-                + -1 * SUM(CASE WHEN WLCA = 'Win' THEN NetProfit ELSE 0 END)
+                + -1 * SUM(CASE WHEN WLCA = 'Loss' THEN NetProfit ELSE 0 END)
                 + SUM(CASE WHEN WLCA = 'Active' THEN DollarsAtStake ELSE 0 END) AS Breakeven
             FROM bets b
             JOIN legs l ON b.WagerID = l.WagerID
