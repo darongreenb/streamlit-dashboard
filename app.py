@@ -3,6 +3,7 @@ import mysql.connector
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
+from collections import defaultdict
 
 # Retrieve secrets from Streamlit
 db_host = st.secrets["DB_HOST"]
