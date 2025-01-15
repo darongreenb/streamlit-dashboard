@@ -1712,7 +1712,7 @@ elif page == "Tennis Charts":
     if event_label_data is None:
         st.error("Failed to fetch EventLabel data.")
     else:
-        plot_bar_chart(event_label_data, f'Total Futures Principal by EventLabel ({league_name}), Excluding Cashouts', 'Total Dollars At Stake ($)')
+        plot_bar_chart(event_label_data, f'Active Futures Principal by EventLabel ({league_name}), 'Total Dollars At Stake ($)')
 
         # Filter for EventLabel
         event_labels = sorted(set(row['EventLabel'] for row in event_label_data))
@@ -1796,7 +1796,7 @@ elif page == "Tennis Charts":
                 
                             # Add labels and title
                             ax.set_ylabel('Total Amount ($)', fontsize=20, fontweight='bold', color='black')
-                            ax.set_title(f'Total Futures Principal & Potential Payout by ParticipantName for {event_type_option} - {event_label_option} ({league_name}, Straight Bets Only, Excluding Cashouts)', fontsize=24, fontweight='bold', color='black')
+                            ax.set_title(f'Active Futures Principal & Potential Payout by ParticipantName for {event_type_option} - {event_label_option} ({league_name}, Straight Bets Only', fontsize=24, fontweight='bold', color='black')
                 
                             # Create FontProperties object for bold tick labels
                             tick_label_font = fm.FontProperties(weight='bold', size=16)
