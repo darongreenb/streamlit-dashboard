@@ -3,6 +3,7 @@ import mysql.connector
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
+from collections import defaultdict
 
 # Retrieve secrets from Streamlit
 db_host = st.secrets["DB_HOST"]
@@ -1481,13 +1482,6 @@ elif page == "NFL Charts":
 
 
                 
-                                
-import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
-from collections import defaultdict
-
-# Define a page for NFL Playoffs EV
 elif page == "NFL Playoffs EV":
     st.title("NFL Playoffs Expected Values")
 
@@ -1577,7 +1571,7 @@ elif page == "NFL Playoffs EV":
             # Display total EVs
             st.write(f"**{team1} Total EV:** ${total_ev_team1:,.2f}")
             st.write(f"**{team2} Total EV:** ${total_ev_team2:,.2f}")
-                                
+            
                 
                 
                 
