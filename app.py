@@ -1712,7 +1712,7 @@ elif page == "Tennis Charts":
     if event_label_data is None:
         st.error("Failed to fetch EventLabel data.")
     else:
-        plot_bar_chart(event_label_data, f'Active Futures Principal by EventLabel ({league_name}), 'Total Dollars At Stake ($)')
+        plot_bar_chart(event_label_data, f'Active Futures Principal by EventLabel ({league_name})', 'Total Dollars At Stake ($)')
 
         # Filter for EventLabel
         event_labels = sorted(set(row['EventLabel'] for row in event_label_data))
