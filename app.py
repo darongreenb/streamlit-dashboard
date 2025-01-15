@@ -1686,13 +1686,12 @@ elif page == "Tennis Charts":
         SELECT DISTINCT WagerID, DollarsAtStake
         FROM bets
         WHERE WhichBankroll = 'GreenAleph'
-          AND WLCA != 'Cashout'
+          AND WLCA = 'Active'
           AND EXISTS (
               SELECT 1 
               FROM legs 
               WHERE legs.WagerID = bets.WagerID 
               AND legs.IsFuture = 'Yes'
-              AND bets.WLCA = 'Active'
           )
     )
     SELECT 
@@ -1705,7 +1704,6 @@ elif page == "Tennis Charts":
     WHERE
         l.LeagueName = '{league_name}'
         AND l.IsFuture = 'Yes'
-        AND bets.WLCA = 'Active'
     GROUP BY 
         l.EventLabel;
     """
