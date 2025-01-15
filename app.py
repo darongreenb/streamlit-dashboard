@@ -1692,6 +1692,7 @@ elif page == "Tennis Charts":
               FROM legs 
               WHERE legs.WagerID = bets.WagerID 
               AND legs.IsFuture = 'Yes'
+              AND bets.WLCA = 'Active'
           )
     )
     SELECT 
@@ -1704,6 +1705,7 @@ elif page == "Tennis Charts":
     WHERE
         l.LeagueName = '{league_name}'
         AND l.IsFuture = 'Yes'
+        AND bets.WLCA = 'Active'
     GROUP BY 
         l.EventLabel;
     """
@@ -1730,7 +1732,8 @@ elif page == "Tennis Charts":
                 l.LeagueName = '{league_name}'
                 AND l.EventLabel = '{event_label_option}'
                 AND b.WhichBankroll = 'GreenAleph'
-                AND l.IsFuture = 'Yes';
+                AND l.IsFuture = 'Yes'
+                AND b.WLCA = 'Active';
             """
             event_type_data = get_data_from_db(event_type_query)
             if event_type_data is None:
