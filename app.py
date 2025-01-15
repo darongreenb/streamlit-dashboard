@@ -40,7 +40,7 @@ else:
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Main Page", "Principal Volume", "Betting Frequency", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "NBA Participant Positions", "NFL Participant Positions"])
+page = st.sidebar.radio("Go to", ["Main Page", "Principal Volume", "Betting Frequency", "NBA Charts", "NFL Charts", "NFL Playoffs EV", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "NBA Participant Positions", "NFL Participant Positions"])
 
 
 # Check if the user is on the "Main Page" page
@@ -1477,6 +1477,165 @@ elif page == "NFL Charts":
 
 
 
+
+
+
+
+
+elif page == "NFL Playoffs EV":
+    st.title("NFL Playoffs Expected Values")
+
+    # Establish database connection
+    conn = mysql.connector.connect(
+        host='betting-db.cp86ssaw6cm7.us-east-1.rds.amazonaws.com',
+        user='admin',
+        password='7nRB1i2&A-K>',
+        database='betting_db'
+    )
+    cursor = conn.cursor()
+
+    # Query to fetch payouts
+    query = """
+        SELECT 
+            legs.ParticipantName,
+            legs.EventType,
+            SUM(bets.PotentialPayout) AS total_payout
+        FROM bets
+        JOIN legs ON bets.WagerID = legs.WagerID
+        WHERE 
+            bets.LegCount = 1
+            AND bets.WLCA = 'Active'
+            AND bets.WhichBankroll = 'GreenAleph'
+            AND legs.LeagueName = 'NFL'
+            AND legs.EventType IN ('Conference Winner', 'Championship', 'Quarterfinals')
+        GROUP BY legs.ParticipantName, legs.EventType;
+    """
+    cursor.execute(query)
+
+    # Create payouts dictionary
+    payouts = defaultdict(lambda: {'payout_conference': 0, 'payout_championship': 0, 'payout_quarterfinals': 0})
+    for participant_name, event_type, total_payout in cursor.fetchall():
+        normalized_name = participant_name.strip().lower()
+        normalized_event_type = event_type.strip().lower().replace(" ", "_")
+        payouts[normalized_name][f'payout_{normalized_event_type}'] = float(total_payout)
+
+    # Close database connection
+    cursor.close()
+    conn.close()
+
+    # Define matchups
+    matchups = {
+        "AFC": [
+            ("Baltimore Ravens", "Buffalo Bills"),
+            ("Houston Texans", "Kansas City Chiefs")
+        ],
+        "NFC": [
+            ("Los Angeles Rams", "Philadelphia Eagles"), 
+            ("Washington Commanders", "Detroit Lions")
+        ]
+    }
+
+    # Team probabilities and payouts
+    team_probabilities = {  # Must match lowercase team names
+        "buffalo bills": {'current_round_prob': 0.483, 'current_quarterfinals_prob': 0.40, 'current_conference_prob': 0.27, 'current_champ_prob': 0.14},
+        "baltimore ravens": {'current_round_prob': 0.517, 'current_quarterfinals_prob': 0.41, 'current_conference_prob': 0.30, 'current_champ_prob': 0.155},
+        "kansas city chiefs": {'current_round_prob': 0.807, 'current_quarterfinals_prob': 0.40, 'current_conference_prob': 0.40, 'current_champ_prob': 0.205},
+        "houston texans": {'current_round_prob': 0.193, 'current_quarterfinals_prob': 0.15, 'current_conference_prob': 0.03, 'current_champ_prob': 0.01},
+        "detroit lions": {'current_round_prob': 0.813, 'current_quarterfinals_prob': 0.34, 'current_conference_prob': 0.475, 'current_champ_prob': 0.2425},
+        "washington commanders": {'current_round_prob': 0.187, 'current_quarterfinals_prob': 0.12, 'current_conference_prob': 0.065, 'current_champ_prob': 0.0225},
+        "philadelphia eagles": {'current_round_prob': 0.727, 'current_quarterfinals_prob': 0.34, 'current_conference_prob': 0.35, 'current_champ_prob': 0.18},
+        "los angeles rams": {'current_round_prob': 0.273, 'current_quarterfinals_prob': 0.22, 'current_conference_prob': 0.11, 'current_champ_prob': 0.045}
+    }
+
+    # Normalize team names
+    team_probabilities = {k.strip().lower(): v for k, v in team_probabilities.items()}
+
+    # EV calculation functions
+    def calculate_ev(probability, payout):
+        return probability * payout
+
+    def calculate_conditional_ev(current_quarterfinals_prob, quarterfinals_payout, current_conference_prob, conference_payout, current_champ_prob, champ_payout, current_round_prob):
+        if current_round_prob > 0:
+            conditional_quarterfinals_prob = current_quarterfinals_prob / current_round_prob
+            conditional_conference_prob = current_conference_prob / current_round_prob
+            conditional_champ_prob = current_champ_prob / current_round_prob
+        else:
+            return 0, 0, 0
+
+        quarterfinals_ev = calculate_ev(conditional_quarterfinals_prob, quarterfinals_payout)
+        conference_ev = calculate_ev(conditional_conference_prob, conference_payout)
+        champ_ev = calculate_ev(conditional_champ_prob, champ_payout)
+
+        return quarterfinals_ev, conference_ev, champ_ev
+
+    # Loop through matchups and display results
+    for conference, games in matchups.items():
+        st.subheader(f"{conference} Conference Matchups")
+        for team1_name, team2_name in games:
+            team1_key = team1_name.strip().lower()
+            team2_key = team2_name.strip().lower()
+
+            st.write(f"### {team1_name} vs {team2_name}")
+
+            # User input for probabilities
+            st.write(f"Adjust probabilities for {team1_name}:")
+            for key in ["current_round_prob", "current_quarterfinals_prob", "current_conference_prob", "current_champ_prob"]:
+                team_probabilities[team1_key][key] = st.number_input(
+                    f"{key.replace('_', ' ').capitalize()} for {team1_name}",
+                    min_value=0.0, max_value=1.0, value=team_probabilities[team1_key][key]
+                )
+
+            st.write(f"Adjust probabilities for {team2_name}:")
+            for key in ["current_round_prob", "current_quarterfinals_prob", "current_conference_prob", "current_champ_prob"]:
+                team_probabilities[team2_key][key] = st.number_input(
+                    f"{key.replace('_', ' ').capitalize()} for {team2_name}",
+                    min_value=0.0, max_value=1.0, value=team_probabilities[team2_key][key]
+                )
+
+            # Calculate EVs
+            team1_qf_ev, team1_cf_ev, team1_champ_ev = calculate_conditional_ev(
+                team_probabilities[team1_key]["current_quarterfinals_prob"], payouts[team1_key]["payout_quarterfinals"],
+                team_probabilities[team1_key]["current_conference_prob"], payouts[team1_key]["payout_conference"],
+                team_probabilities[team1_key]["current_champ_prob"], payouts[team1_key]["payout_championship"],
+                team_probabilities[team1_key]["current_round_prob"]
+            )
+
+            team2_qf_ev, team2_cf_ev, team2_champ_ev = calculate_conditional_ev(
+                team_probabilities[team2_key]["current_quarterfinals_prob"], payouts[team2_key]["payout_quarterfinals"],
+                team_probabilities[team2_key]["current_conference_prob"], payouts[team2_key]["payout_conference"],
+                team_probabilities[team2_key]["current_champ_prob"], payouts[team2_key]["payout_championship"],
+                team_probabilities[team2_key]["current_round_prob"]
+            )
+
+            team1_total_ev = team1_qf_ev + team1_cf_ev + team1_champ_ev
+            team2_total_ev = team2_qf_ev + team2_cf_ev + team2_champ_ev
+
+            # Display EVs
+            st.write(f"**{team1_name} Total EV:** ${team1_total_ev:,.2f}")
+            st.write(f"**{team2_name} Total EV:** ${team2_total_ev:,.2f}")
+
+            # Plotting the EVs
+            labels = ["Quarterfinals", "Conference", "Championship"]
+            team1_evs = [team1_qf_ev, team1_cf_ev, team1_champ_ev]
+            team2_evs = [team2_qf_ev, team2_cf_ev, team2_champ_ev]
+
+            fig, ax = plt.subplots(figsize=(10, 6))
+            bar_width = 0.35
+            x = range(len(labels))
+
+            ax.bar(x, team1_evs, width=bar_width, label=team1_name, color='blue')
+            ax.bar([p + bar_width for p in x], team2_evs, width=bar_width, label=team2_name, color='orange')
+
+            ax.set_xlabel("Stage", fontsize=12)
+            ax.set_ylabel("Expected Value ($)", fontsize=12)
+            ax.set_title(f"{team1_name} vs {team2_name} EV Breakdown", fontsize=16)
+            ax.set_xticks([p + bar_width / 2 for p in x])
+            ax.set_xticklabels(labels)
+            ax.legend()
+
+            st.pyplot(fig)
+
+                
 
 
 
