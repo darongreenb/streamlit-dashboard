@@ -40,7 +40,7 @@ else:
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Main Page", "Principal Volume", "Betting Frequency", "NBA Charts", "NFL Charts", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "NBA Participant Positions", "NFL Participant Positions"])
+page = st.sidebar.radio("Go to", ["Main Page", "Principal Volume", "Betting Frequency", "NBA Charts", "NFL Charts", "NFL Playoffs EV","Tennis Charts", "MLB Charts", "MLB Principal Tables", "NBA Participant Positions", "NFL Participant Positions"])
 
 
 # Check if the user is on the "Main Page" page
@@ -1482,6 +1482,101 @@ elif page == "NFL Charts":
 
                 
                                 
+import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+from collections import defaultdict
+
+# Define a page for NFL Playoffs EV
+elif page == "NFL Playoffs EV":
+    st.title("NFL Playoffs Expected Values")
+
+    # Sample matchup structure
+    matchups = {
+        "AFC": [
+            ("Denver Broncos", "Buffalo Bills"),
+            ("Baltimore Ravens", "Pittsburgh Steelers"),
+            ("Los Angeles Chargers", "Houston Texans")
+        ],
+        "NFC": [
+            ("Green Bay Packers", "Philadelphia Eagles"),
+            ("Washington Commanders", "Tampa Bay Buccaneers"),
+            ("Minnesota Vikings", "Los Angeles Rams")
+        ]
+    }
+
+    # Sample probabilities and payouts
+    team_data = {
+        "Denver Broncos": {'probabilities': [0.2, 0.08, 0.03, 0.01], 'payouts': [5000, 20000, 50000]},
+        "Buffalo Bills": {'probabilities': [0.8, 0.4, 0.24, 0.12], 'payouts': [3000, 12000, 30000]},
+        "Baltimore Ravens": {'probabilities': [0.82, 0.41, 0.24, 0.12], 'payouts': [4500, 18000, 45000]},
+        "Pittsburgh Steelers": {'probabilities': [0.18, 0.07, 0.02, 0.007], 'payouts': [4000, 16000, 40000]},
+        # Add other teams similarly
+    }
+
+    def calculate_ev(probabilities, payouts):
+        evs = []
+        for prob, payout in zip(probabilities, payouts):
+            evs.append(prob * payout)
+        return evs
+
+    # Generate charts for each matchup
+    for conference, games in matchups.items():
+        st.subheader(f"{conference} Conference Matchups")
+        
+        for team1, team2 in games:
+            st.write(f"**{team1} vs {team2}**")
+
+            # Create sliders for probabilities
+            probs_team1 = []
+            probs_team2 = []
+            for i, label in enumerate(["Round Win", "Quarterfinals", "Conference", "Championship"]):
+                probs_team1.append(
+                    st.slider(f"{team1} {label} Probability", min_value=0.0, max_value=1.0, value=team_data[team1]['probabilities'][i], step=0.01)
+                )
+                probs_team2.append(
+                    st.slider(f"{team2} {label} Probability", min_value=0.0, max_value=1.0, value=team_data[team2]['probabilities'][i], step=0.01)
+                )
+
+            # Calculate EVs
+            evs_team1 = calculate_ev(probs_team1, team_data[team1]['payouts'])
+            evs_team2 = calculate_ev(probs_team2, team_data[team2]['payouts'])
+
+            total_ev_team1 = sum(evs_team1)
+            total_ev_team2 = sum(evs_team2)
+
+            # Create DataFrame for plotting
+            df = pd.DataFrame({
+                "Category": ["Quarterfinals", "Conference", "Championship"],
+                team1: evs_team1,
+                team2: evs_team2
+            })
+
+            # Bar Chart
+            fig, ax = plt.subplots(figsize=(10, 6))
+            bar_width = 0.35
+
+            # Plot bars
+            ax.bar(df.index - bar_width / 2, df[team1], width=bar_width, label=team1, color='blue')
+            ax.bar(df.index + bar_width / 2, df[team2], width=bar_width, label=team2, color='orange')
+
+            # Add labels
+            ax.set_xticks(df.index)
+            ax.set_xticklabels(df['Category'])
+            ax.set_title(f"Expected Value by Stage for {team1} vs {team2}", fontsize=16)
+            ax.set_ylabel("Expected Value ($)", fontsize=14)
+            ax.legend()
+
+            # Annotate bar values
+            for i, row in df.iterrows():
+                ax.text(i - bar_width / 2, row[team1], f"${row[team1]:,.0f}", ha='center', va='bottom', fontsize=10)
+                ax.text(i + bar_width / 2, row[team2], f"${row[team2]:,.0f}", ha='center', va='bottom', fontsize=10)
+
+            st.pyplot(fig)
+
+            # Display total EVs
+            st.write(f"**{team1} Total EV:** ${total_ev_team1:,.2f}")
+            st.write(f"**{team2} Total EV:** ${total_ev_team2:,.2f}")
                                 
                 
                 
