@@ -41,7 +41,7 @@ else:
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Main Page", "Principal Volume", "Betting Frequency", "NBA Charts", "NCAAB Charts", "NFL Charts", "NFL Playoffs EV", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "NBA Participant Positions", "NFL Participant Positions"])
+page = st.sidebar.radio("Go to", ["Main Page", "Principal Volume", "Betting Frequency", "NBA Charts", "NCAAB Charts", "NHL Charts", "NFL Charts", "NFL Playoffs EV", "Tennis Charts", "MLB Charts", "MLB Principal Tables", "NBA Participant Positions", "NFL Participant Positions"])
 
 
 # Check if the user is on the "Main Page" page
@@ -1419,6 +1419,389 @@ elif page == "NCAAB Charts":
 
                             # Display the plot in Streamlit
                             st.pyplot(fig)
+
+
+
+
+
+elif page == "NHL Charts":
+    # NHL Charts
+    st.title('NHL Active Bets - GA1')
+
+    # SQL query to fetch data for the first bar chart
+    first_chart_query = """
+    WITH DistinctBets AS (
+        SELECT DISTINCT WagerID, DollarsAtStake
+        FROM bets
+        WHERE WhichBankroll = 'GreenAleph'
+          AND WLCA = 'Active'
+    ),
+    EventTypeSums AS (
+        SELECT 
+            l.EventType,
+            ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
+        FROM 
+            DistinctBets db
+        JOIN 
+            (SELECT DISTINCT WagerID, EventType, LeagueName FROM legs) l ON db.WagerID = l.WagerID
+        WHERE
+            l.LeagueName = 'NHL'
+        GROUP BY 
+            l.EventType
+    )
+    SELECT * FROM EventTypeSums
+
+    UNION ALL
+
+    SELECT 
+        'Total' AS EventType,
+        ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
+    FROM 
+        DistinctBets db
+    JOIN 
+        (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
+    WHERE
+        l.LeagueName = 'NHL';
+    """
+
+    # Fetch the data for the first bar chart
+    first_chart_data = get_data_from_db(first_chart_query)
+
+    # Check if data is fetched successfully
+    if first_chart_data is None:
+        st.error("Failed to fetch data from the database.")
+    else:
+        # Create a DataFrame from the fetched data
+        first_chart_df = pd.DataFrame(first_chart_data)
+
+        # Display the fetched data
+        first_chart_df['TotalDollarsAtStake'] = first_chart_df['TotalDollarsAtStake'].astype(float).round(0)
+
+        # Sort the DataFrame by 'TotalDollarsAtStake' in ascending order
+        first_chart_df = first_chart_df.sort_values('TotalDollarsAtStake', ascending=True)
+
+        # Define pastel colors for the first chart
+        pastel_colors = ['#a0d8f1', '#f4a261', '#e76f51', '#8ecae6', '#219ebc', '#023047', '#ffb703', '#fb8500', '#d4a5a5', '#9ab0a8']
+
+        # Plot the first bar chart
+        fig, ax = plt.subplots(figsize=(15, 10))
+        bars = ax.bar(first_chart_df['EventType'], first_chart_df['TotalDollarsAtStake'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(first_chart_df['EventType']))], width=0.6, edgecolor='black')
+
+        # Add labels and title
+        ax.set_title('Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
+        ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
+
+        # Annotate each bar with the value (no dollar sign)
+        for bar in bars:
+            height = bar.get_height()
+            ax.annotate(f'{height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                        xytext=(0, 3), textcoords="offset points",
+                        ha='center', va='bottom', fontsize=14, fontweight='bold', color='black')
+
+        # Rotate the x-axis labels to 45 degrees
+        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+
+        # Add horizontal line at y=0 for reference
+        ax.axhline(0, color='black', linewidth=0.8)
+
+        # Set background color to white
+        ax.set_facecolor('white')
+
+        # Add border around the plot
+        for spine in ax.spines.values():
+            spine.set_edgecolor('black')
+            spine.set_linewidth(1.2)
+
+        # Adjust layout
+        plt.tight_layout()
+
+        # Use Streamlit to display the first chart
+        st.pyplot(fig)
+
+        # Filter for EventType, sorted in alphabetical order
+        event_type_option = st.selectbox('Select EventType', sorted(first_chart_df[first_chart_df['EventType'] != 'Total']['EventType'].unique()))
+
+        if event_type_option:
+            # SQL query to fetch data for the EventLabel dropdown, sorted alphabetically
+            event_label_query = f"""
+            SELECT DISTINCT l.EventLabel
+            FROM 
+                bets b
+            JOIN 
+                legs l ON b.WagerID = l.WagerID
+            WHERE
+                l.LeagueName = 'NHL'
+                AND l.EventType = '{event_type_option}'
+                AND b.WhichBankroll = 'GreenAleph'
+                AND b.WLCA = 'Active'
+                ;
+            """
+
+            # Fetch the EventLabel data
+            event_label_data = get_data_from_db(event_label_query)
+
+            if event_label_data is None:
+                st.error("Failed to fetch data from the database.")
+            else:
+                event_labels = [row['EventLabel'] for row in event_label_data]
+                event_label_option = st.selectbox('Select EventLabel', sorted(event_labels))
+
+                if event_label_option:
+                    # SQL query to fetch data for the combined bar chart (DollarsAtStake and PotentialPayout)
+                    combined_query = f"""
+                    WITH DistinctBets AS (
+                        SELECT DISTINCT WagerID, DollarsAtStake, PotentialPayout
+                        FROM bets
+                        WHERE WhichBankroll = 'GreenAleph'
+                          AND WLCA = 'Active'
+                          AND LegCount = 1
+                    )
+                    SELECT 
+                        l.ParticipantName,
+                        SUM(db.DollarsAtStake) AS TotalDollarsAtStake,
+                        SUM(db.PotentialPayout) AS TotalPotentialPayout
+                    FROM 
+                        DistinctBets db
+                    JOIN 
+                        legs l ON db.WagerID = l.WagerID
+                    WHERE
+                        l.LeagueName = 'NHL'
+                        AND l.EventType = '{event_type_option}'
+                        AND l.EventLabel = '{event_label_option}'
+                    GROUP BY 
+                        l.ParticipantName;
+                    """
+                
+                    # Fetch the combined data
+                    combined_data = get_data_from_db(combined_query)
+                    
+                    # Check if data is fetched successfully
+                    if combined_data is None:
+                        st.error("Failed to fetch data from the database.")
+                    else:
+                        # Create a DataFrame from the fetched data
+                        combined_df = pd.DataFrame(combined_data)
+                    
+                        # Calculate Implied Probability
+                        combined_df['ImpliedProbability'] = (combined_df['TotalDollarsAtStake'] / combined_df['TotalPotentialPayout']) * 100
+                    
+                        # Modify TotalDollarsAtStake for the chart (to show negative values)
+                        combined_df['TotalDollarsAtStake'] = -combined_df['TotalDollarsAtStake'].astype(float).round(0)
+                        combined_df['TotalPotentialPayout'] = combined_df['TotalPotentialPayout'].astype(float).round(0)
+                    
+                        # Sort the DataFrame by 'TotalDollarsAtStake' in ascending order
+                        combined_df = combined_df.sort_values('TotalDollarsAtStake', ascending=True)
+                    
+                        # Define colors for DollarsAtStake and PotentialPayout
+                        color_dollars_at_stake = 'lightblue'  # Light blue for DollarsAtStake
+                        color_potential_payout = 'beige'  # Beige for PotentialPayout
+                    
+                        # Plot the combined bar chart
+                        fig, ax = plt.subplots(figsize=(18, 12))
+                    
+                        # Plot TotalDollarsAtStake moving downward from the x-axis
+                        bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'], 
+                                       color=color_dollars_at_stake, width=0.4, edgecolor='black')
+                    
+                        # Plot TotalPotentialPayout moving upward from the x-axis
+                        bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'], 
+                                       color=color_potential_payout, width=0.4, edgecolor='black')
+                    
+                        # Add labels and title
+                        ax.set_ylabel('USD ($) in MM', fontsize=16, fontweight='bold')
+                        ax.set_title(f'Active Principal & Potential Payout (Straight Bets Only)', fontsize=18, fontweight='bold')
+                    
+                        # Annotate Implied Probability on TotalDollarsAtStake bars
+                        for i, bar1 in enumerate(bars1):
+                            implied_prob = combined_df.iloc[i]['ImpliedProbability']
+                            height = bar1.get_height()
+                            ax.annotate(f'{implied_prob:.1f}%', xy=(bar1.get_x() + bar1.get_width() / 2, height),
+                                        xytext=(0, -15),  # Move the labels further down below the bars
+                                        textcoords="offset points",
+                                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
+                    
+                        # Annotate TotalPotentialPayout above bars
+                        for bar2 in bars2:
+                            height2 = bar2.get_height()
+                            ax.annotate(f'{height2:,.0f}', xy=(bar2.get_x() + bar2.get_width() / 2, height2),
+                                        xytext=(0, 3), textcoords="offset points",
+                                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black', rotation = 45)
+                    
+                        # Rotate x-axis labels to 45 degrees
+                        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+                    
+                        # Add legend
+                        ax.legend([bars2, bars1], ['Potential Payout', 'Implied Probability (%)'])
+                    
+                        # Add horizontal line at y=0 for reference
+                        ax.axhline(0, color='black', linewidth=0.8)
+                    
+                        # Set background color to white
+                        ax.set_facecolor('white')
+                    
+                        # Add border around the plot
+                        for spine in ax.spines.values():
+                            spine.set_edgecolor('black')
+                            spine.set_linewidth(1.2)
+                    
+                        # Extend y-axis range
+                        ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 35000, max(combined_df['TotalPotentialPayout']) + 80000)
+                    
+                        # Adjust layout
+                        plt.tight_layout()
+                    
+                        # Use Streamlit to display the combined chart
+                        st.pyplot(fig)
+
+
+            # Add a new section at the bottom for tracking the number of parlays by participant
+            st.header("NHL Parlays - GA1")
+
+            # SQL query to count the number of parlays each participant is involved in for the selected EventType
+            parlay_count_query = f"""
+            SELECT 
+                l.ParticipantName,
+                COUNT(DISTINCT b.WagerID) AS NumberOfParlays
+            FROM 
+                bets b
+            JOIN 
+                legs l ON b.WagerID = l.WagerID
+            WHERE 
+                b.WhichBankroll = 'GreenAleph'
+                AND b.WLCA = 'Active'
+                AND b.LegCount > 1  -- Only count parlays
+                AND l.LeagueName = 'NHL'
+                AND l.EventType = %s
+            GROUP BY 
+                l.ParticipantName
+            ORDER BY 
+                NumberOfParlays DESC;
+            """
+
+            # Fetch the data for the parlay counts
+            parlay_data = get_data_from_db(parlay_count_query, [event_type_option])
+
+            # Display the data if available
+            if parlay_data is None:
+                st.error("Failed to fetch parlay data from the database.")
+            else:
+                parlay_df = pd.DataFrame(parlay_data)
+
+                if parlay_df.empty:
+                    st.warning("No parlay data found for the selected EventType.")
+                else:
+                    # Plot the parlay count bar chart
+                    st.subheader(f"Number of Parlays by Participant for {event_type_option}")
+                    fig, ax = plt.subplots(figsize=(14, 8))
+                    
+                    # Plot bar chart for NumberOfParlays
+                    bars = ax.bar(parlay_df['ParticipantName'], parlay_df['NumberOfParlays'], color='skyblue', edgecolor='black')
+                    
+                    # Set title and labels
+                    ax.set_title(f"Parlay Involvement by Participant for {event_type_option} (GA1)", fontsize=18, fontweight='bold')
+                    ax.set_ylabel("Number of Parlays", fontsize=14, fontweight='bold')
+                    
+                    # Rotate x-axis labels
+                    plt.xticks(rotation=45, ha='right', fontsize=12, fontweight='bold')
+                    
+                    # Annotate each bar with the count of parlays
+                    for bar in bars:
+                        height = bar.get_height()
+                        ax.annotate(f"{height}", xy=(bar.get_x() + bar.get_width() / 2, height),
+                                    xytext=(0, 5), textcoords="offset points",
+                                    ha='center', va='bottom', fontsize=12, color='black')
+
+                    # Add horizontal line at y=0
+                    ax.axhline(0, color='black', linewidth=0.8)
+
+                    # Set background color to white
+                    ax.set_facecolor('white')
+
+                    # Add border around the plot
+                    for spine in ax.spines.values():
+                        spine.set_edgecolor('black')
+                        spine.set_linewidth(1.2)
+
+                    # Adjust layout
+                    plt.tight_layout()
+
+                    # Display the plot in Streamlit
+                    st.pyplot(fig)
+
+                    # Additional chart for Total Dollars At Stake associated with Parlays by Participant
+                    # SQL query to fetch the sum of DollarsAtStake for parlays by participant
+                    parlay_dollars_query = f"""
+                    SELECT 
+                        l.ParticipantName,
+                        SUM(b.DollarsAtStake) AS TotalDollarsAtStake
+                    FROM 
+                        bets b
+                    JOIN 
+                        legs l ON b.WagerID = l.WagerID
+                    WHERE 
+                        b.WhichBankroll = 'GreenAleph'
+                        AND b.WLCA = 'Active'
+                        AND b.LegCount > 1  -- Only count parlays
+                        AND l.LeagueName = 'NHL'
+                        AND l.EventType = %s
+                    GROUP BY 
+                        l.ParticipantName
+                    ORDER BY 
+                        TotalDollarsAtStake DESC;
+                    """
+
+                    # Fetch the data for the total dollars at stake in parlays
+                    parlay_dollars_data = get_data_from_db(parlay_dollars_query, [event_type_option])
+
+                    # Display the data if available
+                    if parlay_dollars_data is None:
+                        st.error("Failed to fetch total dollars at stake in parlays data from the database.")
+                    else:
+                        parlay_dollars_df = pd.DataFrame(parlay_dollars_data)
+
+                        if parlay_dollars_df.empty:
+                            st.warning("No parlay dollar data found for the selected EventType.")
+                        else:
+                            # Plot the total dollars at stake bar chart
+                            st.subheader(f"Total Dollars At Stake in Parlays by Participant for {event_type_option}")
+                            fig, ax = plt.subplots(figsize=(14, 8))
+                            
+                            # Plot bar chart for TotalDollarsAtStake
+                            bars = ax.bar(parlay_dollars_df['ParticipantName'], parlay_dollars_df['TotalDollarsAtStake'], color='lightblue', edgecolor='black')
+                            
+                            # Set title and labels
+                            ax.set_title(f"Total Dollars At Stake in Parlays by Participant for {event_type_option} (GA1)", fontsize=18, fontweight='bold')
+                            ax.set_ylabel("Total Dollars At Stake ($)", fontsize=14, fontweight='bold')
+                            
+                            # Rotate x-axis labels
+                            plt.xticks(rotation=45, ha='right', fontsize=12, fontweight='bold')
+                            
+                            # Annotate each bar with the dollar value
+                            for bar in bars:
+                                height = bar.get_height()
+                                ax.annotate(f"${height:,.0f}", xy=(bar.get_x() + bar.get_width() / 2, height),
+                                            xytext=(0, 5), textcoords="offset points",
+                                            ha='center', va='bottom', fontsize=12, color='black')
+
+                            # Add horizontal line at y=0
+                            ax.axhline(0, color='black', linewidth=0.8)
+
+                            # Set background color to white
+                            ax.set_facecolor('white')
+
+                            # Add border around the plot
+                            for spine in ax.spines.values():
+                                spine.set_edgecolor('black')
+                                spine.set_linewidth(1.2)
+
+                            # Adjust layout
+                            plt.tight_layout()
+
+                            # Display the plot in Streamlit
+                            st.pyplot(fig)
+
+
+
 
 
 
