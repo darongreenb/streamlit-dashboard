@@ -5,34 +5,53 @@ import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 from collections import defaultdict
 
-# Retrieve secrets from Streamlit
+# Retrieve primary DB (betting_db) credentials from Streamlit secrets
 db_host = st.secrets["DB_HOST"]
 db_user = st.secrets["DB_USER"]
 db_password = st.secrets["DB_PASSWORD"]
 db_name = st.secrets["DB_NAME"]
 
-# Function to get data from MySQL database
-def get_data_from_db(query, params=None):
+# Retrieve futures DB credentials
+futures_host = st.secrets["FUTURES_DB"]["host"]
+futures_user = st.secrets["FUTURES_DB"]["user"]
+futures_password = st.secrets["FUTURES_DB"]["password"]
+futures_db = st.secrets["FUTURES_DB"]["database"]
+
+# Function to get data from either betting_db or futuresdata
+def get_data_from_db(query, params=None, db_source="betting"):
     try:
-        conn = mysql.connector.connect(
-            host=db_host,
-            user=db_user,
-            password=db_password,
-            database=db_name
-        )
+        if db_source == "betting":
+            conn = mysql.connector.connect(
+                host=db_host,
+                user=db_user,
+                password=db_password,
+                database=db_name
+            )
+        elif db_source == "futures":
+            conn = mysql.connector.connect(
+                host=futures_host,
+                user=futures_user,
+                password=futures_password,
+                database=futures_db
+            )
+        else:
+            st.error(f"Unknown db_source: {db_source}")
+            return None
+
         cursor = conn.cursor(dictionary=True)
         cursor.execute(query, params)
         data = cursor.fetchall()
         cursor.close()
         conn.close()
         return data
+
     except mysql.connector.Error as err:
         st.error(f"Error: {err}")
         return None
 
-# Fetch the most recent update time
+# Fetch the most recent update time from betting_db
 update_time_query = "SELECT MAX(DateTimePlaced) as LastUpdateTime FROM bets"
-update_time_data = get_data_from_db(update_time_query)
+update_time_data = get_data_from_db(update_time_query, db_source="betting")
 
 if update_time_data:
     last_update_time = update_time_data[0]['LastUpdateTime']
