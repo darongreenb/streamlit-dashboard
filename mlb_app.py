@@ -1,179 +1,153 @@
 import streamlit as st
 import mysql.connector
-from collections import defaultdict
 import pandas as pd
+from collections import defaultdict
 
-# Database credentials from Streamlit secrets
-db_host = st.secrets["DB_HOST"]
-db_user = st.secrets["DB_USER"]
-db_password = st.secrets["DB_PASSWORD"]
-db_name = st.secrets["DB_NAME"]
-
-futures_host = st.secrets["FUTURES_DB"]["host"]
-futures_user = st.secrets["FUTURES_DB"]["user"]
-futures_password = st.secrets["FUTURES_DB"]["password"]
-futures_db = st.secrets["FUTURES_DB"]["database"]
-
-# Helper: Convert American odds
+# Odds conversion helpers
 def american_odds_to_decimal(odds: int) -> float:
-    if odds == 0: return 1.0
-    elif odds > 0: return 1.0 + (odds / 100)
-    else: return 1.0 + (100 / abs(odds))
+    if odds == 0:
+        return 1.0
+    return 1.0 + (odds / 100.0) if odds > 0 else 1.0 + (100.0 / abs(odds))
 
 def american_odds_to_probability(odds: int) -> float:
-    if odds == 0: return 0.0
-    elif odds > 0: return 100 / (odds + 100)
-    else: return abs(odds) / (abs(odds) + 100)
+    if odds == 0:
+        return 0.0
+    return 100.0 / (odds + 100.0) if odds > 0 else abs(odds) / (abs(odds) + 100.0)
 
-# Helper: Get latest odds from futures DB
-def get_latest_odds(event_type: str, participant: str) -> (float, float):
-    table_map = {
-        "Most Valuable Player Award": "NBAMVP",
-        "Defensive Player of the Year Award": "NBADefensivePotY",
-        "Most Improved Player Award": "NBAMIP",
-        "Rookie of the Year Award": "NBARotY",
-        "Sixth Man of Year Award": "NBASixthMotY",
-    }
-    table = table_map.get(event_type)
-    if not table:
-        return 1.0, 0.0
+# Secrets: primary (betting) DB
+betting_host = st.secrets["DB_HOST"]
+betting_user = st.secrets["DB_USER"]
+betting_pw   = st.secrets["DB_PASSWORD"]
+betting_db   = st.secrets["DB_NAME"]
 
+# Secrets: futures DB
+futures_host = st.secrets["FUTURES_DB"]["host"]
+futures_user = st.secrets["FUTURES_DB"]["user"]
+futures_pw   = st.secrets["FUTURES_DB"]["password"]
+futures_db   = st.secrets["FUTURES_DB"]["database"]
+
+# Mapping of (EventType, EventLabel) -> table
+event_label_table_map = {
+    ("Championship", "NBA Championship"): "NBAChampionship",
+    ("Conference Winner", "Eastern Conference"): "NBAEasternConference",
+    ("Conference Winner", "Western Conference"): "NBAWesternConference",
+    ("Defensive Player of Year Award", "Award"): "NBADefensivePotY",
+    ("Division Winner", "Pacific Division"): "NBAPacific",
+    ("Division Winner", "Southwest Division"): "NBASouthwest",
+    ("Division Winner", "Southeast Division"): "NBASoutheast",
+    ("Division Winner", "Atlantic Division"): "NBAAtlantic",
+    ("Division Winner", "Central Division"): "NBACentral",
+    ("Division Winner", "Northwest Division"): "NBANorthwest",
+    ("Most Improved Player Award", "Award"): "NBAMIP",
+    ("Most Valuable Player Award", "Award"): "NBAMVP",
+    ("Rookie of Year Award", "Award"): "NBARotY",
+    ("Sixth Man of Year Award", "Award"): "NBASixthMotY"
+}
+
+# Helper to connect and get data from a DB
+def get_data_from_db(query, params=None, db_source="betting"):
+    conn = None
     try:
-        conn = mysql.connector.connect(
-            host=futures_host,
-            user=futures_user,
-            password=futures_password,
-            database=futures_db
-        )
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute(
-            f"""
-            SELECT FanDuel FROM {table}
-            WHERE team_name = %s
-            ORDER BY date_created DESC
-            LIMIT 1
-            """, (participant,)
-        )
-        row = cursor.fetchone()
-        cursor.close()
+        if db_source == "betting":
+            conn = mysql.connector.connect(
+                host=betting_host, user=betting_user, password=betting_pw, database=betting_db)
+        else:
+            conn = mysql.connector.connect(
+                host=futures_host, user=futures_user, password=futures_pw, database=futures_db)
+
+        cur = conn.cursor(dictionary=True)
+        cur.execute(query, params)
+        results = cur.fetchall()
+        cur.close()
         conn.close()
-        if row and row["FanDuel"] is not None:
-            odds = int(row["FanDuel"])
-            return american_odds_to_decimal(odds), american_odds_to_probability(odds)
-    except:
-        pass
-    return 1.0, 0.0
+        return results
+    except Exception as e:
+        st.error(f"Database error: {e}")
+        if conn:
+            conn.close()
+        return None
 
-# Page layout
-st.title("NBA Expected Net Profit by Market (GA1)")
-st.write("The table below shows expected net profit by EventType and EventLabel for all NBA futures in the GreenAleph bankroll.")
+# Page starts here
+if "NBA Expected Performance" in st.sidebar.radio("Go to", ["NBA Expected Performance"]):
+    st.title("NBA Expected Performance (GA1)")
+    st.write("Up-to-date expected net profit (EV - stake) for each NBA futures market in the GreenAleph bankroll.")
 
-# Step 1: Retrieve all distinct (EventType, EventLabel) combinations
-conn = mysql.connector.connect(
-    host=db_host, user=db_user, password=db_password, database=db_name
-)
-cursor = conn.cursor(dictionary=True)
-cursor.execute("""
-    SELECT DISTINCT l.EventType, l.EventLabel
-    FROM bets b
-    JOIN legs l ON b.WagerID = l.WagerID
-    WHERE b.WhichBankroll = 'GreenAleph'
-      AND l.LeagueName = 'NBA'
-""")
-markets = cursor.fetchall()
-cursor.close()
-conn.close()
-
-# Step 2: Compute EV for each market
-results = []
-for market in markets:
-    event_type = market["EventType"]
-    event_label = market["EventLabel"]
-
-    # Get relevant bets
-    conn = mysql.connector.connect(
-        host=db_host, user=db_user, password=db_password, database=db_name
-    )
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("""
-        SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake, b.LegCount,
-               l.LegID, l.ParticipantName, l.EventType, l.EventLabel
+    # Fetch relevant bets/legs
+    query = """
+        SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake, b.LegCount, b.DateTimePlaced,
+               l.LegID, l.ParticipantName, l.EventType, l.EventLabel, l.LeagueName
         FROM bets b
         JOIN legs l ON b.WagerID = l.WagerID
         WHERE b.WhichBankroll = 'GreenAleph'
           AND l.LeagueName = 'NBA'
-          AND l.EventType = %s
-          AND l.EventLabel = %s
-    """, (event_type, event_label))
-    base_rows = cursor.fetchall()
-    cursor.close()
-    conn.close()
+    """
+    rows = get_data_from_db(query)
+    if not rows:
+        st.warning("No NBA futures bets found.")
+        st.stop()
 
-    if not base_rows:
-        continue
+    # Group all bets by WagerID
+    wager_dict = defaultdict(lambda: {"PotentialPayout": 0.0, "DollarsAtStake": 0.0, "legs": []})
+    for row in rows:
+        w_id = row["WagerID"]
+        wager_dict[w_id]["PotentialPayout"] = float(row["PotentialPayout"])
+        wager_dict[w_id]["DollarsAtStake"] = float(row["DollarsAtStake"])
+        wager_dict[w_id]["legs"].append(row)
 
-    wager_ids = {r["WagerID"] for r in base_rows}
-    in_clause = ",".join(f"'{wid}'" for wid in wager_ids)
+    # Aggregate EV by (EventType, EventLabel)
+    ev_summary = defaultdict(float)
 
-    conn = mysql.connector.connect(
-        host=db_host, user=db_user, password=db_password, database=db_name
-    )
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute(f"""
-        SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake, b.LegCount,
-               l.LegID, l.ParticipantName, l.EventType, l.EventLabel
-        FROM bets b
-        JOIN legs l ON b.WagerID = l.WagerID
-        WHERE b.WagerID IN ({in_clause})
-          AND b.WhichBankroll = 'GreenAleph'
-    """)
-    all_legs = cursor.fetchall()
-    cursor.close()
-    conn.close()
-
-    bet_dict = defaultdict(lambda: {"PotentialPayout": 0.0, "DollarsAtStake": 0.0, "Legs": []})
-    for row in all_legs:
-        wid = row["WagerID"]
-        bet_dict[wid]["PotentialPayout"] = float(row["PotentialPayout"])
-        bet_dict[wid]["DollarsAtStake"] = float(row["DollarsAtStake"])
-        bet_dict[wid]["Legs"].append(row)
-
-    total_ev = 0.0
-    for data in bet_dict.values():
+    for w_id, data in wager_dict.items():
         pot = data["PotentialPayout"]
         stake = data["DollarsAtStake"]
-        legs = data["Legs"]
+        legs = data["legs"]
 
         parlay_prob = 1.0
-        dec_list = []
+        leg_infos = []  # (decimal_odds, probability, event_type, event_label)
 
         for leg in legs:
-            dec, prob = get_latest_odds(leg["EventType"], leg["ParticipantName"])
+            key = (leg["EventType"], leg["EventLabel"])
+            tbl = event_label_table_map.get(key)
+            if not tbl:
+                leg_infos.append((1.0, 0.0, leg["EventType"], leg["EventLabel"]))
+                continue
+            query_odds = f"""
+                SELECT FanDuel FROM {tbl}
+                WHERE team_name = %s
+                ORDER BY date_created DESC
+                LIMIT 1
+            """
+            result = get_data_from_db(query_odds, (leg["ParticipantName"],), db_source="futures")
+            if result and result[0]["FanDuel"] is not None:
+                try:
+                    odds = int(result[0]["FanDuel"])
+                    dec = american_odds_to_decimal(odds)
+                    prob = american_odds_to_probability(odds)
+                except:
+                    dec, prob = 1.0, 0.0
+            else:
+                dec, prob = 1.0, 0.0
+            leg_infos.append((dec, prob, leg["EventType"], leg["EventLabel"]))
             parlay_prob *= prob
-            dec_list.append((dec, leg["EventType"], leg["EventLabel"]))
 
         if parlay_prob == 0:
             continue
 
         parlay_net = (pot * parlay_prob) - stake
-        sum_excess = sum((d[0] - 1.0) for d in dec_list)
+        sum_excess = sum((d[0] - 1.0) for d in leg_infos)
         if sum_excess <= 0:
             continue
 
-        for dec, et, el in dec_list:
-            if et == event_type and el == event_label:
-                fraction = (dec - 1.0) / sum_excess
-                total_ev += fraction * parlay_net
+        for dec, _, et, el in leg_infos:
+            fraction = (dec - 1.0) / sum_excess
+            ev_summary[(et, el)] += fraction * parlay_net
 
-    results.append({
-        "EventType": event_type,
-        "EventLabel": event_label,
-        "ExpectedNetProfit": round(total_ev, 2)
-    })
+    # Display result
+    ev_df = pd.DataFrame([
+        {"EventType": et, "EventLabel": el, "ExpectedNetProfit": ev}
+        for (et, el), ev in ev_summary.items()
+    ])
+    ev_df = ev_df.sort_values("ExpectedNetProfit", ascending=False)
+    ev_df["ExpectedNetProfit"] = ev_df["ExpectedNetProfit"].round(2)
 
-# Step 3: Display in table
-if results:
-    df = pd.DataFrame(results).sort_values(by=["EventType", "ExpectedNetProfit"], ascending=[True, False])
-    st.dataframe(df, use_container_width=True)
-else:
-    st.write("No relevant bets found.")
+    st.dataframe(ev_df, use_container_width=True)
