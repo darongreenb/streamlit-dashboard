@@ -2152,7 +2152,7 @@ elif page == "NBA Expected Performance":
 
     st.write("Compute the up-to-date expected net profit (EV minus dollars at stake) for NBA futures markets in your GreenAleph bankroll.")
 
-    # Dynamically get all NBA EventTypes
+    # Dynamically fetch EventTypes from the betting database
     event_type_query = """
         SELECT DISTINCT l.EventType
         FROM bets b
@@ -2160,12 +2160,12 @@ elif page == "NBA Expected Performance":
         WHERE b.WhichBankroll = 'GreenAleph'
           AND l.LeagueName = 'NBA'
     """
-    event_type_data = get_data_from_db(event_type_query)
+    event_type_data = get_data_from_db(event_type_query, db_source="betting")
     event_types = sorted([row['EventType'] for row in event_type_data]) if event_type_data else []
 
     selected_event_type = st.selectbox("Select an NBA Market", event_types)
 
-    # Mapping function to infer futures table name from EventType
+    # Map EventType to futures table name
     def map_event_type_to_table(event_type):
         base = event_type.lower().replace("award", "").replace("of the year", "").replace("year", "").strip()
         base = base.replace("most ", "").replace("player", "p").replace("rookie", "rot").replace("sixth man", "sixthm").replace("defensive", "defensivepot")
@@ -2174,7 +2174,7 @@ elif page == "NBA Expected Performance":
 
     table_name = map_event_type_to_table(selected_event_type)
 
-    # Function to retrieve bets
+    # Get all bets involving this event type
     def get_bets_for_event_type(event_type):
         query = """
             SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake, b.LegCount, b.DateTimePlaced,
@@ -2185,9 +2185,10 @@ elif page == "NBA Expected Performance":
               AND l.LeagueName = 'NBA'
               AND l.EventType = %s
         """
-        rows = get_data_from_db(query, (event_type,))
+        rows = get_data_from_db(query, (event_type,), db_source="betting")
         if not rows:
             return {}
+
         w_ids = {r["WagerID"] for r in rows}
         in_clause = ",".join(f"'{wid}'" for wid in w_ids)
         query_all_legs = f"""
@@ -2198,7 +2199,7 @@ elif page == "NBA Expected Performance":
             WHERE b.WagerID IN ({in_clause})
               AND b.WhichBankroll = 'GreenAleph'
         """
-        all_leg_rows = get_data_from_db(query_all_legs)
+        all_leg_rows = get_data_from_db(query_all_legs, db_source="betting")
 
         result_dict = defaultdict(lambda: {
             "PotentialPayout": 0.0,
@@ -2207,6 +2208,7 @@ elif page == "NBA Expected Performance":
             "DateTimePlaced": None,
             "legs": []
         })
+
         for row in all_leg_rows:
             w_id = row["WagerID"]
             if result_dict[w_id]["PotentialPayout"] == 0.0 and row["PotentialPayout"]:
@@ -2217,7 +2219,6 @@ elif page == "NBA Expected Performance":
                 result_dict[w_id]["LegCount"] = row["LegCount"]
             if result_dict[w_id]["DateTimePlaced"] is None and row["DateTimePlaced"]:
                 result_dict[w_id]["DateTimePlaced"] = row["DateTimePlaced"]
-
             result_dict[w_id]["legs"].append({
                 "LegID": row["LegID"],
                 "ParticipantName": row["ParticipantName"],
@@ -2226,30 +2227,19 @@ elif page == "NBA Expected Performance":
             })
         return result_dict
 
-    # Helper to fetch odds from futures DB
+    # Fetch latest FanDuel odds for a participant from futures DB
     def get_latest_odds(event_type: str, participant: str):
-        futures_host = st.secrets["FUTURES_DB_HOST"]
-        futures_user = st.secrets["FUTURES_DB_USER"]
-        futures_pw   = st.secrets["FUTURES_DB_PASSWORD"]
-        futures_db   = st.secrets["FUTURES_DB_NAME"]
-
+        table = map_event_type_to_table(event_type)
         try:
-            conn = mysql.connector.connect(
-                host=futures_host, user=futures_user,
-                password=futures_pw, database=futures_db
-            )
-            cur = conn.cursor(dictionary=True)
             query = f"""
-                SELECT FanDuel FROM {table_name}
+                SELECT FanDuel FROM {table}
                 WHERE team_name = %s
-                ORDER BY date_created DESC LIMIT 1
+                ORDER BY date_created DESC
+                LIMIT 1
             """
-            cur.execute(query, (participant,))
-            row = cur.fetchone()
-            cur.close()
-            conn.close()
-            if row and row["FanDuel"]:
-                odds = int(row["FanDuel"])
+            data = get_data_from_db(query, (participant,), db_source="futures")
+            if data and data[0]["FanDuel"] is not None:
+                odds = int(data[0]["FanDuel"])
                 if odds > 0:
                     dec = 1 + (odds / 100)
                     prob = 100 / (odds + 100)
@@ -2261,6 +2251,7 @@ elif page == "NBA Expected Performance":
             pass
         return 1.0, 0.0
 
+    # Compute Expected Net Profit
     def compute_expected_net(event_type: str):
         bets = get_bets_for_event_type(event_type)
         total_net = 0.0
@@ -2291,3 +2282,4 @@ elif page == "NBA Expected Performance":
     if st.button("Calculate Current Expected Net Profit"):
         result = compute_expected_net(selected_event_type)
         st.write(f"**Up-to-date Expected Net Profit** for `{selected_event_type}`: **${result:,.2f}**")
+
