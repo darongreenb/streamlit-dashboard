@@ -41,7 +41,7 @@ else:
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Main Page", "Principal Volume", "Betting Frequency", "NBA Charts", "NFL Charts", "NFL Playoffs EV","Tennis Charts", "MLB Charts", "MLB Principal Tables", "NBA Participant Positions", "NFL Participant Positions"])
+page = st.sidebar.radio("Go to", ["Main Page", "Principal Volume", "Betting Frequency", "NBA Charts", "NFL Charts", "NFL Playoffs EV","Tennis Charts", "MLB Charts", "MLB Principal Tables", "NBA Participant Positions", "NFL Participant Positions", "NBA Expected Performance"])
 
 
 # Check if the user is on the "Main Page" page
@@ -2122,6 +2122,229 @@ elif page == "NFL Participant Positions":
                 st.table(df)
             else:
                 st.warning('No data found for the selected filters.')
+
+
+
+
+
+elif page == "NBA Expected Performance":
+    st.title("NBA Expected Performance (GA1)")
+
+    st.write("Here you can compute the up-to-date expected net profit (EV minus dollars at stake) for various NBA futures markets in your GreenAleph bankroll (both straight bets and parlays).")
+
+    # 1) Let user pick which NBA market:
+    event_type_options = [
+        "Most Valuable Player Award",
+        "Defensive Player of the Year Award",
+        "Most Improved Player Award",
+        "Rookie of the Year Award",
+        "Sixth Man of Year Award",
+        # Add if you have more, e.g. "Conference Winner" -> you need a separate approach or you can adapt the table map.
+    ]
+    selected_event_type = st.selectbox("Select an NBA Market", event_type_options)
+
+    # 2) Database Query: Find all WagerIDs that contain at least one leg with the selected_event_type
+    #    Then fetch all legs for those wagers. We'll do it similarly to your existing approach.
+
+    # Function to retrieve bets with the selected event type
+    def get_bets_for_event_type(event_type: str):
+        query_selected_bets = """
+            SELECT
+                b.WagerID,
+                b.PotentialPayout,
+                b.DollarsAtStake,
+                b.LegCount,
+                b.DateTimePlaced,
+                l.LegID,
+                l.ParticipantName,
+                l.EventType,
+                l.LeagueName
+            FROM bets b
+            JOIN legs l ON b.WagerID = l.WagerID
+            WHERE b.WhichBankroll = 'GreenAleph'
+              AND l.LeagueName = 'NBA'
+              AND l.EventType = %s
+        """
+        # Execute query
+        conn_bets = mysql.connector.connect(
+            host=db_host,
+            user=db_user,
+            password=db_password,
+            database=db_name
+        )
+        cursor_bets = conn_bets.cursor(dictionary=True)
+        cursor_bets.execute(query_selected_bets, (event_type,))
+        selected_rows = cursor_bets.fetchall()
+        cursor_bets.close()
+        conn_bets.close()
+
+        if not selected_rows:
+            return {}
+
+        # Gather WagerIDs
+        w_ids = {r["WagerID"] for r in selected_rows}
+
+        # Now fetch *all* legs for those wagers (because parlays might have other legs).
+        in_clause = ",".join(f"'{wid}'" for wid in w_ids)
+        full_legs_query = f"""
+            SELECT
+                b.WagerID,
+                b.PotentialPayout,
+                b.DollarsAtStake,
+                b.LegCount,
+                b.DateTimePlaced,
+                l.LegID,
+                l.ParticipantName,
+                l.EventType,
+                l.LeagueName
+            FROM bets b
+            JOIN legs l ON b.WagerID = l.WagerID
+            WHERE b.WagerID IN ({in_clause})
+              AND b.WhichBankroll = 'GreenAleph'
+        """
+
+        conn_bets2 = mysql.connector.connect(
+            host=db_host,
+            user=db_user,
+            password=db_password,
+            database=db_name
+        )
+        cursor_bets2 = conn_bets2.cursor(dictionary=True)
+        cursor_bets2.execute(full_legs_query)
+        all_leg_rows = cursor_bets2.fetchall()
+        cursor_bets2.close()
+        conn_bets2.close()
+
+        from collections import defaultdict
+        result_dict = defaultdict(lambda: {
+            "PotentialPayout": 0.0,
+            "DollarsAtStake": 0.0,
+            "LegCount": 0,
+            "DateTimePlaced": None,
+            "legs": []
+        })
+
+        for row in all_leg_rows:
+            w_id = row["WagerID"]
+            if result_dict[w_id]["PotentialPayout"] == 0.0 and row["PotentialPayout"]:
+                result_dict[w_id]["PotentialPayout"] = float(row["PotentialPayout"])
+            if result_dict[w_id]["DollarsAtStake"] == 0.0 and row["DollarsAtStake"]:
+                result_dict[w_id]["DollarsAtStake"] = float(row["DollarsAtStake"])
+            if result_dict[w_id]["LegCount"] == 0 and row["LegCount"]:
+                result_dict[w_id]["LegCount"] = row["LegCount"]
+            if result_dict[w_id]["DateTimePlaced"] is None and row["DateTimePlaced"]:
+                result_dict[w_id]["DateTimePlaced"] = row["DateTimePlaced"]
+
+            result_dict[w_id]["legs"].append({
+                "LegID": row["LegID"],
+                "ParticipantName": row["ParticipantName"],
+                "EventType": row["EventType"],
+                "LeagueName": row["LeagueName"]
+            })
+
+        return result_dict
+
+    # 3) Helper to get LATEST odds for each leg
+    def get_latest_odds(event_type: str, participant: str):
+        # If event_type isn't in your table map, prob=0
+        local_map = {
+            "Most Valuable Player Award": "NBAMVP",
+            "Defensive Player of the Year Award": "NBADefensivePotY",
+            "Most Improved Player Award": "NBAMIP",
+            "Rookie of the Year Award": "NBARotY",
+            "Sixth Man of Year Award": "NBASixthMotY"
+        }
+        table_name = local_map.get(event_type)
+        if not table_name:
+            return 1.0, 0.0
+
+        # Use your secrets as well
+        conn_f = mysql.connector.connect(
+            host=db_host,
+            user=db_user,
+            password=db_password,
+            database=db_name  # or your futures DB name if different
+        )
+        cur_f = conn_f.cursor(dictionary=True)
+        q = f"""
+            SELECT FanDuel
+            FROM {table_name}
+            ORDER BY date_created DESC
+            LIMIT 1
+        """
+        # We only check participant, so let's do:
+        q = f"""
+            SELECT FanDuel
+            FROM {table_name}
+            WHERE team_name = %s
+            ORDER BY date_created DESC
+            LIMIT 1
+        """
+        cur_f.execute(q, (participant,))
+        row = cur_f.fetchone()
+        cur_f.close()
+        conn_f.close()
+
+        if row and row["FanDuel"] is not None:
+            try:
+                american_odds = int(row["FanDuel"])
+            except:
+                return 1.0, 0.0
+            # Convert
+            dec = american_odds_to_decimal(american_odds)
+            prb = american_odds_to_probability(american_odds)
+            return dec, prb
+        return 1.0, 0.0
+
+    # 4) Now compute the up-to-date Expected Net Profit (EV minus stake)
+    def compute_mkt_expected_net(event_type: str):
+        bets_for_mkt = get_bets_for_event_type(event_type)
+        if not bets_for_mkt:
+            return 0.0
+
+        total_net = 0.0
+        for w_id, w_data in bets_for_mkt.items():
+            pot = w_data["PotentialPayout"]
+            stake = w_data["DollarsAtStake"]
+            legs_info = w_data["legs"]
+
+            # Build parlay probability
+            parlay_prob = 1.0
+            dec_odds_list = []
+            for lg in legs_info:
+                e_t = lg["EventType"]
+                participant = lg["ParticipantName"]
+                dec_, prob_ = get_latest_odds(e_t, participant)
+                parlay_prob *= prob_
+                dec_odds_list.append((dec_, e_t))
+
+            if parlay_prob == 0:
+                continue
+
+            parlay_net = (pot * parlay_prob) - stake
+
+            sum_excess = sum(d[0] - 1.0 for d in dec_odds_list)
+            if sum_excess <= 0:
+                continue
+
+            # Allocate only for the selected event_type
+            # Because a parlay might have MVP + other markets
+            # We sum fraction_i * parlay_net for legs that match event_type
+            portion = 0.0
+            for (d_od, e_t) in dec_odds_list:
+                fraction_i = (d_od - 1.0) / sum_excess
+                if e_t == event_type:
+                    portion += fraction_i * parlay_net
+
+            total_net += portion
+        return total_net
+
+    # 5) Actually compute & display:
+    #   "Up-to-date Expected Net Profit for the selected_event_type"
+    if st.button("Calculate Current Expected Net Profit"):
+        result = compute_mkt_expected_net(selected_event_type)
+        st.write(f"**Up-to-date Expected Net Profit** for `{selected_event_type}`: **${result:,.2f}**")
+
 
 
 
