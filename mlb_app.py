@@ -1,9 +1,10 @@
 import streamlit as st
 import mysql.connector
-import pandas as pd
+from datetime import datetime, timedelta
+import matplotlib.pyplot as plt
 from collections import defaultdict
 
-# Streamlit Secrets
+# Retrieve secrets
 db_host = st.secrets["DB_HOST"]
 db_user = st.secrets["DB_USER"]
 db_password = st.secrets["DB_PASSWORD"]
@@ -14,144 +15,121 @@ futures_user = st.secrets["FUTURES_DB"]["user"]
 futures_password = st.secrets["FUTURES_DB"]["password"]
 futures_db = st.secrets["FUTURES_DB"]["database"]
 
-# Odds Conversion Helpers
+# Odds conversion
+
 def american_odds_to_decimal(odds):
-    if odds == 0: return 1.0
     return 1.0 + (odds / 100.0) if odds > 0 else 1.0 + (100.0 / abs(odds))
 
 def american_odds_to_probability(odds):
-    if odds == 0: return 0.0
     return 100.0 / (odds + 100.0) if odds > 0 else abs(odds) / (abs(odds) + 100.0)
 
-# EventType/EventLabel → Table mapping
+# Table map
 futures_table_map = {
-    ("Championship", "NBA Championship"): "NBAChampionship",
-    ("Conference Winner", "Eastern Conference"): "NBAEasternConference",
-    ("Conference Winner", "Western Conference"): "NBAWesternConference",
-    ("Defensive Player of Year Award", "Award"): "NBADefensivePotY",
-    ("Division Winner", "Pacific Division"): "NBAPacific",
-    ("Division Winner", "Southwest Division"): "NBASouthwest",
-    ("Division Winner", "Southeast Division"): "NBASoutheast",
-    ("Division Winner", "Atlantic Division"): "NBAAtlantic",
-    ("Division Winner", "Central Division"): "NBACentral",
-    ("Division Winner", "Northwest Division"): "NBANorthwest",
-    ("Most Improved Player Award", "Award"): "NBAMIP",
-    ("Most Valuable Player Award", "Award"): "NBAMVP",
-    ("Rookie of Year Award", "Award"): "NBARotY",
-    ("Sixth Man of Year Award", "Award"): "NBASixthMotY",
+    "Most Valuable Player Award": "NBAMVP",
+    "Defensive Player of the Year Award": "NBADefensivePotY",
+    "Most Improved Player Award": "NBAMIP",
+    "Rookie of the Year Award": "NBARotY",
+    "Sixth Man of Year Award": "NBASixthMotY"
 }
 
-# Query NBA Futures Bets
-query = """
-    SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake, b.LegCount, b.DateTimePlaced,
-           l.LegID, l.ParticipantName, l.EventType, l.EventLabel, l.LeagueName
+# Connect to DBs
+conn_bets = mysql.connector.connect(host=db_host, user=db_user, password=db_password, database=db_name)
+conn_futures = mysql.connector.connect(host=futures_host, user=futures_user, password=futures_password, database=futures_db)
+
+# Function to get latest odds as of date
+def get_latest_odds_as_of_date(event_type, participant, snapshot_datetime):
+    table = futures_table_map.get(event_type)
+    if not table:
+        return 0
+    cursor = conn_futures.cursor(dictionary=True)
+    query = f"""
+        SELECT FanDuel FROM {table}
+        WHERE team_name = %s AND date_created <= %s
+        ORDER BY date_created DESC LIMIT 1
+    """
+    cursor.execute(query, (participant, snapshot_datetime))
+    row = cursor.fetchone()
+    cursor.close()
+    return int(row["FanDuel"]) if row and row["FanDuel"] else 0
+
+# Query all NBA bets
+cursor = conn_bets.cursor(dictionary=True)
+cursor.execute("""
+    SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake, b.DateTimePlaced, b.LegCount,
+           l.LegID, l.ParticipantName, l.EventType, l.LeagueName
     FROM bets b
     JOIN legs l ON b.WagerID = l.WagerID
     WHERE b.WhichBankroll = 'GreenAleph' AND l.LeagueName = 'NBA'
-"""
-try:
-    conn = mysql.connector.connect(host=db_host, user=db_user, password=db_password, database=db_name)
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute(query)
-    rows = cursor.fetchall()
-    cursor.close()
-    conn.close()
-except mysql.connector.Error as err:
-    st.error(f"Database error: {err}")
-    st.stop()
+""")
+rows = cursor.fetchall()
+cursor.close()
 
-# Organize Bets
-wager_dict = defaultdict(lambda: {
-    "PotentialPayout": 0.0,
-    "DollarsAtStake": 0.0,
-    "LegCount": 0,
-    "DateTimePlaced": None,
-    "legs": []
+# Organize bets
+bets = defaultdict(lambda: {
+    "PotentialPayout": 0.0, "DollarsAtStake": 0.0, "DateTimePlaced": None,
+    "LegCount": 0, "legs": []
 })
 
 for row in rows:
-    w_id = row["WagerID"]
-    try:
-        wager_dict[w_id]["PotentialPayout"] = float(row["PotentialPayout"] or 0.0)
-        wager_dict[w_id]["DollarsAtStake"] = float(row["DollarsAtStake"] or 0.0)
-        wager_dict[w_id]["LegCount"] = row["LegCount"] or 0
-        wager_dict[w_id]["DateTimePlaced"] = row["DateTimePlaced"] or None
-        wager_dict[w_id]["legs"].append({
-            "LegID": row["LegID"],
-            "ParticipantName": row["ParticipantName"],
-            "EventType": row["EventType"],
-            "EventLabel": row["EventLabel"]
-        })
-    except Exception as e:
-        st.warning(f"Skipping malformed row for WagerID {w_id}: {e}")
-        continue
+    w = bets[row["WagerID"]]
+    if w["PotentialPayout"] == 0 and row["PotentialPayout"]: w["PotentialPayout"] = float(row["PotentialPayout"])
+    if w["DollarsAtStake"] == 0 and row["DollarsAtStake"]: w["DollarsAtStake"] = float(row["DollarsAtStake"])
+    if not w["DateTimePlaced"] and row["DateTimePlaced"]: w["DateTimePlaced"] = row["DateTimePlaced"]
+    if w["LegCount"] == 0 and row["LegCount"]: w["LegCount"] = row["LegCount"]
+    w["legs"].append({
+        "LegID": row["LegID"], "ParticipantName": row["ParticipantName"],
+        "EventType": row["EventType"], "LeagueName": row["LeagueName"]
+    })
 
-# Latest Odds Fetcher
-def get_latest_odds(event_type, event_label, participant):
-    table = futures_table_map.get((event_type, event_label))
-    if not table:
-        return 1.0, 0.0
-    try:
-        conn = mysql.connector.connect(
-            host=futures_host,
-            user=futures_user,
-            password=futures_password,
-            database=futures_db
-        )
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute(f"""
-            SELECT FanDuel FROM {table}
-            WHERE team_name = %s
-            ORDER BY date_created DESC
-            LIMIT 1
-        """, (participant,))
-        row = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        if row and row["FanDuel"] is not None:
-            odds = int(row["FanDuel"])
-            return american_odds_to_decimal(odds), american_odds_to_probability(odds)
-    except Exception as e:
-        st.warning(f"Odds fetch failed for {participant}: {e}")
-    return 1.0, 0.0
+# Daily loop
+time_series = []
+start_date = datetime(2025, 3, 20)
+end_date = datetime(2025, 4, 1)
+current_date = start_date
 
-# EV Calculation
-result_by_market = defaultdict(float)
+while current_date <= end_date:
+    snapshot = current_date.replace(hour=23, minute=59, second=59)
+    mvp_net, mvp_stake = 0.0, 0.0
+    for w in bets.values():
+        if w["DateTimePlaced"] > snapshot:
+            continue
+        pot, stake = w["PotentialPayout"], w["DollarsAtStake"]
+        parlay_prob = 1.0
+        leg_odds = []
+        for leg in w["legs"]:
+            odds = get_latest_odds_as_of_date(leg["EventType"], leg["ParticipantName"], snapshot)
+            dec = american_odds_to_decimal(odds) if odds else 1.0
+            prob = american_odds_to_probability(odds) if odds else 0.0
+            parlay_prob *= prob
+            leg_odds.append((dec, leg["EventType"]))
 
-for w_id, w_data in wager_dict.items():
-    pot = w_data["PotentialPayout"]
-    stake = w_data["DollarsAtStake"]
-    legs = w_data["legs"]
+        if parlay_prob == 0:
+            continue
+        parlay_net = (pot * parlay_prob) - stake
+        sum_excess = sum((d - 1.0) for d, _ in leg_odds)
+        if sum_excess <= 0:
+            continue
+        for dec, etype in leg_odds:
+            if etype == "Most Valuable Player Award":
+                frac = (dec - 1.0) / sum_excess
+                mvp_net += frac * parlay_net
+                mvp_stake += frac * stake
+    pct_return = (mvp_net / mvp_stake) * 100.0 if mvp_stake > 0 else 0.0
+    time_series.append((current_date.date(), pct_return))
+    current_date += timedelta(days=1)
 
-    parlay_prob = 1.0
-    leg_odds_info = []
+# Plotting
+st.title("NBA MVP Daily % Return (GA1)")
+dates, values = zip(*time_series)
+fig, ax = plt.subplots(figsize=(10, 6))
+ax.plot(dates, values, marker='o')
+ax.set_title("Daily % Return for NBA MVP (GreenAleph)")
+ax.set_xlabel("Date")
+ax.set_ylabel("Return (%)")
+ax.grid(True)
+plt.xticks(rotation=45)
+st.pyplot(fig)
 
-    for leg in legs:
-        dec, prob = get_latest_odds(leg["EventType"], leg["EventLabel"], leg["ParticipantName"])
-        parlay_prob *= prob
-        leg_odds_info.append((dec, leg["EventType"], leg["EventLabel"]))
-
-    if parlay_prob == 0:
-        continue
-
-    net = (pot * parlay_prob) - stake
-    sum_excess = sum((dec - 1.0) for dec, _, _ in leg_odds_info)
-    if sum_excess <= 0:
-        continue
-
-    for dec, etype, elabel in leg_odds_info:
-        frac = (dec - 1.0) / sum_excess
-        result_by_market[(etype, elabel)] += frac * net
-
-# Display Output
-st.title("NBA Expected Net Profit by Futures Market (GA1)")
-
-sorted_results = sorted(result_by_market.items(), key=lambda x: (x[0][0], x[0][1]))
-
-df = pd.DataFrame([{
-    "EventType": k[0],
-    "EventLabel": k[1],
-    "ExpectedNetProfit": round(v, 2)
-} for k, v in sorted_results])
-
-st.dataframe(df, use_container_width=True)
+# Close connections
+conn_bets.close()
+conn_futures.close()
