@@ -58,12 +58,16 @@ query = """
     WHERE b.WhichBankroll = 'GreenAleph' AND l.LeagueName = 'NBA'
 """
 
-conn = mysql.connector.connect(host=db_host, user=db_user, password=db_password, database=db_name)
-cursor = conn.cursor(dictionary=True)
-cursor.execute(query)
-rows = cursor.fetchall()
-cursor.close()
-conn.close()
+try:
+    conn = mysql.connector.connect(host=db_host, user=db_user, password=db_password, database=db_name)
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+except mysql.connector.Error as err:
+    st.error(f"Error retrieving NBA bets: {err}")
+    st.stop()
 
 wager_dict = defaultdict(lambda: {
     "PotentialPayout": 0.0,
@@ -75,14 +79,17 @@ wager_dict = defaultdict(lambda: {
 
 for row in rows:
     w_id = row["WagerID"]
-    if wager_dict[w_id]["PotentialPayout"] == 0.0 and row["PotentialPayout"] is not None:
-        wager_dict[w_id]["PotentialPayout"] = float(row["PotentialPayout"])
-    if wager_dict[w_id]["DollarsAtStake"] == 0.0 and row["DollarsAtStake"] is not None:
-        wager_dict[w_id]["DollarsAtStake"] = float(row["DollarsAtStake"])
-    if wager_dict[w_id]["LegCount"] == 0 and row["LegCount"] is not None:
-        wager_dict[w_id]["LegCount"] = row["LegCount"]
-    if wager_dict[w_id]["DateTimePlaced"] is None and row["DateTimePlaced"]:
-        wager_dict[w_id]["DateTimePlaced"] = row["DateTimePlaced"]
+    try:
+        if wager_dict[w_id]["PotentialPayout"] == 0.0 and row["PotentialPayout"] is not None:
+            wager_dict[w_id]["PotentialPayout"] = float(row["PotentialPayout"])
+        if wager_dict[w_id]["DollarsAtStake"] == 0.0 and row["DollarsAtStake"] is not None:
+            wager_dict[w_id]["DollarsAtStake"] = float(row["DollarsAtStake"])
+        if wager_dict[w_id]["LegCount"] == 0 and row["LegCount"] is not None:
+            wager_dict[w_id]["LegCount"] = row["LegCount"]
+        if wager_dict[w_id]["DateTimePlaced"] is None and row["DateTimePlaced"]:
+            wager_dict[w_id]["DateTimePlaced"] = row["DateTimePlaced"]
+    except (ValueError, TypeError):
+        continue  # skip problematic rows
 
     wager_dict[w_id]["legs"].append({
         "LegID": row["LegID"],
@@ -92,7 +99,6 @@ for row in rows:
     })
 
 # Helper to fetch latest odds
-
 def get_latest_odds(event_type, event_label, participant):
     table = futures_table_map.get((event_type, event_label))
     if not table:
@@ -115,16 +121,18 @@ def get_latest_odds(event_type, event_label, participant):
         cursor.close()
         conn.close()
         if row and row["FanDuel"] is not None:
-            odds = int(row["FanDuel"])
-            dec = american_odds_to_decimal(odds)
-            prob = american_odds_to_probability(odds)
-            return dec, prob
+            try:
+                odds = int(row["FanDuel"])
+                dec = american_odds_to_decimal(odds)
+                prob = american_odds_to_probability(odds)
+                return dec, prob
+            except (ValueError, TypeError):
+                return 1.0, 0.0
     except:
         return 1.0, 0.0
     return 1.0, 0.0
 
 # Compute EV by (EventType, EventLabel)
-
 result_by_market = defaultdict(float)
 
 for w_id, w_data in wager_dict.items():
@@ -155,7 +163,7 @@ for w_id, w_data in wager_dict.items():
 # Display Results
 st.title("NBA Expected Net Profit by Futures Market (GA1)")
 
-sorted_results = sorted(result_by_market.items(), key=lambda x: x[0])
+sorted_results = sorted(result_by_market.items(), key=lambda x: x[1], reverse=True)
 
 df = pd.DataFrame([{
     "EventType": k[0],
