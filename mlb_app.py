@@ -178,12 +178,10 @@ def ev_table_page():
     st.dataframe(df,use_container_width=True)
 
 
-
-
-# ─────────────────────────────────────────────────────────────────────────
-#  Fast %‑Return plot page
-# ─────────────────────────────────────────────────────────────────────────
 def return_plot_page_fast():
+    import matplotlib.pyplot as plt, matplotlib.dates as mdates
+    from datetime import datetime, timedelta
+
     st.header("% Return Plot (optimised)")
 
     fut_conn = new_futures_conn()
@@ -215,30 +213,24 @@ def return_plot_page_fast():
         """)
         bet_rows = cur.fetchall()
     bet_df = pd.DataFrame(bet_rows)
-
     if bet_df.empty:
         st.warning("No active wagers"); return
 
-    # pre‑compute leg‑weights toward the selected market -------------------
-    #  weight = (decimal‑odds‑1) / Σ(decimal‑odds‑1) for that wager
+    # ---- pre‑compute weights toward selected market --------------------------
     sel_bets = bet_df.groupby("WagerID")
-
     leg_weights = []
     for wid, grp in sel_bets:
-        dec_all = []
+        # equal‑weight by (decimal‑odds‑1); we approximate with +100 (dec=2.0)
+        legs_count = len(grp)
+        if legs_count == 0: continue
         for _, r in grp.iterrows():
-            dec_all.append( (american_odds_to_decimal(100), r["EventType"], r["EventLabel"]) )  # placeholder 100/+100
-        # using placeholder for now; we will replace with real odds df merge later
-        sum_exc = sum(d-1 for d,_,_ in dec_all)
-        if sum_exc <= 0: continue
-        for d, et, el in dec_all:
-            if (et,el) == (sel_type, sel_lbl):
-                leg_weights.append(dict(WagerID=wid, Weight=(d-1)/sum_exc))
+            if (r["EventType"], r["EventLabel"]) == (sel_type, sel_lbl):
+                leg_weights.append(dict(WagerID=wid, Weight=1.0 / legs_count))
     wgt_df = pd.DataFrame(leg_weights)
     if wgt_df.empty:
-        st.warning("No legs found for that market in active wagers"); return
+        st.warning("No legs from that market in active wagers"); return
 
-    # ------------ 2) BULK‑load futures odds snapshot ---------------------
+    # ------------ 2) BULK‑load futures odds snapshot -------------------------
     participants = bet_df["ParticipantName"].map(lambda x: team_alias_map.get(x, x)).unique().tolist()
     tbl_name     = futures_table_map[(sel_type, sel_lbl)]
 
@@ -256,40 +248,39 @@ def return_plot_page_fast():
             )
             df = pd.DataFrame(cur.fetchall())
         if df.empty: return df
-        # best non‑zero odds across books, then -> decimal & probability
-        df["best"] = df[sportsbook_cols].apply(lambda r: max([cast_odds(x) for x in r if cast_odds(x)!=0] or [0]), axis=1)
-        df["prob"] = df["best"].apply(american_odds_to_prob)
+        df["best"] = df[sportsbook_cols].apply(
+            lambda r: max([safe_cast_odds(x) for x in r if safe_cast_odds(x)!=0] or [0]), axis=1)
+        df["prob"] = df["best"].apply(american_odds_to_probability)
         df["date"] = pd.to_datetime(df["date_created"]).dt.date
         return df[["team_name","date","prob"]]
     odds_df = cached_odds(tbl_name, participants, start_date, end_date)
     if odds_df.empty:
         st.warning("No odds data for that period"); return
-
-    # ------------ 3) build daily probability lookup ----------------------
-    # latest prob for each team on each day
     odds_df.sort_values(["team_name","date"], inplace=True)
     odds_df = odds_df.groupby(["team_name","date"]).tail(1)
 
-    # ------------ 4) combine into daily return ---------------------------
-    #   For each wager: stake_i = DollarsAtStake * weight
-    #                   exp_i(day) = PotentialPayout * Π(prob_j(day)) * weight
+    # ------------ 3) assemble daily return -------------------------------
     bet_meta = bet_df[["WagerID","PotentialPayout","DollarsAtStake","DateTimePlaced"]].drop_duplicates()
     merged   = bet_df.merge(odds_df, how="left",
-                            left_on=["ParticipantName"],
-                            right_on=["team_name"])
-    merged["date"] = merged["date"].fillna(method="ffill")   # carry last prob backwards if missing
+                            left_on="ParticipantName",
+                            right_on="team_name")
     merged.dropna(subset=["prob"], inplace=True)
+    merged["date"] = pd.to_datetime(merged["date"])
 
-    # multiply probabilities within each wager/day
-    merged = merged.merge(wgt_df, on="WagerID", how="inner")          # keep only legs from selected market
-    merged["prob_pow"] = merged["prob"]                              # since only 1 leg of interest
-    daily = (merged
-             .groupby(["date","WagerID"])
-             .agg(prob_product=("prob_pow","prod"),
-                  weight=("Weight","first"))
-             .reset_index())
+    merged = merged.merge(wgt_df, on="WagerID", how="inner")
+    merged["prob_pow"] = merged["prob"]               # single‑leg prob for selected market
+
+    daily = (merged.groupby(["date","WagerID"])
+                   .agg(prob_product=("prob_pow","prod"),
+                        weight=("Weight","first"))
+                   .reset_index())
 
     daily = daily.merge(bet_meta, on="WagerID", how="left")
+
+    # ---- ensure numeric & no NaN --------------------------------------------
+    for col in ["weight","DollarsAtStake","PotentialPayout"]:
+        daily[col] = pd.to_numeric(daily[col], errors="coerce").fillna(0.0)
+
     daily["stake_part"] = daily["DollarsAtStake"] * daily["weight"]
     daily["exp_part"]   = daily["PotentialPayout"] * daily["prob_product"] * daily["weight"]
     daily["net_part"]   = daily["exp_part"] - daily["stake_part"]
@@ -298,9 +289,9 @@ def return_plot_page_fast():
                    .agg(net=("net_part","sum"), stake=("stake_part","sum"))
                    .reset_index())
     series["pct"] = (series["net"] / series["stake"]) * 100
-    series = series[series["date"].between(start_date,end_date)]
+    mask = (series["date"].dt.date >= start_date) & (series["date"].dt.date <= end_date)
+    series = series.loc[mask]
 
-    # ------------ 5) plot ---------------
     if series.empty.any():
         st.warning("Not enough data to plot"); return
     fig, ax = plt.subplots(figsize=(10,5))
