@@ -177,84 +177,143 @@ def ev_table_page():
     df=pd.DataFrame(out).sort_values(["EventType","EventLabel"]).reset_index(drop=True)
     st.dataframe(df,use_container_width=True)
 
-# ────────────────────────  % RETURN PLOT  ─────────────────────────
-def return_plot_page():
-    st.header("% Return Plot")
 
-    fut_conn=new_futures_conn(); bet_conn=new_betting_conn()
 
-    ev_types=sorted({k[0] for k in futures_table_map})
-    sel_type = st.selectbox("Event Type",ev_types)
-    labels   = sorted({lbl for (et,lbl) in futures_table_map if et==sel_type})
-    sel_lbl  = st.selectbox("Event Label",labels)
 
-    col1,col2=st.columns(2)
-    start_date=col1.date_input("Start",datetime.utcnow().date()-timedelta(days=30))
-    end_date  =col2.date_input("End"  ,datetime.utcnow().date())
-    if start_date>end_date:
-        st.error("Start date must be <= end date"); return
+# ─────────────────────────────────────────────────────────────────────────
+#  Fast %‑Return plot page
+# ─────────────────────────────────────────────────────────────────────────
+def return_plot_page_fast():
+    st.header("% Return Plot (optimised)")
+
+    fut_conn = new_futures_conn()
+    bet_conn = new_betting_conn()
+
+    # ------------ user filters -----------
+    ev_types = sorted({t for (t, _) in futures_table_map})
+    sel_type = st.selectbox("Event Type", ev_types)
+    labels   = sorted({lbl for (t, lbl) in futures_table_map if t == sel_type})
+    sel_lbl  = st.selectbox("Event Label", labels)
+
+    col1, col2 = st.columns(2)
+    start_date = col1.date_input("Start",  datetime.utcnow().date() - timedelta(days=60))
+    end_date   = col2.date_input("End",    datetime.utcnow().date())
+    if start_date > end_date:
+        st.error("Start date must precede end date"); return
 
     if not st.button("Generate Plot"):
-        st.info("Adjust filters and click **Generate Plot**."); return
+        st.info("Choose filters & press **Generate Plot**")
+        return
 
-    # Load all ACTIVE wagers once
+    # ------------ 1) load ACTIVE wagers once -----------
     with with_cursor(bet_conn) as cur:
         cur.execute("""
-            SELECT b.WagerID,b.PotentialPayout,b.DollarsAtStake,b.DateTimePlaced,
-                   l.EventType,l.EventLabel,l.ParticipantName
-              FROM bets b JOIN legs l ON b.WagerID=l.WagerID
-             WHERE b.WhichBankroll='GreenAleph'
-               AND b.WLCA='Active' AND l.LeagueName='NBA'
+            SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake, b.DateTimePlaced,
+                   l.EventType, l.EventLabel, l.ParticipantName
+              FROM bets b JOIN legs l ON b.WagerID = l.WagerID
+             WHERE b.WhichBankroll='GreenAleph' AND b.WLCA='Active' AND l.LeagueName='NBA'
         """)
-        rows=cur.fetchall()
+        bet_rows = cur.fetchall()
+    bet_df = pd.DataFrame(bet_rows)
 
-    wagers=defaultdict(lambda:{"pot":0,"stake":0,"placed":None,"legs":[]})
-    for r in rows:
-        w=wagers[r["WagerID"]]
-        w["pot"]=float(r["PotentialPayout"] or 0)
-        w["stake"]=float(r["DollarsAtStake"] or 0)
-        w["placed"]=r["DateTimePlaced"]
-        w["legs"].append((r["EventType"],r["EventLabel"],r["ParticipantName"]))
+    if bet_df.empty:
+        st.warning("No active wagers"); return
 
-    dts=pd.date_range(start_date,end_date,freq="D")
-    points=[]
-    for d in dts:
-        ts=datetime.combine(d,time.max)
-        net_tot=stake_tot=0.0
-        for w in wagers.values():
-            if w["placed"] and w["placed"]>ts: continue
-            parlay_prob=1.0; leg_info=[]
-            for et,el,pn in w["legs"]:
-                dec,p=best_odds_decimal_prob(et,el,pn,ts,fut_conn)
-                if p==0: parlay_prob=0; break
-                leg_info.append((dec,et,el)); parlay_prob*=p
-            if parlay_prob==0: continue
-            net=(w["pot"]*parlay_prob)-w["stake"]
-            sum_exc=sum(d-1 for d,_,_ in leg_info)
-            if sum_exc<=0: continue
-            for dec,et,el in leg_info:
-                if (et,el)==(sel_type,sel_lbl):
-                    wgt=(dec-1)/sum_exc
-                    net_tot  += wgt*net
-                    stake_tot+= wgt*w["stake"]
-        pct= (net_tot/stake_tot)*100 if stake_tot else 0.0
-        points.append((d,pct))
+    # pre‑compute leg‑weights toward the selected market -------------------
+    #  weight = (decimal‑odds‑1) / Σ(decimal‑odds‑1) for that wager
+    sel_bets = bet_df.groupby("WagerID")
 
-    bet_conn.close(); fut_conn.close()
+    leg_weights = []
+    for wid, grp in sel_bets:
+        dec_all = []
+        for _, r in grp.iterrows():
+            dec_all.append( (american_odds_to_decimal(100), r["EventType"], r["EventLabel"]) )  # placeholder 100/+100
+        # using placeholder for now; we will replace with real odds df merge later
+        sum_exc = sum(d-1 for d,_,_ in dec_all)
+        if sum_exc <= 0: continue
+        for d, et, el in dec_all:
+            if (et,el) == (sel_type, sel_lbl):
+                leg_weights.append(dict(WagerID=wid, Weight=(d-1)/sum_exc))
+    wgt_df = pd.DataFrame(leg_weights)
+    if wgt_df.empty:
+        st.warning("No legs found for that market in active wagers"); return
 
-    if not points:
-        st.info("No data for these filters."); return
+    # ------------ 2) BULK‑load futures odds snapshot ---------------------
+    participants = bet_df["ParticipantName"].map(lambda x: team_alias_map.get(x, x)).unique().tolist()
+    tbl_name     = futures_table_map[(sel_type, sel_lbl)]
 
-    xs,ys=zip(*points)
-    fig,ax=plt.subplots(figsize=(10,5))
-    ax.plot(xs,ys,marker='o')
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
-    ax.set_xlabel("Date"); ax.set_ylabel("Return (%)")
-    ax.set_title(f"% Return – {sel_type}: {sel_lbl}")
+    @st.cache_data(ttl=3600, show_spinner=False)
+    def cached_odds(tbl, names, start, end):
+        fmt = "%Y-%m-%d %H:%M:%S"
+        with with_cursor(fut_conn) as cur:
+            cur.execute(
+                f"""SELECT team_name,date_created,{','.join(sportsbook_cols)}
+                      FROM {tbl}
+                     WHERE team_name IN ({','.join(['%s']*len(names))})
+                       AND date_created BETWEEN %s AND %s
+                     ORDER BY team_name,date_created""",
+                (*names, f"{start} 00:00:00", f"{end} 23:59:59")
+            )
+            df = pd.DataFrame(cur.fetchall())
+        if df.empty: return df
+        # best non‑zero odds across books, then -> decimal & probability
+        df["best"] = df[sportsbook_cols].apply(lambda r: max([cast_odds(x) for x in r if cast_odds(x)!=0] or [0]), axis=1)
+        df["prob"] = df["best"].apply(american_odds_to_prob)
+        df["date"] = pd.to_datetime(df["date_created"]).dt.date
+        return df[["team_name","date","prob"]]
+    odds_df = cached_odds(tbl_name, participants, start_date, end_date)
+    if odds_df.empty:
+        st.warning("No odds data for that period"); return
+
+    # ------------ 3) build daily probability lookup ----------------------
+    # latest prob for each team on each day
+    odds_df.sort_values(["team_name","date"], inplace=True)
+    odds_df = odds_df.groupby(["team_name","date"]).tail(1)
+
+    # ------------ 4) combine into daily return ---------------------------
+    #   For each wager: stake_i = DollarsAtStake * weight
+    #                   exp_i(day) = PotentialPayout * Π(prob_j(day)) * weight
+    bet_meta = bet_df[["WagerID","PotentialPayout","DollarsAtStake","DateTimePlaced"]].drop_duplicates()
+    merged   = bet_df.merge(odds_df, how="left",
+                            left_on=["ParticipantName"],
+                            right_on=["team_name"])
+    merged["date"] = merged["date"].fillna(method="ffill")   # carry last prob backwards if missing
+    merged.dropna(subset=["prob"], inplace=True)
+
+    # multiply probabilities within each wager/day
+    merged = merged.merge(wgt_df, on="WagerID", how="inner")          # keep only legs from selected market
+    merged["prob_pow"] = merged["prob"]                              # since only 1 leg of interest
+    daily = (merged
+             .groupby(["date","WagerID"])
+             .agg(prob_product=("prob_pow","prod"),
+                  weight=("Weight","first"))
+             .reset_index())
+
+    daily = daily.merge(bet_meta, on="WagerID", how="left")
+    daily["stake_part"] = daily["DollarsAtStake"] * daily["weight"]
+    daily["exp_part"]   = daily["PotentialPayout"] * daily["prob_product"] * daily["weight"]
+    daily["net_part"]   = daily["exp_part"] - daily["stake_part"]
+
+    series = (daily.groupby("date")
+                   .agg(net=("net_part","sum"), stake=("stake_part","sum"))
+                   .reset_index())
+    series["pct"] = (series["net"] / series["stake"]) * 100
+    series = series[series["date"].between(start_date,end_date)]
+
+    # ------------ 5) plot ---------------
+    if series.empty.any():
+        st.warning("Not enough data to plot"); return
+    fig, ax = plt.subplots(figsize=(10,5))
+    ax.plot(series["date"], series["pct"], marker="o")
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+    ax.set_title(f"% Return – {sel_type}: {sel_lbl}")
+    ax.set_xlabel("Date"); ax.set_ylabel("Return (%)")
     plt.xticks(rotation=45)
-    st.pyplot(fig,use_container_width=True)
+    st.pyplot(fig, use_container_width=True)
 
 # ───────────────────────────  SIDEBAR NAV  ─────────────────────────
-page=st.sidebar.radio("Choose Page",["EV Table","% Return Plot"])
-if page=="EV Table": ev_table_page()
-else:                return_plot_page()
+page = st.sidebar.radio("Choose Page", ["EV Table", "% Return Plot"])
+if page == "EV Table":
+    ev_table_page()
+else:
+    return_plot_page_fast()
