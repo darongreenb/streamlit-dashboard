@@ -56,7 +56,7 @@ futures_table_map = {
     # Add more if needed
 }
 
-team_alias_map = {"Philadelphia 76ers": "76ers", "Milwaukee Bucks": "Bucks", "Boston Celtics": "Celtics", "Denver Nuggets": "Nuggets"}  # shorten for brevity
+team_alias_map = {"Philadelphia 76ers": "76ers", "Milwaukee Bucks": "Bucks", "Boston Celtics": "Celtics", "Denver Nuggets": "Nuggets"}
 sportsbook_cols = ["BetMGM", "DraftKings", "Caesars", "ESPNBet", "FanDuel", "BallyBet", "RiversCasino", "Bet365"]
 
 def get_latest_max_odds(event_type, event_label, participant, snapshot_date, conn):
@@ -79,170 +79,158 @@ def get_latest_max_odds(event_type, event_label, participant, snapshot_date, con
 
 # --- EV Table Page ---
 def render_ev_table():
-    betting_conn = get_betting_conn()
-    futures_conn = get_futures_conn()
+    with get_betting_conn() as betting_conn, get_futures_conn() as futures_conn:
+        active_stake, active_payout, realized_net = defaultdict(float), defaultdict(float), defaultdict(float)
+        active_bets = defaultdict(lambda: {"pot": 0.0, "stake": 0.0, "legs": []})
 
-    active_stake, active_payout, realized_net = defaultdict(float), defaultdict(float), defaultdict(float)
-    active_bets = defaultdict(lambda: {"pot": 0.0, "stake": 0.0, "legs": []})
+        with betting_conn.cursor() as cur:
+            cur.execute("""
+                SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake,
+                       l.EventType, l.EventLabel, l.ParticipantName
+                FROM bets b JOIN legs l ON b.WagerID = l.WagerID
+                WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA = 'Active' AND l.LeagueName = 'NBA'
+            """)
+            for row in cur.fetchall():
+                bet = active_bets[row["WagerID"]]
+                bet["pot"] = bet["pot"] or float(row["PotentialPayout"] or 0.0)
+                bet["stake"] = bet["stake"] or float(row["DollarsAtStake"] or 0.0)
+                bet["legs"].append((row["EventType"], row["EventLabel"], row["ParticipantName"]))
 
-    with betting_conn.cursor() as cur:
-        cur.execute("""
-            SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake,
-                   l.EventType, l.EventLabel, l.ParticipantName
-            FROM bets b JOIN legs l ON b.WagerID = l.WagerID
-            WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA = 'Active' AND l.LeagueName = 'NBA'
-        """)
-        for row in cur.fetchall():
-            bet = active_bets[row["WagerID"]]
-            bet["pot"] = bet["pot"] or float(row["PotentialPayout"] or 0.0)
-            bet["stake"] = bet["stake"] or float(row["DollarsAtStake"] or 0.0)
-            bet["legs"].append((row["EventType"], row["EventLabel"], row["ParticipantName"]))
-
-    for b in active_bets.values():
-        pot, stake, legs = b["pot"], b["stake"], b["legs"]
-        probs, decs = [], []
-        for et, el, pn in legs:
-            d, p = 1.0, 0.0
-            odds = get_latest_max_odds(et, el, pn, datetime.now(), futures_conn)
-            if odds:
+        for b in active_bets.values():
+            pot, stake, legs = b["pot"], b["stake"], b["legs"]
+            probs, decs = [], []
+            for et, el, pn in legs:
+                odds = get_latest_max_odds(et, el, pn, datetime.now(), futures_conn)
                 d = american_odds_to_decimal(odds)
                 p = american_odds_to_probability(odds)
-            probs.append(p)
-            decs.append((d, et, el))
-        if 0 in probs:
-            continue
-        prob = 1.0
-        for p in probs: prob *= p
-        expected = pot * prob
-        sum_excess = sum(d - 1.0 for d, _, _ in decs)
-        if sum_excess <= 0: continue
-        for d, et, el in decs:
-            frac = (d - 1.0) / sum_excess
-            active_stake[(et, el)] += frac * stake
-            active_payout[(et, el)] += frac * expected
+                probs.append(p)
+                decs.append((d, et, el))
+            if 0 in probs: continue
+            prob = 1.0
+            for p in probs: prob *= p
+            expected = pot * prob
+            sum_excess = sum(d - 1.0 for d, _, _ in decs)
+            if sum_excess <= 0: continue
+            for d, et, el in decs:
+                frac = (d - 1.0) / sum_excess
+                active_stake[(et, el)] += frac * stake
+                active_payout[(et, el)] += frac * expected
 
-    with betting_conn.cursor() as cur:
-        cur.execute("""
-            SELECT b.WagerID, b.NetProfit, l.EventType, l.EventLabel, l.ParticipantName
-            FROM bets b JOIN legs l ON b.WagerID = l.WagerID
-            WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA IN ('Win','Loss','Cashout') AND l.LeagueName = 'NBA'
-        """)
-        results = cur.fetchall()
+        with betting_conn.cursor() as cur:
+            cur.execute("""
+                SELECT b.WagerID, b.NetProfit, l.EventType, l.EventLabel, l.ParticipantName
+                FROM bets b JOIN legs l ON b.WagerID = l.WagerID
+                WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA IN ('Win','Loss','Cashout') AND l.LeagueName = 'NBA'
+            """)
+            results = cur.fetchall()
 
-    realized_legs = defaultdict(list)
-    for r in results:
-        realized_legs[r["WagerID"]].append((r["EventType"], r["EventLabel"], r["ParticipantName"], float(r["NetProfit"] or 0.0)))
+        realized_legs = defaultdict(list)
+        for r in results:
+            realized_legs[r["WagerID"]].append((r["EventType"], r["EventLabel"], r["ParticipantName"], float(r["NetProfit"] or 0.0)))
 
-    for legs in realized_legs.values():
-        net = legs[0][3]
-        decs = [(american_odds_to_decimal(get_latest_max_odds(et, el, pn, datetime.now(), futures_conn)), et, el) for et, el, pn, _ in legs]
-        s_exc = sum(d - 1.0 for d, _, _ in decs)
-        if s_exc <= 0: continue
-        for d, et, el in decs:
-            realized_net[(et, el)] += net * ((d - 1.0) / s_exc)
+        for legs in realized_legs.values():
+            net = legs[0][3]
+            decs = [(american_odds_to_decimal(get_latest_max_odds(et, el, pn, datetime.now(), futures_conn)), et, el) for et, el, pn, _ in legs]
+            s_exc = sum(d - 1.0 for d, _, _ in decs)
+            if s_exc <= 0: continue
+            for d, et, el in decs:
+                realized_net[(et, el)] += net * ((d - 1.0) / s_exc)
 
-    records = []
-    all_keys = set(active_stake) | set(active_payout) | set(realized_net)
-    for k in sorted(all_keys):
-        stake = active_stake.get(k, 0.0)
-        payout = active_payout.get(k, 0.0)
-        net = realized_net.get(k, 0.0)
-        ev = payout - stake + net
-        records.append({
-            "EventType": k[0],
-            "EventLabel": k[1],
-            "ActiveDollarsAtStake": round(stake, 2),
-            "ActiveExpectedPayout": round(payout, 2),
-            "RealizedNetProfit": round(net, 2),
-            "ExpectedValue": round(ev, 2),
-        })
-    st.subheader("EV Table by Market")
-    st.dataframe(pd.DataFrame(records).sort_values(["EventType", "EventLabel"]).reset_index(drop=True), use_container_width=True)
+        records = []
+        all_keys = set(active_stake) | set(active_payout) | set(realized_net)
+        for k in sorted(all_keys):
+            stake = active_stake.get(k, 0.0)
+            payout = active_payout.get(k, 0.0)
+            net = realized_net.get(k, 0.0)
+            ev = payout - stake + net
+            records.append({
+                "EventType": k[0],
+                "EventLabel": k[1],
+                "ActiveDollarsAtStake": round(stake, 2),
+                "ActiveExpectedPayout": round(payout, 2),
+                "RealizedNetProfit": round(net, 2),
+                "ExpectedValue": round(ev, 2),
+            })
+        st.subheader("EV Table by Market")
+        st.dataframe(pd.DataFrame(records).sort_values(["EventType", "EventLabel"]).reset_index(drop=True), use_container_width=True)
 
 # --- Return Plot Page ---
 def render_return_plot():
-    conn_bets = get_betting_conn()
-    conn_futures = get_futures_conn()
+    with get_betting_conn() as conn_bets, get_futures_conn() as conn_futures:
+        st.subheader("NBA Futures Return Plot")
+        event_type = st.selectbox("Select Event Type", sorted(set(k[0] for k in futures_table_map)))
+        options = [label for (etype, label) in futures_table_map if etype == event_type]
+        event_label = st.selectbox("Select Event Label", options)
 
-    st.subheader("NBA Futures Return Plot")
-    event_type = st.selectbox("Select Event Type", sorted(set(k[0] for k in futures_table_map)))
-    options = [label for (etype, label) in futures_table_map if etype == event_type]
-    event_label = st.selectbox("Select Event Label", options)
+        start = st.date_input("Start Date", datetime.now().date() - timedelta(days=30))
+        end = st.date_input("End Date", datetime.now().date())
+        if start > end:
+            st.error("Start date must be before end date")
+            return
 
-    start = st.date_input("Start Date", datetime.now().date() - timedelta(days=30))
-    end = st.date_input("End Date", datetime.now().date())
-    if start > end:
-        st.error("Start date must be before end date")
-        return
+        if st.button("Generate Return Plot"):
+            date_range = pd.date_range(start=start, end=end)
+            cur = conn_bets.cursor()
+            cur.execute(f"""
+                SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake, b.DateTimePlaced, b.LegCount,
+                       l.LegID, l.ParticipantName, l.EventType, l.EventLabel
+                FROM bets b JOIN legs l ON b.WagerID = l.WagerID
+                WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA = 'Active' AND l.LeagueName = 'NBA'
+            """)
+            bets = cur.fetchall()
+            cur.close()
 
-    if st.button("Generate Return Plot"):
-        # We'll reuse compute_mvp_return_series with filters
-        from_date = start
-        to_date = end
-        date_range = pd.date_range(start=from_date, end=to_date)
+            bet_map = defaultdict(lambda: {"pot": 0.0, "stake": 0.0, "placed": None, "legs": []})
+            for row in bets:
+                w = row["WagerID"]
+                bet_map[w]["pot"] = row["PotentialPayout"]
+                bet_map[w]["stake"] = row["DollarsAtStake"]
+                bet_map[w]["placed"] = row["DateTimePlaced"]
+                bet_map[w]["legs"].append((row["EventType"], row["EventLabel"], row["ParticipantName"]))
 
-        cur = conn_bets.cursor()
-        cur.execute(f"""
-            SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake, b.DateTimePlaced, b.LegCount,
-                   l.LegID, l.ParticipantName, l.EventType, l.EventLabel
-            FROM bets b JOIN legs l ON b.WagerID = l.WagerID
-            WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA = 'Active' AND l.LeagueName = 'NBA'
-        """)
-        bets = cur.fetchall()
-        cur.close()
+            series = []
+            for cur_date in date_range:
+                dt = datetime.combine(cur_date, datetime.max.time())
+                total_net, total_stake = 0.0, 0.0
+                for bet in bet_map.values():
+                    if bet["placed"] > dt: continue
+                    ppot = bet["pot"]
+                    stake = bet["stake"]
+                    legs = bet["legs"]
+                    prob = 1.0
+                    decs = []
+                    for et, el, pn in legs:
+                        odds = get_latest_max_odds(et, el, pn, dt, conn_futures)
+                        if odds == 0:
+                            prob = 0.0
+                            break
+                        decs.append((american_odds_to_decimal(odds), et))
+                        prob *= american_odds_to_probability(odds)
+                    if prob == 0: continue
+                    net = (ppot * prob) - stake
+                    s_exc = sum(d - 1.0 for d, e in decs)
+                    if s_exc <= 0: continue
+                    for d, et in decs:
+                        if et == event_type:
+                            frac = (d - 1.0) / s_exc
+                            total_net += frac * net
+                            total_stake += frac * stake
+                ret = (total_net / total_stake) * 100 if total_stake > 0 else 0.0
+                series.append((cur_date, ret))
 
-        bet_map = defaultdict(lambda: {"pot": 0.0, "stake": 0.0, "placed": None, "legs": []})
-        for row in bets:
-            w = row["WagerID"]
-            bet_map[w]["pot"] = row["PotentialPayout"]
-            bet_map[w]["stake"] = row["DollarsAtStake"]
-            bet_map[w]["placed"] = row["DateTimePlaced"]
-            bet_map[w]["legs"].append((row["EventType"], row["EventLabel"], row["ParticipantName"]))
-
-        series = []
-        for cur_date in date_range:
-            dt = datetime.combine(cur_date, datetime.max.time())
-            total_net, total_stake = 0.0, 0.0
-            for bet in bet_map.values():
-                if bet["placed"] > dt: continue
-                ppot = bet["pot"]
-                stake = bet["stake"]
-                legs = bet["legs"]
-                prob = 1.0
-                decs = []
-                for et, el, pn in legs:
-                    odds = get_latest_max_odds(et, el, pn, dt, conn_futures)
-                    if odds == 0:
-                        prob = 0.0
-                        break
-                    decs.append((american_odds_to_decimal(odds), et))
-                    prob *= american_odds_to_probability(odds)
-                if prob == 0: continue
-                net = (ppot * prob) - stake
-                s_exc = sum(d - 1.0 for d, e in decs)
-                if s_exc <= 0: continue
-                for d, et in decs:
-                    if et == event_type:
-                        frac = (d - 1.0) / s_exc
-                        total_net += frac * net
-                        total_stake += frac * stake
-            ret = (total_net / total_stake) * 100 if total_stake > 0 else 0.0
-            series.append((cur_date, ret))
-
-        dates = [d for (d, _) in series]
-        values = [v for (_, v) in series]
-        fig, ax = plt.subplots(figsize=(10, 5))
-        ax.plot(dates, values, marker='o')
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
-        ax.set_title(f"% Return Over Time: {event_type}")
-        ax.set_ylabel("Return (%)")
-        ax.set_xlabel("Date")
-        plt.xticks(rotation=45)
-        st.pyplot(fig)
+            dates = [d for (d, _) in series]
+            values = [v for (_, v) in series]
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.plot(dates, values, marker='o')
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+            ax.set_title(f"% Return Over Time: {event_type} - {event_label}")
+            ax.set_ylabel("Return (%)")
+            ax.set_xlabel("Date")
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
 
 # --- App Routing ---
 page = st.sidebar.radio("Select Page", ["EV Table", "Return Plot"])
-
 if page == "EV Table":
     render_ev_table()
 elif page == "Return Plot":
