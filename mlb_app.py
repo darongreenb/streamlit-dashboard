@@ -191,7 +191,7 @@ def ev_table_page():
 
 # ─────────────────  % RETURN PLOT PAGE  ──────────
 def return_plot_page_fast():
-    st.header("% Return Plot (optimised)")
+    st.header("% Return Plot")
 
     fut_conn = new_futures_conn()
     bet_conn = new_betting_conn()
