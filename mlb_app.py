@@ -148,6 +148,9 @@ for b in active_bets.values():
         active_payout[(et, el)] += frac * expected
 
 # Query 2: Realized Net Profit
+# Reconnect to ensure active session
+betting_conn = get_betting_conn()
+
 realized_net = defaultdict(float)
 with betting_conn.cursor() as cur:
     cur.execute("""
