@@ -1,16 +1,15 @@
 import streamlit as st
 import pymysql
-import pandas as pd
-import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
 from collections import defaultdict
+import pandas as pd
 import re
+from datetime import datetime, timedelta
+import matplotlib.pyplot as plt
 
-# Set page layout
 st.set_page_config(page_title="NBA Futures EV Dashboard", layout="wide")
 st.title("NBA Futures: Active & Realized Payouts by Market")
 
-# --- DB Connection Helpers ---
+# ----------- DB Connection Helpers (Fresh each time) --------------
 def get_betting_conn():
     return pymysql.connect(
         host=st.secrets["BETTING_DB"]["host"],
@@ -29,7 +28,7 @@ def get_futures_conn():
         cursorclass=pymysql.cursors.DictCursor
     )
 
-# --- Odds Helpers ---
+# ----------- Odds helpers ----------------
 def american_odds_to_decimal(odds):
     return 1.0 + (odds / 100.0) if odds > 0 else 1.0 + (100.0 / abs(odds)) if odds != 0 else 1.0
 
@@ -40,13 +39,14 @@ def safe_cast_odds(val):
     try:
         if isinstance(val, (int, float)): return int(val)
         if isinstance(val, str):
-            m = re.search(r"[-+]?\\d+", val)
+            m = re.search(r"[-+]?\d+", val)
             return int(m.group()) if m else 0
         return 0
     except: return 0
 
-# --- Mappings ---
+# ----------- Mappings ----------------
 futures_table_map = {
+    ("Most Valuable Player Award", "Award"): "NBAMVP",
     ("Championship", "NBA Championship"): "NBAChampionship",
     ("Conference Winner", "Eastern Conference"): "NBAEasternConference",
     ("Conference Winner", "Western Conference"): "NBAWesternConference",
@@ -58,7 +58,6 @@ futures_table_map = {
     ("Division Winner", "Southeast Division"): "NBASoutheast",
     ("Division Winner", "Southwest Division"): "NBASouthwest",
     ("Most Improved Player Award", "Award"): "NBAMIP",
-    ("Most Valuable Player Award", "Award"): "NBAMVP",
     ("Rookie of Year Award", "Award"): "NBARotY",
     ("Sixth Man of Year Award", "Award"): "NBASixthMotY",
 }
@@ -89,17 +88,17 @@ def get_best_decimal_and_probability(event_type, event_label, participant, conn)
             FROM {table}
             WHERE team_name = %s
             ORDER BY date_created DESC
+            LIMIT 1
         """, (alias,))
-        rows = cur.fetchall()
-    for row in rows:
-        odds = [safe_cast_odds(row[col]) for col in sportsbook_cols]
+        row = cur.fetchone()
+    if row:
+        odds = [safe_cast_odds(row[c]) for c in sportsbook_cols if row[c] is not None]
         nonzero = [o for o in odds if o != 0]
         if nonzero:
             best = max(nonzero)
             return american_odds_to_decimal(best), american_odds_to_probability(best)
     return 1.0, 0.0
 
-# --- EV TABLE ---
 def load_ev_data():
     betting_conn = get_betting_conn()
     futures_conn = get_futures_conn()
@@ -130,8 +129,7 @@ def load_ev_data():
         if 0 in probs:
             continue
         prob = 1.0
-        for p in probs:
-            prob *= p
+        for p in probs: prob *= p
         expected = pot * prob
         sum_excess = sum(d - 1.0 for d, _, _ in decs)
         if sum_excess <= 0:
@@ -141,7 +139,6 @@ def load_ev_data():
             active_stake[(et, el)] += frac * stake
             active_payout[(et, el)] += frac * expected
 
-    # Realized Net Profit
     realized_net = defaultdict(float)
     with betting_conn.cursor() as cur:
         cur.execute("""
@@ -182,13 +179,17 @@ def load_ev_data():
             "RealizedNetProfit": round(net, 2),
             "ExpectedValue": round(ev, 2),
         })
-    return pd.DataFrame(records).sort_values(["EventType", "EventLabel"]).reset_index(drop=True)
 
-# --- Show Table ---
+    df = pd.DataFrame(records)
+    if not df.empty and "EventType" in df.columns and "EventLabel" in df.columns:
+        return df.sort_values(["EventType", "EventLabel"]).reset_index(drop=True)
+    else:
+        return pd.DataFrame()
+
+# ---------- Streamlit Layout ----------
 df = load_ev_data()
 st.dataframe(df, use_container_width=True)
 
-# --- Chart Button ---
-if st.button("Run MVP Return Chart"):
-    from utils.mvp_chart import show_mvp_chart
-    show_mvp_chart()
+if st.button("Run MVP Return Plot"):
+    st.subheader("MVP Return Plot (Coming Soon)")
+    st.info("Plotting logic will go here.")
