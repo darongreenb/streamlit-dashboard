@@ -10,13 +10,12 @@ st.title("NBA Futures: Active & Realized Payouts by Market")
 
 # --- DB Connections with st.cache_resource ---
 @st.cache_resource
-
 def get_betting_conn():
     return pymysql.connect(
-        host=st.secrets["DB_HOST"],
-        user=st.secrets["DB_USER"],
-        password=st.secrets["DB_PASSWORD"],
-        database=st.secrets["DB_NAME"],
+        host=st.secrets["BETTING_DB"]["host"],
+        user=st.secrets["BETTING_DB"]["user"],
+        password=st.secrets["BETTING_DB"]["password"],
+        database=st.secrets["BETTING_DB"]["database"],
         cursorclass=pymysql.cursors.DictCursor
     )
 
