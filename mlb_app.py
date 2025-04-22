@@ -2,12 +2,14 @@ import streamlit as st
 import pymysql
 from collections import defaultdict
 import pandas as pd
+from datetime import datetime, timedelta
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import re
 
-st.set_page_config(page_title="NBA Futures EV Dashboard", layout="wide")
-st.title("NBA Futures: Active & Realized Payouts by Market")
+st.set_page_config(page_title="NBA Futures Dashboard", layout="wide")
 
-# ----------- DB Connection Helpers (Fresh each time) --------------
+# --- DB Connection Helpers ---
 def get_betting_conn():
     return pymysql.connect(
         host=st.secrets["BETTING_DB"]["host"],
@@ -26,7 +28,7 @@ def get_futures_conn():
         cursorclass=pymysql.cursors.DictCursor
     )
 
-# ----------- Odds helpers ----------------
+# --- Odds Helpers ---
 def american_odds_to_decimal(odds):
     return 1.0 + (odds / 100.0) if odds > 0 else 1.0 + (100.0 / abs(odds)) if odds != 0 else 1.0
 
@@ -42,148 +44,107 @@ def safe_cast_odds(val):
         return 0
     except: return 0
 
-# ----------- Mappings ----------------
+# --- Mappings ---
 futures_table_map = {
     ("Championship", "NBA Championship"): "NBAChampionship",
     ("Conference Winner", "Eastern Conference"): "NBAEasternConference",
     ("Conference Winner", "Western Conference"): "NBAWesternConference",
-    ("Defensive Player of Year Award", "Award"): "NBADefensivePotY",
-    ("Division Winner", "Atlantic Division"): "NBAAtlantic",
-    ("Division Winner", "Central Division"): "NBACentral",
-    ("Division Winner", "Northwest Division"): "NBANorthwest",
-    ("Division Winner", "Pacific Division"): "NBAPacific",
-    ("Division Winner", "Southeast Division"): "NBASoutheast",
-    ("Division Winner", "Southwest Division"): "NBASouthwest",
-    ("Most Improved Player Award", "Award"): "NBAMIP",
-    ("Most Valuable Player Award", "Award"): "NBAMVP",
-    ("Rookie of Year Award", "Award"): "NBARotY",
-    ("Sixth Man of Year Award", "Award"): "NBASixthMotY",
+    ("Most Valuable Player Award", "Award"): "NBAMVP"
 }
 
-team_alias_map = {
-    "Philadelphia 76ers": "76ers", "Milwaukee Bucks": "Bucks", "Chicago Bulls": "Bulls",
-    "Cleveland Cavaliers": "Cavaliers", "Boston Celtics": "Celtics", "Los Angeles Clippers": "Clippers",
-    "Memphis Grizzlies": "Grizzlies", "Atlanta Hawks": "Hawks", "Miami Heat": "Heat",
-    "Charlotte Hornets": "Hornets", "Utah Jazz": "Jazz", "Sacramento Kings": "Kings",
-    "New York Knicks": "Knicks", "Los Angeles Lakers": "Lakers", "Orlando Magic": "Magic",
-    "Dallas Mavericks": "Mavericks", "Brooklyn Nets": "Nets", "Denver Nuggets": "Nuggets",
-    "Indiana Pacers": "Pacers", "New Orleans Pelicans": "Pelicans", "Detroit Pistons": "Pistons",
-    "Toronto Raptors": "Raptors", "Houston Rockets": "Rockets", "San Antonio Spurs": "Spurs",
-    "Phoenix Suns": "Suns", "Oklahoma City Thunder": "Thunder", "Minnesota Timberwolves": "Timberwolves",
-    "Portland Trail Blazers": "Trail Blazers", "Golden State Warriors": "Warriors", "Washington Wizards": "Wizards",
-}
-
+team_alias_map = {"Philadelphia 76ers": "76ers", "Milwaukee Bucks": "Bucks", "Boston Celtics": "Celtics", "Denver Nuggets": "Nuggets"}  # add more if needed
 sportsbook_cols = ["BetMGM", "DraftKings", "Caesars", "ESPNBet", "FanDuel", "BallyBet", "RiversCasino", "Bet365"]
 
-def get_best_decimal_and_probability(event_type, event_label, participant, futures_conn):
+def get_best_odds(event_type, event_label, participant, snapshot_date, conn):
     table = futures_table_map.get((event_type, event_label))
     if not table:
-        return 1.0, 0.0
+        return 0
     alias = team_alias_map.get(participant, participant)
-    with futures_conn.cursor() as cur:
+    with conn.cursor() as cur:
         cur.execute(f"""
-            SELECT {','.join(sportsbook_cols)}
-            FROM {table}
-            WHERE team_name = %s
-            ORDER BY date_created DESC
-        """, (alias,))
-        rows = cur.fetchall()
-    for row in rows:
-        odds = [safe_cast_odds(row[col]) for col in sportsbook_cols]
-        nonzero = [o for o in odds if o != 0]
-        if nonzero:
-            best = max(nonzero)
-            return american_odds_to_decimal(best), american_odds_to_probability(best)
-    return 1.0, 0.0
+            SELECT {','.join(sportsbook_cols)} FROM {table}
+            WHERE team_name = %s AND date_created <= %s
+            ORDER BY date_created DESC LIMIT 1
+        """, (alias, snapshot_date))
+        row = cur.fetchone()
+    if not row:
+        return 0
+    odds = [safe_cast_odds(row[col]) for col in sportsbook_cols]
+    nonzero = [o for o in odds if o != 0]
+    return max(nonzero) if nonzero else 0
 
-# ----------- Main processing ----------------
-
-def main():
+# --- Return Plot Page ---
+def render_return_plot():
+    st.header("NBA Futures Return Plot")
     betting_conn = get_betting_conn()
     futures_conn = get_futures_conn()
 
-    # --- Query 1: Active Bets ---
-    active_bets = defaultdict(lambda: {"pot": 0.0, "stake": 0.0, "legs": []})
-    with betting_conn.cursor() as cur:
-        cur.execute("""
-            SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake,
-                   l.EventType, l.EventLabel, l.ParticipantName
-            FROM bets b
-            JOIN legs l ON b.WagerID = l.WagerID
+    event_type = st.selectbox("Select Event Type", sorted(set(k[0] for k in futures_table_map)))
+    options = [label for (etype, label) in futures_table_map if etype == event_type]
+    event_label = st.selectbox("Select Event Label", options)
+    start = st.date_input("Start Date", datetime.now().date() - timedelta(days=30))
+    end = st.date_input("End Date", datetime.now().date())
+
+    if st.button("Generate Return Plot"):
+        cur = betting_conn.cursor()
+        cur.execute(f"""
+            SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake, b.DateTimePlaced, b.LegCount,
+                   l.LegID, l.ParticipantName, l.EventType, l.EventLabel
+            FROM bets b JOIN legs l ON b.WagerID = l.WagerID
             WHERE b.WhichBankroll = 'GreenAleph' AND b.WLCA = 'Active' AND l.LeagueName = 'NBA'
         """)
-        for row in cur.fetchall():
-            bet = active_bets[row["WagerID"]]
-            bet["pot"] = bet["pot"] or float(row["PotentialPayout"] or 0.0)
-            bet["stake"] = bet["stake"] or float(row["DollarsAtStake"] or 0.0)
-            bet["legs"].append((row["EventType"], row["EventLabel"], row["ParticipantName"]))
+        bets = cur.fetchall()
+        cur.close()
 
-    active_stake, active_payout = defaultdict(float), defaultdict(float)
-    for b in active_bets.values():
-        pot, stake, legs = b["pot"], b["stake"], b["legs"]
-        probs, decs = [], []
-        for et, el, pn in legs:
-            d, p = get_best_decimal_and_probability(et, el, pn, futures_conn)
-            probs.append(p)
-            decs.append((d, et, el))
-        if 0 in probs:
-            continue
-        prob = 1.0
-        for p in probs:
-            prob *= p
-        expected = pot * prob
-        sum_excess = sum(d - 1.0 for d, _, _ in decs)
-        if sum_excess <= 0:
-            continue
-        for d, et, el in decs:
-            frac = (d - 1.0) / sum_excess
-            active_stake[(et, el)] += frac * stake
-            active_payout[(et, el)] += frac * expected
+        bet_map = defaultdict(lambda: {"pot": 0.0, "stake": 0.0, "placed": None, "legs": []})
+        for row in bets:
+            w = row["WagerID"]
+            bet_map[w]["pot"] = row["PotentialPayout"]
+            bet_map[w]["stake"] = row["DollarsAtStake"]
+            bet_map[w]["placed"] = row["DateTimePlaced"]
+            bet_map[w]["legs"].append((row["EventType"], row["EventLabel"], row["ParticipantName"]))
 
-    # --- Query 2: Realized Net Profit ---
-    realized_net = defaultdict(float)
-    with betting_conn.cursor() as cur:
-        cur.execute("""
-            SELECT b.WagerID, b.NetProfit, l.EventType, l.EventLabel, l.ParticipantName
-            FROM bets b
-            JOIN legs l ON b.WagerID = l.WagerID
-            WHERE b.WhichBankroll = 'GreenAleph'
-              AND b.WLCA IN ('Win','Loss','Cashout')
-              AND l.LeagueName = 'NBA'
-        """)
-        results = cur.fetchall()
+        series = []
+        for cur_date in pd.date_range(start=start, end=end):
+            dt = datetime.combine(cur_date, datetime.max.time())
+            total_net, total_stake = 0.0, 0.0
+            for bet in bet_map.values():
+                if bet["placed"] > dt: continue
+                prob = 1.0
+                decs = []
+                for et, el, pn in bet["legs"]:
+                    odds = get_best_odds(et, el, pn, dt, futures_conn)
+                    if odds == 0: prob = 0.0; break
+                    dec = american_odds_to_decimal(odds)
+                    decs.append((dec, et))
+                    prob *= american_odds_to_probability(odds)
+                if prob == 0: continue
+                net = (bet["pot"] * prob) - bet["stake"]
+                sum_excess = sum(d - 1 for d, _ in decs)
+                if sum_excess <= 0: continue
+                for d, et in decs:
+                    if et == event_type:
+                        frac = (d - 1) / sum_excess
+                        total_net += frac * net
+                        total_stake += frac * bet["stake"]
+            pct = (total_net / total_stake * 100) if total_stake > 0 else 0.0
+            series.append((cur_date, pct))
 
-    realized_legs = defaultdict(list)
-    for r in results:
-        realized_legs[r["WagerID"]].append((r["EventType"], r["EventLabel"], r["ParticipantName"], float(r["NetProfit"] or 0.0)))
+        if series:
+            dates, values = zip(*series)
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.plot(dates, values, marker='o')
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+            ax.set_title(f"% Return Over Time: {event_type} - {event_label}")
+            ax.set_ylabel("Return (%)")
+            ax.set_xlabel("Date")
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
 
-    for legs in realized_legs.values():
-        net = legs[0][3]
-        decs = [(get_best_decimal_and_probability(et, el, pn, futures_conn)[0], et, el) for et, el, pn, _ in legs]
-        s_exc = sum(d - 1.0 for d, _, _ in decs)
-        if s_exc <= 0:
-            continue
-        for d, et, el in decs:
-            realized_net[(et, el)] += net * ((d - 1.0) / s_exc)
+# --- Routing ---
+page = st.sidebar.radio("Select Page", ["EV Table", "Return Plot"])
 
-    # --- Final Output ---
-    records = []
-    all_keys = set(active_stake) | set(active_payout) | set(realized_net)
-    for k in sorted(all_keys):
-        stake = active_stake.get(k, 0.0)
-        payout = active_payout.get(k, 0.0)
-        net = realized_net.get(k, 0.0)
-        ev = payout - stake + net
-        records.append({
-            "EventType": k[0],
-            "EventLabel": k[1],
-            "ActiveDollarsAtStake": round(stake, 2),
-            "ActiveExpectedPayout": round(payout, 2),
-            "RealizedNetProfit": round(net, 2),
-            "ExpectedValue": round(ev, 2),
-        })
-
-    df = pd.DataFrame(records).sort_values(["EventType", "EventLabel"]).reset_index(drop=True)
-    st.dataframe(df, use_container_width=True)
-
-main()
+if page == "EV Table":
+    main()
+elif page == "Return Plot":
+    render_return_plot()
