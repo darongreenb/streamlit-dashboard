@@ -107,7 +107,6 @@ def ev_table_page():
     fut_conn = new_futures_conn()
     now      = datetime.utcnow()
 
-    # Active wagers -------------------------------------------------------
     q_active = """
         SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake,
                l.EventType, l.EventLabel, l.ParticipantName
@@ -134,14 +133,13 @@ def ev_table_page():
             decs.append((dec,et,el)); prob*=p
         if prob==0: continue
         expected = pot * prob
-        sum_exc  = sum(d-1 for d,*,_ in decs)
+        sum_exc  = sum(d - 1 for d, _, _ in decs)          # ### FIX ###
         if sum_exc<=0: continue
         for d,et,el in decs:
             w = (d-1)/sum_exc
             active_stake[(et,el)] += w*stake
             active_exp  [(et,el)] += w*expected
 
-    # Realised net profit -------------------------------------------------
     q_real = """
         SELECT b.WagerID, b.NetProfit,
                l.EventType, l.EventLabel, l.ParticipantName
@@ -163,14 +161,13 @@ def ev_table_page():
     for wid,legs in wager_legs.items():
         net=wager_net[wid]
         decs=[(best_odds_decimal_prob(et,el,pn,now,fut_conn)[0],et,el) for et,el,pn in legs]
-        sum_exc=sum(d-1 for d,_,_ in decs)
+        sum_exc=sum(d - 1 for d, _, _ in decs)              # ### FIX ###
         if sum_exc<=0: continue
         for d,et,el in decs:
             realized_np[(et,el)] += net*((d-1)/sum_exc)
 
     bet_conn.close(); fut_conn.close()
 
-    # DataFrame & display -------------------------------------------------
     keys=set(active_stake)|set(active_exp)|set(realized_np)
     out=[]
     for et,el in sorted(keys):
@@ -192,7 +189,6 @@ def return_plot_page_fast():
     fut_conn = new_futures_conn()
     bet_conn = new_betting_conn()
 
-    # User filters --------------------------------------------------------
     ev_types = sorted({t for (t, _) in futures_table_map})
     sel_type = st.selectbox("Event Type", ev_types)
     labels   = sorted({lbl for (t, lbl) in futures_table_map if t == sel_type})
@@ -207,7 +203,6 @@ def return_plot_page_fast():
     if not st.button("Generate Plot"): 
         st.info("Adjust filters and click **Generate Plot**"); return
 
-    # Load active wagers --------------------------------------------------
     with with_cursor(bet_conn) as cur:
         cur.execute("""
             SELECT b.WagerID,b.PotentialPayout,b.DollarsAtStake,b.DateTimePlaced,
@@ -219,7 +214,6 @@ def return_plot_page_fast():
     bet_df=pd.DataFrame(bet_rows)
     if bet_df.empty: st.warning("No active wagers"); return
 
-    # Weights (only wagers that include the selected market) --------------
     wgt = (bet_df
            .assign(is_sel=lambda d:(d["EventType"]==sel_type)&(d["EventLabel"]==sel_lbl))
            .groupby("WagerID")
@@ -231,7 +225,6 @@ def return_plot_page_fast():
     st.write(f"**{num_wagers} active wagers include that market.**")
     if num_wagers==0: return
 
-    # Bulk-load odds snapshot --------------------------------------------
     participants = bet_df["ParticipantName"].map(lambda x: team_alias_map.get(x,x)).unique().tolist()
     tbl_name     = futures_table_map[(sel_type,sel_lbl)]
 
@@ -260,16 +253,13 @@ def return_plot_page_fast():
     odds_df=cached_odds(tbl_name,participants,start_date,end_date)
     if odds_df.empty: st.warning("No odds data in that window"); return
 
-    # Daily return series (vectorised) ------------------------------------
     bet_meta=bet_df[["WagerID","PotentialPayout","DollarsAtStake","DateTimePlaced"]].drop_duplicates()
     merged=(bet_df.merge(odds_df, how="left", left_on="ParticipantName", right_on="team_name")
-                    .merge(wgt, on="WagerID", how="inner")
-           )
-
+                    .merge(wgt, on="WagerID", how="inner"))
     merged.dropna(subset=["prob"],inplace=True)
     merged["date"]=pd.to_datetime(merged["date"])
 
-    # --- NEW: ensure numeric dtypes so multiplication is safe ------------
+    # ensure numeric
     for col in ("PotentialPayout","DollarsAtStake","prob","Weight"):
         merged[col]=pd.to_numeric(merged[col], errors="coerce").fillna(0.0)
 
