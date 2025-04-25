@@ -260,7 +260,7 @@ def return_plot_page_fast():
                   .reset_index())
     series["pct"]=series["net"]/series["stake"]*100
     series=series[(series["date"].dt.date>=start_date)&(series["date"].dt.date<=end_date)]
-    if series.empty.any(): st.warning("Insufficient data"); return
+    if series.empty(): st.warning("Insufficient data"); return
 
     fig,ax=plt.subplots(figsize=(10,5))
     ax.plot(series["date"],series["pct"],marker="o")
