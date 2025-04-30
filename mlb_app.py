@@ -6,36 +6,21 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
-# ────────── PAGE CONFIG ──────────
 st.set_page_config(page_title="NBA Futures Dashboard", layout="wide")
 
 # ────────── DB HELPERS ──────────
 
 def new_betting_conn():
-    return pymysql.connect(
-        host=st.secrets["BETTING_DB"]["host"],
-        user=st.secrets["BETTING_DB"]["user"],
-        password=st.secrets["BETTING_DB"]["password"],
-        database=st.secrets["BETTING_DB"]["database"],
-        cursorclass=pymysql.cursors.DictCursor,
-        autocommit=True,
-    )
+    return pymysql.connect(**st.secrets["BETTING_DB"], cursorclass=pymysql.cursors.DictCursor, autocommit=True)
 
 def new_futures_conn():
-    return pymysql.connect(
-        host=st.secrets["FUTURES_DB"]["host"],
-        user=st.secrets["FUTURES_DB"]["user"],
-        password=st.secrets["FUTURES_DB"]["password"],
-        database=st.secrets["FUTURES_DB"]["database"],
-        cursorclass=pymysql.cursors.DictCursor,
-        autocommit=True,
-    )
+    return pymysql.connect(**st.secrets["FUTURES_DB"], cursorclass=pymysql.cursors.DictCursor, autocommit=True)
 
 def with_cursor(conn):
     conn.ping(reconnect=True)
     return conn.cursor()
 
-# ────────── ODDS / UTILS ──────────
+# ────────── ODDS & UTIL ──────────
 
 def american_odds_to_decimal(o:int)->float:
     return 1 + (o/100) if o>0 else 1 + 100/abs(o) if o else 1
@@ -70,102 +55,97 @@ futures_table_map = {
     ("Sixth Man of Year Award", "Award"): "NBASixthMotY",
 }
 
-team_alias_map = {
-    "Atlanta Hawks": "Hawks", "Boston Celtics": "Celtics", "Brooklyn Nets": "Nets",
-    "Charlotte Hornets": "Hornets", "Chicago Bulls": "Bulls", "Cleveland Cavaliers": "Cavaliers",
-    "Dallas Mavericks": "Mavericks", "Denver Nuggets": "Nuggets", "Detroit Pistons": "Pistons",
-    "Golden State Warriors": "Warriors", "Houston Rockets": "Rockets", "Indiana Pacers": "Pacers",
-    "LA Clippers": "Clippers", "Los Angeles Clippers": "Clippers", "Los Angeles Lakers": "Lakers",
-    "Memphis Grizzlies": "Grizzlies", "Miami Heat": "Heat", "Milwaukee Bucks": "Bucks",
-    "Minnesota Timberwolves": "Timberwolves", "New Orleans Pelicans": "Pelicans",
-    "New York Knicks": "Knicks", "Oklahoma City Thunder": "Thunder", "Orlando Magic": "Magic",
-    "Philadelphia 76ers": "76ers", "Phoenix Suns": "Suns", "Portland Trail Blazers": "Trail Blazers",
-    "Sacramento Kings": "Kings", "San Antonio Spurs": "Spurs", "Toronto Raptors": "Raptors",
-    "Utah Jazz": "Jazz", "Washington Wizards": "Wizards"
-}
+team_alias_map = {n:n.split()[-1] if n.startswith("Los") else n.split(maxsplit=1)[-1] for n in [
+    "Atlanta Hawks","Boston Celtics","Brooklyn Nets","Charlotte Hornets","Chicago Bulls","Cleveland Cavaliers","Dallas Mavericks","Denver Nuggets","Detroit Pistons","Golden State Warriors","Houston Rockets","Indiana Pacers","LA Clippers","Los Angeles Clippers","Los Angeles Lakers","Memphis Grizzlies","Miami Heat","Milwaukee Bucks","Minnesota Timberwolves","New Orleans Pelicans","New York Knicks","Oklahoma City Thunder","Orlando Magic","Philadelphia 76ers","Phoenix Suns","Portland Trail Blazers","Sacramento Kings","San Antonio Spurs","Toronto Raptors","Utah Jazz","Washington Wizards"]}
 
-sportsbook_cols = [
-    "BetMGM", "DraftKings", "Caesars", "ESPNBet", "FanDuel",
-    "BallyBet", "RiversCasino", "Bet365",
-]
+sportsbook_cols = ["BetMGM","DraftKings","Caesars","ESPNBet","FanDuel","BallyBet","RiversCasino","Bet365"]
 
-# ────────── CORE HELPERS ──────────
+# ────────── CORE HELPER ──────────
 
-def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, fut_conn):
-    tbl = futures_table_map.get((event_type, event_label))
+def best_odds_decimal_prob(event_type,event_label,participant,cutoff_dt,fut_conn):
+    tbl=futures_table_map.get((event_type,event_label))
     if not tbl:
-        return 1.0, 0.0
-    alias = team_alias_map.get(participant, participant)
+        return 1.0,0.0
+    alias=team_alias_map.get(participant,participant)
     with with_cursor(fut_conn) as cur:
-        cur.execute(
-            f"SELECT {','.join(sportsbook_cols)} FROM {tbl} WHERE team_name=%s AND date_created<=%s ORDER BY date_created DESC LIMIT 1",
-            (alias, cutoff_dt),
-        )
-        row = cur.fetchone()
+        cur.execute(f"SELECT {','.join(sportsbook_cols)} FROM {tbl} WHERE team_name=%s AND date_created<=%s ORDER BY date_created DESC LIMIT 1",(alias,cutoff_dt))
+        row=cur.fetchone()
     if not row:
-        return 1.0, 0.0
-    nums = [cast_odds(row[c]) for c in sportsbook_cols if cast_odds(row[c])]
+        return 1.0,0.0
+    nums=[cast_odds(row[c]) for c in sportsbook_cols if cast_odds(row[c])]
     if not nums:
-        return 1.0, 0.0
-    best = max(nums)
-    return american_odds_to_decimal(best), american_odds_to_prob(best)
+        return 1.0,0.0
+    best=max(nums)
+    return american_odds_to_decimal(best),american_odds_to_prob(best)
 
-# ────────── EV TABLE BUILD & PAGE ──────────
+# ────────── EV TABLE PAGE ──────────
 
-def build_ev_dataframe(now: datetime):
-    bet_conn, fut_conn = new_betting_conn(), new_futures_conn()
-
-    # Active rows
-    with with_cursor(bet_conn) as cur:
-        cur.execute("""
-            SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake,
-                   l.EventType, l.EventLabel, l.ParticipantName
-              FROM bets b JOIN legs l ON b.WagerID=l.WagerID
-             WHERE b.WhichBankroll='GreenAleph' AND b.WLCA='Active' AND l.LeagueName='NBA'""")
-        active_rows = cur.fetchall()
-
-    active_bets = defaultdict(lambda:{"pot":0,"stake":0,"legs":[]})
-    for r in active_rows:
-        d = active_bets[r["WagerID"]]
-        d["pot"]   = d["pot"]   or float(r["PotentialPayout"] or 0)
-        d["stake"] = d["stake"] or float(r["DollarsAtStake"] or 0)
-        d["legs"].append((r["EventType"], r["EventLabel"], r["ParticipantName"]))
-
-    active_stake, active_exp = defaultdict(float), defaultdict(float)
-    for pot, stake, legs in [(v["pot"],v["stake"],v["legs"]) for v in active_bets.values()]:
-        decs, prob = [], 1.0
-        for et,el,pn in legs:
-            dec,p = best_odds_decimal_prob(et,el,pn,now,fut_conn)
-            if p==0:
-                prob=0; break
-            decs.append((dec,et,el)); prob*=p
-        if prob==0: continue
-        expected = pot*prob
-        sum_exc = sum(d-1 for d,_,_ in decs)
-        if sum_exc<=0: continue
-        for d,et,el in decs:
-            w=(d-1)/sum_exc
-            active_stake[(et,el)]+=w*stake
-            active_exp[(et,el)]  +=w*expected
-
-    # Resolved
-    with with_cursor(bet_conn) as cur:
-        cur.execute("""
-            SELECT b.WagerID, b.NetProfit,
-                   l.EventType, l.EventLabel, l.ParticipantName
-              FROM bets b JOIN legs l ON b.WagerID=l.WagerID
-             WHERE b.WhichBankroll='GreenAleph' AND b.WLCA IN('Win','Loss','Cashout') AND l.LeagueName='NBA'""")
-        res_rows = cur.fetchall()
-
-    wager_net, wager_legs = defaultdict(float), defaultdict(list)
-    for r in res_rows:
-        wager_net[r["WagerID"]]=float(r["NetProfit"] or 0)
-        wager_legs[r["WagerID"]].append((r["EventType"],r["EventLabel"],r["ParticipantName"]))
-
-    realized_np=defaultdict(float)
-    for wid,legs in wager_legs.items():
-        net=wager_net[wid]
-        decs=[(best_odds_decimal_prob(et,el,pn,now,fut_conn)[0],et,el) for et,el,pn in legs]
+def build_ev_dataframe(now:datetime):
+    bet,fut=new_betting_conn(),new_futures_conn()
+    with with_cursor(bet) as cur:
+        cur.execute("SELECT b.WagerID,b.PotentialPayout,b.DollarsAtStake,l.EventType,l.EventLabel,l.ParticipantName FROM bets b JOIN legs l ON b.WagerID=l.WagerID WHERE b.WhichBankroll='GreenAleph' AND l.LeagueName='NBA'")
+        rows=cur.fetchall()
+    df=pd.DataFrame(rows)
+    if df.empty:
+        return pd.DataFrame()
+    active=df[df.WLCA=='Active'].copy(); resolved=df[df.WLCA.isin(['Win','Loss','Cashout'])].copy()
+    act_group=defaultdict(float); act_exp=defaultdict(float)
+    for wid,g in active.groupby('WagerID'):
+        pot=g.PotentialPayout.iloc[0]; stake=g.DollarsAtStake.iloc[0]
+        decs=[(best_odds_decimal_prob(r.EventType,r.EventLabel,r.ParticipantName,now,fut)[0],r.EventType,r.EventLabel) for _,r in g.iterrows()]
         sum_exc=sum(d-1 for d,_,_ in decs)
         if sum_exc<=0: continue
-        for d,et,el
+        prob=1
+        for d,et,el in decs: prob*= american_odds_to_prob(int((d-1)*100))
+        expected=pot*prob
+        for d,et,el in decs:
+            w=(d-1)/sum_exc
+            act_group[(et,el)]+=w*stake
+            act_exp[(et,el)]+=w*expected
+    res_np=defaultdict(float)
+    for wid,g in resolved.groupby('WagerID'):
+        net=g.NetProfit.iloc[0]
+        legs=[(r.EventType,r.EventLabel,r.ParticipantName) for _,r in g.iterrows()]
+        decs=[(best_odds_decimal_prob(et,el,pn,now,fut)[0],et,el) for et,el,pn in legs]; sum_exc=sum(d-1 for d,_,_ in decs)
+        if sum_exc<=0: continue
+        for d,et,el in decs:
+            res_np[(et,el)]+=net*((d-1)/sum_exc)
+    keys=set(act_group)|set(act_exp)|set(res_np)
+    out=[]
+    for et,el in keys:
+        stake=act_group.get((et,el),0); exp=act_exp.get((et,el),0); net=res_np.get((et,el),0)
+        out.append(dict(EventType=et,EventLabel=el,ActiveStake=round(stake,2),ActiveExp=round(exp,2),Realized=round(net,2),EV=round(exp-stake+net,2)))
+    return pd.DataFrame(out).sort_values(['EventType','EventLabel'])
+
+def ev_table_page():
+    st.subheader("EV Table")
+    now=datetime.utcnow()
+    df=build_ev_dataframe(now)
+    if df.empty:
+        st.info("No NBA wagers found"); return
+    st.dataframe(df,use_container_width=True)
+
+# ────────── ODDS MOVEMENT PAGE ──────────
+
+def odds_movement_page():
+    st.subheader("Weekly Odds Movement (Top‑5)")
+    fut=new_futures_conn()
+    etype=st.selectbox("Event Type",sorted({t for t,_ in futures_table_map}),key='om1')
+    elabel=st.selectbox("Event Label",sorted({l for t,l in futures_table_map if t==etype}),key='om2')
+    col1,col2=st.columns(2)
+    sd=col1.date_input("Start",datetime.utcnow().date()-timedelta(120))
+    ed=col2.date_input("End",datetime.utcnow().date())
+    if sd>ed:
+        st.error("Start after End"); return
+    if not st.button("Plot",key='plot'): return
+    tbl=futures_table_map[(etype,elabel)]
+    with with_cursor(fut) as cur:
+        cur.execute(f"SELECT team_name,date_created,{','.join(sportsbook_cols)} FROM {tbl} WHERE date_created BETWEEN %s AND %s",(f"{sd} 00:00:00",f"{ed} 23:59:59"))
+        raw=pd.DataFrame(cur.fetchall())
+    if raw.empty:
+        st.warning("No odds data"); return
+    raw[sportsbook_cols]=raw[sportsbook_cols].apply(pd.to_numeric,errors='coerce').fillna(0)
+    raw['best']=raw[sportsbook_cols].replace(0,pd.NA).max(axis=1).fillna(0).astype(int)
+    raw['prob']=raw['best'].apply(american_odds_to_prob)
+    raw['date']=pd.to_datetime(raw['date_created']).dt.date
+    raw=raw.sort_values(['team_name','date']).groupby(['team
