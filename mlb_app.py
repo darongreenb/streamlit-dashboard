@@ -37,7 +37,7 @@ def main():
 
     market_table = st.selectbox("Select Market Table", market_options + division_tables)
     col1, col2 = st.columns(2)
-    start_date = col1.date_input("Start Date", datetime(2024, 12, 31))
+    start_date = col1.date_input("Start Date", datetime(2024, 10, 15))
     end_date   = col2.date_input("End Date", datetime(2025, 4, 30))
 
     if start_date > end_date:
