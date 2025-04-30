@@ -671,7 +671,7 @@ elif page == "NBA Charts":
     # NBA Charts
     st.title('NBA Active Bets - GA1')
 
-    # --- teams we want to DROP for title / conference markets ---
+    # --- teams to EXCLUDE for “Championship” / “Conference Winner” ---
     EXCLUDED_NBA_TEAMS = [
         'Brooklyn Nets', 'Chicago Bulls', 'Dallas Mavericks',
         'New Orleans Pelicans', 'Philadelphia 76ers', 'Phoenix Suns',
@@ -680,7 +680,7 @@ elif page == "NBA Charts":
         'Atlanta Hawks', 'Charlotte Hornets'
     ]
 
-    # SQL query to fetch data for the first bar chart
+    # 1️⃣  Active-principal by EventType  ───────────────────────────
     first_chart_query = """
     WITH DistinctBets AS (
         SELECT DISTINCT WagerID, DollarsAtStake
@@ -689,259 +689,211 @@ elif page == "NBA Charts":
           AND WLCA = 'Active'
     ),
     EventTypeSums AS (
-        SELECT 
-            l.EventType,
-            ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
-        FROM 
-            DistinctBets db
-        JOIN 
-            (SELECT DISTINCT WagerID, EventType, LeagueName FROM legs) l ON db.WagerID = l.WagerID
-        WHERE
-            l.LeagueName = 'NBA'
-        GROUP BY 
-            l.EventType
+        SELECT l.EventType,
+               ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
+        FROM DistinctBets db
+        JOIN (SELECT DISTINCT WagerID, EventType, LeagueName
+              FROM legs) l ON db.WagerID = l.WagerID
+        WHERE l.LeagueName = 'NBA'
+        GROUP BY l.EventType
     )
     SELECT * FROM EventTypeSums
     UNION ALL
-    SELECT 
-        'Total' AS EventType,
-        ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
-    FROM 
-        DistinctBets db
-    JOIN 
-        (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
-    WHERE
-        l.LeagueName = 'NBA';
+    SELECT 'Total' AS EventType,
+           ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
+    FROM DistinctBets db
+    JOIN (SELECT DISTINCT WagerID, LeagueName
+          FROM legs) l ON db.WagerID = l.WagerID
+    WHERE l.LeagueName = 'NBA';
     """
+    first_chart_df = pd.DataFrame(get_data_from_db(first_chart_query))
+    first_chart_df['TotalDollarsAtStake'] = first_chart_df['TotalDollarsAtStake'].astype(float).round(0)
+    first_chart_df = first_chart_df.sort_values('TotalDollarsAtStake')
 
-    # Fetch the data for the first bar chart
-    first_chart_data = get_data_from_db(first_chart_query)
+    pastel = ['#a0d8f1', '#f4a261', '#e76f51', '#8ecae6', '#219ebc',
+              '#023047', '#ffb703', '#fb8500', '#d4a5a5', '#9ab0a8']
+    fig, ax = plt.subplots(figsize=(15, 10))
+    ax.bar(first_chart_df['EventType'], first_chart_df['TotalDollarsAtStake'],
+           color=[pastel[i % len(pastel)] for i in range(len(first_chart_df))],
+           width=0.6, edgecolor='black')
+    ax.set_title('Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
+    ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
+    for bar in ax.patches:
+        ax.annotate(f'{bar.get_height():,.0f}',
+                    (bar.get_x() + bar.get_width()/2, bar.get_height()),
+                    xytext=(0, 3), textcoords='offset points',
+                    ha='center', va='bottom', fontsize=14, fontweight='bold')
+    plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+    ax.axhline(0, color='black', linewidth=0.8)
+    for s in ax.spines.values():
+        s.set_edgecolor('black'); s.set_linewidth(1.2)
+    st.pyplot(fig)
 
-    if first_chart_data is None:
-        st.error("Failed to fetch data from the database.")
-    else:
-        first_chart_df = pd.DataFrame(first_chart_data)
-        first_chart_df['TotalDollarsAtStake'] = first_chart_df['TotalDollarsAtStake'].astype(float).round(0)
-        first_chart_df = first_chart_df.sort_values('TotalDollarsAtStake', ascending=True)
+    # 2️⃣  Dropdowns  ───────────────────────────────────────────────
+    event_type_option = st.selectbox(
+        'Select EventType',
+        sorted(first_chart_df[first_chart_df['EventType'] != 'Total']['EventType'].unique())
+    )
+    if not event_type_option:
+        st.stop()
 
-        pastel_colors = ['#a0d8f1', '#f4a261', '#e76f51', '#8ecae6', '#219ebc',
-                         '#023047', '#ffb703', '#fb8500', '#d4a5a5', '#9ab0a8']
+    event_label_query = f"""
+    SELECT DISTINCT l.EventLabel
+    FROM bets b
+    JOIN legs l ON b.WagerID = l.WagerID
+    WHERE l.LeagueName = 'NBA'
+      AND l.EventType = '{event_type_option}'
+      AND b.WhichBankroll = 'GreenAleph'
+      AND b.WLCA = 'Active';
+    """
+    event_label_option = st.selectbox(
+        'Select EventLabel',
+        sorted(row['EventLabel'] for row in get_data_from_db(event_label_query))
+    )
+    if not event_label_option:
+        st.stop()
 
-        fig, ax = plt.subplots(figsize=(15, 10))
-        ax.bar(first_chart_df['EventType'], first_chart_df['TotalDollarsAtStake'],
-               color=[pastel_colors[i % len(pastel_colors)] for i in range(len(first_chart_df))],
-               width=0.6, edgecolor='black')
+    # 3️⃣  Active-principal & potential-payout chart (straight bets) ─
+    combined_query = f"""
+    WITH DistinctBets AS (
+        SELECT DISTINCT WagerID, DollarsAtStake, PotentialPayout
+        FROM bets
+        WHERE WhichBankroll = 'GreenAleph'
+          AND WLCA = 'Active'
+          AND LegCount = 1
+    )
+    SELECT l.ParticipantName,
+           SUM(db.DollarsAtStake)  AS TotalDollarsAtStake,
+           SUM(db.PotentialPayout) AS TotalPotentialPayout
+    FROM DistinctBets db
+    JOIN legs l ON db.WagerID = l.WagerID
+    WHERE l.LeagueName = 'NBA'
+      AND l.EventType = '{event_type_option}'
+      AND l.EventLabel = '{event_label_option}'
+    GROUP BY l.ParticipantName;
+    """
+    combined_df = pd.DataFrame(get_data_from_db(combined_query))
 
-        ax.set_title('Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
-        ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
-        for bar in ax.patches:
-            ax.annotate(f'{bar.get_height():,.0f}',
-                        (bar.get_x() + bar.get_width() / 2, bar.get_height()),
-                        xytext=(0, 3), textcoords='offset points',
-                        ha='center', va='bottom', fontsize=14, fontweight='bold')
-        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+    # ▸ exclude unwanted teams for title / conference markets
+    if event_type_option in ('Championship', 'Conference Winner'):
+        combined_df = combined_df[~combined_df['ParticipantName'].isin(EXCLUDED_NBA_TEAMS)]
+
+    if combined_df.empty:
+        st.warning("No data for selected filters.")
+        st.stop()
+
+    combined_df['ImpliedProbability'] = (
+        combined_df['TotalDollarsAtStake'] / combined_df['TotalPotentialPayout']
+    ) * 100
+
+    # 🔧  cast BEFORE round to avoid TypeError
+    combined_df['TotalDollarsAtStake']  = -combined_df['TotalDollarsAtStake'].astype(float).round(0)
+    combined_df['TotalPotentialPayout'] =  combined_df['TotalPotentialPayout'].astype(float).round(0)
+    combined_df = combined_df.sort_values('TotalDollarsAtStake')
+
+    fig, ax = plt.subplots(figsize=(18, 12))
+    bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'],
+                   color='lightblue', width=0.4, edgecolor='black')
+    bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'],
+                   color='beige', width=0.4, edgecolor='black')
+    ax.set_ylabel('USD ($) in MM', fontsize=16, fontweight='bold')
+    ax.set_title('Active Principal & Potential Payout (Straight Bets Only)',
+                 fontsize=18, fontweight='bold')
+    for i, bar1 in enumerate(bars1):
+        ax.annotate(f"{combined_df.iloc[i]['ImpliedProbability']:.1f}%",
+                    (bar1.get_x()+bar1.get_width()/2, bar1.get_height()),
+                    xytext=(0, -15), textcoords='offset points',
+                    ha='center', va='bottom', fontsize=12, fontweight='bold')
+    for bar2 in bars2:
+        ax.annotate(f"{bar2.get_height():,.0f}",
+                    (bar2.get_x()+bar2.get_width()/2, bar2.get_height()),
+                    xytext=(0, 3), textcoords='offset points',
+                    ha='center', va='bottom', fontsize=12, fontweight='bold', rotation=45)
+    plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
+    ax.legend([bars2, bars1], ['Potential Payout', 'Implied Probability (%)'])
+    ax.axhline(0, color='black', linewidth=0.8)
+    for s in ax.spines.values():
+        s.set_edgecolor('black'); s.set_linewidth(1.2)
+    ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 35000,
+                max(combined_df['TotalPotentialPayout']) + 80000)
+    st.pyplot(fig)
+
+    # 4️⃣  Parlays section  ────────────────────────────────────────
+    st.header("NBA Parlays - GA1")
+    parlay_count_query = f"""
+    SELECT l.ParticipantName,
+           COUNT(DISTINCT b.WagerID) AS NumberOfParlays
+    FROM bets b
+    JOIN legs l ON b.WagerID = l.WagerID
+    WHERE b.WhichBankroll = 'GreenAleph'
+      AND b.WLCA = 'Active'
+      AND b.LegCount > 1
+      AND l.LeagueName = 'NBA'
+      AND l.EventType = %s
+    GROUP BY l.ParticipantName
+    ORDER BY NumberOfParlays DESC;
+    """
+    parlay_df = pd.DataFrame(get_data_from_db(parlay_count_query, [event_type_option]))
+    if event_type_option in ('Championship', 'Conference Winner'):
+        parlay_df = parlay_df[~parlay_df['ParticipantName'].isin(EXCLUDED_NBA_TEAMS)]
+
+    if not parlay_df.empty:
+        st.subheader(f"Number of Parlays by Participant for {event_type_option}")
+        fig, ax = plt.subplots(figsize=(14, 8))
+        bars = ax.bar(parlay_df['ParticipantName'], parlay_df['NumberOfParlays'],
+                      color='skyblue', edgecolor='black')
+        ax.set_title(f"Parlay Involvement by Participant for {event_type_option} (GA1)",
+                     fontsize=18, fontweight='bold')
+        ax.set_ylabel("Number of Parlays", fontsize=14, fontweight='bold')
+        plt.xticks(rotation=45, ha='right', fontsize=12, fontweight='bold')
+        for bar in bars:
+            ax.annotate(f"{bar.get_height()}",
+                        (bar.get_x()+bar.get_width()/2, bar.get_height()),
+                        xytext=(0, 5), textcoords='offset points',
+                        ha='center', va='bottom', fontsize=12)
         ax.axhline(0, color='black', linewidth=0.8)
-        ax.set_facecolor('white')
-        for spine in ax.spines.values():
-            spine.set_edgecolor('black'); spine.set_linewidth(1.2)
-        plt.tight_layout()
+        for s in ax.spines.values():
+            s.set_edgecolor('black'); s.set_linewidth(1.2)
         st.pyplot(fig)
 
-        event_type_option = st.selectbox(
-            'Select EventType',
-            sorted(first_chart_df[first_chart_df['EventType'] != 'Total']['EventType'].unique())
-        )
+    parlay_dollars_query = f"""
+    SELECT l.ParticipantName,
+           SUM(b.DollarsAtStake) AS TotalDollarsAtStake
+    FROM bets b
+    JOIN legs l ON b.WagerID = l.WagerID
+    WHERE b.WhichBankroll = 'GreenAleph'
+      AND b.WLCA = 'Active'
+      AND b.LegCount > 1
+      AND l.LeagueName = 'NBA'
+      AND l.EventType = %s
+    GROUP BY l.ParticipantName
+    ORDER BY TotalDollarsAtStake DESC;
+    """
+    parlay_dollars_df = pd.DataFrame(get_data_from_db(parlay_dollars_query, [event_type_option]))
+    if event_type_option in ('Championship', 'Conference Winner'):
+        parlay_dollars_df = parlay_dollars_df[
+            ~parlay_dollars_df['ParticipantName'].isin(EXCLUDED_NBA_TEAMS)
+        ]
 
-        if event_type_option:
-            event_label_query = f"""
-            SELECT DISTINCT l.EventLabel
-            FROM bets b
-            JOIN legs l ON b.WagerID = l.WagerID
-            WHERE l.LeagueName = 'NBA'
-              AND l.EventType = '{event_type_option}'
-              AND b.WhichBankroll = 'GreenAleph'
-              AND b.WLCA = 'Active';
-            """
-            event_label_data = get_data_from_db(event_label_query)
-
-            if event_label_data is None:
-                st.error("Failed to fetch data from the database.")
-            else:
-                event_label_option = st.selectbox(
-                    'Select EventLabel',
-                    sorted(row['EventLabel'] for row in event_label_data)
-                )
-
-                if event_label_option:
-                    combined_query = f"""
-                    WITH DistinctBets AS (
-                        SELECT DISTINCT WagerID, DollarsAtStake, PotentialPayout
-                        FROM bets
-                        WHERE WhichBankroll = 'GreenAleph'
-                          AND WLCA = 'Active'
-                          AND LegCount = 1
-                    )
-                    SELECT l.ParticipantName,
-                           SUM(db.DollarsAtStake)  AS TotalDollarsAtStake,
-                           SUM(db.PotentialPayout) AS TotalPotentialPayout
-                    FROM DistinctBets db
-                    JOIN legs l ON db.WagerID = l.WagerID
-                    WHERE l.LeagueName = 'NBA'
-                      AND l.EventType = '{event_type_option}'
-                      AND l.EventLabel = '{event_label_option}'
-                    GROUP BY l.ParticipantName;
-                    """
-                    combined_data = get_data_from_db(combined_query)
-
-                    if combined_data is None:
-                        st.error("Failed to fetch data from the database.")
-                    else:
-                        combined_df = pd.DataFrame(combined_data)
-
-                        # --- EXCLUDE unwanted teams for title / conference charts ---
-                        if event_type_option in ('Championship', 'Conference Winner'):
-                            combined_df = combined_df[~combined_df['ParticipantName'].isin(EXCLUDED_NBA_TEAMS)]
-
-                        if combined_df.empty:
-                            st.warning("No data for selected filters.")
-                            st.stop()
-
-                        combined_df['ImpliedProbability'] = (combined_df['TotalDollarsAtStake']
-                                                             / combined_df['TotalPotentialPayout']) * 100
-                        combined_df['TotalDollarsAtStake'] = -combined_df['TotalDollarsAtStake'].round(0)
-                        combined_df['TotalPotentialPayout'] = combined_df['TotalPotentialPayout'].round(0)
-                        combined_df = combined_df.sort_values('TotalDollarsAtStake')
-
-                        fig, ax = plt.subplots(figsize=(18, 12))
-                        bars1 = ax.bar(combined_df['ParticipantName'], combined_df['TotalDollarsAtStake'],
-                                       color='lightblue', width=0.4, edgecolor='black')
-                        bars2 = ax.bar(combined_df['ParticipantName'], combined_df['TotalPotentialPayout'],
-                                       color='beige', width=0.4, edgecolor='black')
-
-                        ax.set_ylabel('USD ($) in MM', fontsize=16, fontweight='bold')
-                        ax.set_title('Active Principal & Potential Payout (Straight Bets Only)',
-                                     fontsize=18, fontweight='bold')
-
-                        for i, bar1 in enumerate(bars1):
-                            ax.annotate(f"{combined_df.iloc[i]['ImpliedProbability']:.1f}%",
-                                        (bar1.get_x() + bar1.get_width() / 2, bar1.get_height()),
-                                        xytext=(0, -15), textcoords='offset points',
-                                        ha='center', va='bottom', fontsize=12, fontweight='bold')
-                        for bar2 in bars2:
-                            ax.annotate(f"{bar2.get_height():,.0f}",
-                                        (bar2.get_x() + bar2.get_width() / 2, bar2.get_height()),
-                                        xytext=(0, 3), textcoords='offset points',
-                                        ha='center', va='bottom', fontsize=12, fontweight='bold', rotation=45)
-
-                        plt.xticks(rotation=45, ha='right', fontsize=14, fontweight='bold')
-                        ax.legend([bars2, bars1], ['Potential Payout', 'Implied Probability (%)'])
-                        ax.axhline(0, color='black', linewidth=0.8)
-                        ax.set_facecolor('white')
-                        for spine in ax.spines.values():
-                            spine.set_edgecolor('black'); spine.set_linewidth(1.2)
-                        ax.set_ylim(min(combined_df['TotalDollarsAtStake']) - 35000,
-                                    max(combined_df['TotalPotentialPayout']) + 80000)
-                        plt.tight_layout()
-                        st.pyplot(fig)
-
-            # ----------------------- PARLAYS SECTION -----------------------
-            st.header("NBA Parlays - GA1")
-
-            parlay_count_query = f"""
-            SELECT l.ParticipantName,
-                   COUNT(DISTINCT b.WagerID) AS NumberOfParlays
-            FROM bets b
-            JOIN legs l ON b.WagerID = l.WagerID
-            WHERE b.WhichBankroll = 'GreenAleph'
-              AND b.WLCA = 'Active'
-              AND b.LegCount > 1
-              AND l.LeagueName = 'NBA'
-              AND l.EventType = %s
-            GROUP BY l.ParticipantName
-            ORDER BY NumberOfParlays DESC;
-            """
-            parlay_data = get_data_from_db(parlay_count_query, [event_type_option])
-
-            if parlay_data is None:
-                st.error("Failed to fetch parlay data from the database.")
-            else:
-                parlay_df = pd.DataFrame(parlay_data)
-
-                if event_type_option in ('Championship', 'Conference Winner'):
-                    parlay_df = parlay_df[~parlay_df['ParticipantName'].isin(EXCLUDED_NBA_TEAMS)]
-
-                if parlay_df.empty:
-                    st.warning("No parlay data found for the selected EventType.")
-                else:
-                    st.subheader(f"Number of Parlays by Participant for {event_type_option}")
-                    fig, ax = plt.subplots(figsize=(14, 8))
-                    bars = ax.bar(parlay_df['ParticipantName'], parlay_df['NumberOfParlays'],
-                                  color='skyblue', edgecolor='black')
-                    ax.set_title(f"Parlay Involvement by Participant for {event_type_option} (GA1)",
-                                 fontsize=18, fontweight='bold')
-                    ax.set_ylabel("Number of Parlays", fontsize=14, fontweight='bold')
-                    plt.xticks(rotation=45, ha='right', fontsize=12, fontweight='bold')
-                    for bar in bars:
-                        ax.annotate(f"{bar.get_height()}",
-                                    (bar.get_x() + bar.get_width() / 2, bar.get_height()),
-                                    xytext=(0, 5), textcoords='offset points',
-                                    ha='center', va='bottom', fontsize=12)
-                    ax.axhline(0, color='black', linewidth=0.8)
-                    ax.set_facecolor('white')
-                    for spine in ax.spines.values():
-                        spine.set_edgecolor('black'); spine.set_linewidth(1.2)
-                    plt.tight_layout()
-                    st.pyplot(fig)
-
-                    parlay_dollars_query = f"""
-                    SELECT l.ParticipantName,
-                           SUM(b.DollarsAtStake) AS TotalDollarsAtStake
-                    FROM bets b
-                    JOIN legs l ON b.WagerID = l.WagerID
-                    WHERE b.WhichBankroll = 'GreenAleph'
-                      AND b.WLCA = 'Active'
-                      AND b.LegCount > 1
-                      AND l.LeagueName = 'NBA'
-                      AND l.EventType = %s
-                    GROUP BY l.ParticipantName
-                    ORDER BY TotalDollarsAtStake DESC;
-                    """
-                    parlay_dollars_data = get_data_from_db(parlay_dollars_query, [event_type_option])
-
-                    if parlay_dollars_data is None:
-                        st.error("Failed to fetch total dollars at stake in parlays data from the database.")
-                    else:
-                        parlay_dollars_df = pd.DataFrame(parlay_dollars_data)
-
-                        if event_type_option in ('Championship', 'Conference Winner'):
-                            parlay_dollars_df = parlay_dollars_df[
-                                ~parlay_dollars_df['ParticipantName'].isin(EXCLUDED_NBA_TEAMS)
-                            ]
-
-                        if parlay_dollars_df.empty:
-                            st.warning("No parlay dollar data found for the selected EventType.")
-                        else:
-                            st.subheader(f"Total Dollars At Stake in Parlays by Participant for {event_type_option}")
-                            fig, ax = plt.subplots(figsize=(14, 8))
-                            bars = ax.bar(parlay_dollars_df['ParticipantName'],
-                                          parlay_dollars_df['TotalDollarsAtStake'],
-                                          color='lightblue', edgecolor='black')
-                            ax.set_title(f"Total Dollars At Stake in Parlays by Participant for {event_type_option} (GA1)",
-                                         fontsize=18, fontweight='bold')
-                            ax.set_ylabel("Total Dollars At Stake ($)", fontsize=14, fontweight='bold')
-                            plt.xticks(rotation=45, ha='right', fontsize=12, fontweight='bold')
-                            for bar in bars:
-                                ax.annotate(f"${bar.get_height():,.0f}",
-                                            (bar.get_x() + bar.get_width() / 2, bar.get_height()),
-                                            xytext=(0, 5), textcoords='offset points',
-                                            ha='center', va='bottom', fontsize=12)
-                            ax.axhline(0, color='black', linewidth=0.8)
-                            ax.set_facecolor('white')
-                            for spine in ax.spines.values():
-                                spine.set_edgecolor('black'); spine.set_linewidth(1.2)
-                            plt.tight_layout()
-                            st.pyplot(fig)
-
+    if not parlay_dollars_df.empty:
+        st.subheader(f"Total Dollars At Stake in Parlays by Participant for {event_type_option}")
+        fig, ax = plt.subplots(figsize=(14, 8))
+        bars = ax.bar(parlay_dollars_df['ParticipantName'],
+                      parlay_dollars_df['TotalDollarsAtStake'],
+                      color='lightblue', edgecolor='black')
+        ax.set_title(f"Total Dollars At Stake in Parlays by Participant for {event_type_option} (GA1)",
+                     fontsize=18, fontweight='bold')
+        ax.set_ylabel("Total Dollars At Stake ($)", fontsize=14, fontweight='bold')
+        plt.xticks(rotation=45, ha='right', fontsize=12, fontweight='bold')
+        for bar in bars:
+            ax.annotate(f"${bar.get_height():,.0f}",
+                        (bar.get_x()+bar.get_width()/2, bar.get_height()),
+                        xytext=(0, 5), textcoords='offset points',
+                        ha='center', va='bottom', fontsize=12)
+        ax.axhline(0, color='black', linewidth=0.8)
+        for s in ax.spines.values():
+            s.set_edgecolor('black'); s.set_linewidth(1.2)
+        st.pyplot(fig)
 
 
 
