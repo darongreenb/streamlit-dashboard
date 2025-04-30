@@ -60,8 +60,17 @@ futures_table_map = {
 }
 
 team_alias_map = {
-    "Phoenix Suns": "Suns", "Milwaukee Bucks": "Bucks", "Boston Celtics": "Celtics",
-    # Add more aliases as needed
+    "Atlanta Hawks": "Hawks", "Boston Celtics": "Celtics", "Brooklyn Nets": "Nets",
+    "Charlotte Hornets": "Hornets", "Chicago Bulls": "Bulls", "Cleveland Cavaliers": "Cavaliers",
+    "Dallas Mavericks": "Mavericks", "Denver Nuggets": "Nuggets", "Detroit Pistons": "Pistons",
+    "Golden State Warriors": "Warriors", "Houston Rockets": "Rockets", "Indiana Pacers": "Pacers",
+    "LA Clippers": "Clippers", "Los Angeles Clippers": "Clippers", "Los Angeles Lakers": "Lakers",
+    "Memphis Grizzlies": "Grizzlies", "Miami Heat": "Heat", "Milwaukee Bucks": "Bucks",
+    "Minnesota Timberwolves": "Timberwolves", "New Orleans Pelicans": "Pelicans",
+    "New York Knicks": "Knicks", "Oklahoma City Thunder": "Thunder", "Orlando Magic": "Magic",
+    "Philadelphia 76ers": "76ers", "Phoenix Suns": "Suns", "Portland Trail Blazers": "Trail Blazers",
+    "Sacramento Kings": "Kings", "San Antonio Spurs": "Spurs", "Toronto Raptors": "Raptors",
+    "Utah Jazz": "Jazz", "Washington Wizards": "Wizards"
 }
 
 sportsbook_cols = ["BetMGM","DraftKings","Caesars","ESPNBet","FanDuel",
@@ -200,3 +209,8 @@ def return_plot_page():
     ax.set_xlabel("Date"); ax.set_ylabel("Return (%)")
     plt.xticks(rotation=45)
     st.pyplot(fig, use_container_width=True)
+
+# ───────────────── SIDEBAR NAV ─────────────────
+page = st.sidebar.radio("Choose Page", ["% Return Plot"])
+if page == "% Return Plot":
+    return_plot_page()
