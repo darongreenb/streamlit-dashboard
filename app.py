@@ -667,10 +667,18 @@ if page == "Betting Frequency":
 
 
 
-
 elif page == "NBA Charts":
     # NBA Charts
     st.title('NBA Active Bets - GA1')
+
+    # --- keep only these teams for title / conference markets ---
+    ACTIVE_NBA_TEAMS = [
+        'Oklahoma City Thunder', 'Houston Rockets', 'Los Angeles Lakers',
+        'Denver Nuggets', 'Los Angeles Clippers', 'Minnesota Timberwolves',
+        'Golden State Warriors', 'Memphis Grizzlies', 'Cleveland Cavaliers',
+        'Boston Celtics', 'New York Knicks', 'Indiana Pacers',
+        'Milwaukee Bucks', 'Detroit Pistons', 'Orlando Magic', 'Atlanta Hawks'
+    ]
 
     # SQL query to fetch data for the first bar chart
     first_chart_query = """
@@ -694,9 +702,7 @@ elif page == "NBA Charts":
             l.EventType
     )
     SELECT * FROM EventTypeSums
-
     UNION ALL
-
     SELECT 
         'Total' AS EventType,
         ROUND(SUM(db.DollarsAtStake), 0) AS TotalDollarsAtStake
@@ -777,8 +783,7 @@ elif page == "NBA Charts":
                 l.LeagueName = 'NBA'
                 AND l.EventType = '{event_type_option}'
                 AND b.WhichBankroll = 'GreenAleph'
-                AND b.WLCA = 'Active'
-                ;
+                AND b.WLCA = 'Active';
             """
 
             # Fetch the EventLabel data
@@ -825,7 +830,15 @@ elif page == "NBA Charts":
                     else:
                         # Create a DataFrame from the fetched data
                         combined_df = pd.DataFrame(combined_data)
-                    
+
+                        # --------- filter to active teams for title / conference ----------
+                        if event_type_option in ('Championship', 'Conference Winner'):
+                            combined_df = combined_df[combined_df['ParticipantName'].isin(ACTIVE_NBA_TEAMS)]
+
+                        if combined_df.empty:
+                            st.warning("No data for selected filters.")
+                            st.stop()
+
                         # Calculate Implied Probability
                         combined_df['ImpliedProbability'] = (combined_df['TotalDollarsAtStake'] / combined_df['TotalPotentialPayout']) * 100
                     
@@ -860,8 +873,7 @@ elif page == "NBA Charts":
                             implied_prob = combined_df.iloc[i]['ImpliedProbability']
                             height = bar1.get_height()
                             ax.annotate(f'{implied_prob:.1f}%', xy=(bar1.get_x() + bar1.get_width() / 2, height),
-                                        xytext=(0, -15),  # Move the labels further down below the bars
-                                        textcoords="offset points",
+                                        xytext=(0, -15), textcoords="offset points",
                                         ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
                     
                         # Annotate TotalPotentialPayout above bars
@@ -930,6 +942,10 @@ elif page == "NBA Charts":
                 st.error("Failed to fetch parlay data from the database.")
             else:
                 parlay_df = pd.DataFrame(parlay_data)
+
+                # filter to active teams if title / conference
+                if event_type_option in ('Championship', 'Conference Winner'):
+                    parlay_df = parlay_df[parlay_df['ParticipantName'].isin(ACTIVE_NBA_TEAMS)]
 
                 if parlay_df.empty:
                     st.warning("No parlay data found for the selected EventType.")
@@ -1003,6 +1019,10 @@ elif page == "NBA Charts":
                     else:
                         parlay_dollars_df = pd.DataFrame(parlay_dollars_data)
 
+                        # filter to active teams if title / conference
+                        if event_type_option in ('Championship', 'Conference Winner'):
+                            parlay_dollars_df = parlay_dollars_df[parlay_dollars_df['ParticipantName'].isin(ACTIVE_NBA_TEAMS)]
+
                         if parlay_dollars_df.empty:
                             st.warning("No parlay dollar data found for the selected EventType.")
                         else:
@@ -1043,6 +1063,10 @@ elif page == "NBA Charts":
 
                             # Display the plot in Streamlit
                             st.pyplot(fig)
+
+
+
+
 
 elif page == "NCAAB Charts":
     # NCAAB Charts
