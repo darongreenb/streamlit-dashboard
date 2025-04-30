@@ -37,8 +37,10 @@ def main():
 
     market_table = st.selectbox("Select Market Table", market_options + division_tables)
     col1, col2 = st.columns(2)
-    start_date = col1.date_input("Start Date", datetime(2024, 10, 15))
+    start_date = col1.date_input("Start Date", datetime(2024, 10, 1))
     end_date   = col2.date_input("End Date", datetime(2025, 4, 30))
+
+    top_k = st.slider("Number of Top Participants to Show", min_value=1, max_value=10, value=5)
 
     if start_date > end_date:
         st.error("Start date must be before end date.")
@@ -74,15 +76,15 @@ def main():
 
     all_frames = []
     for name, group in latest.groupby("team_name"):
-        g = group.set_index("date")[["prob"]].reindex(date_range).ffill()
+        g = group.set_index("date")["prob"].reindex(date_range).ffill()
         g = g.reset_index().rename(columns={"index": "date"})
         g["team_name"] = name
         all_frames.append(g)
     daily = pd.concat(all_frames)
 
     last_day = daily[daily['date'] == daily['date'].max()]
-    top5 = last_day.sort_values("prob", ascending=False).head(5)["team_name"].tolist()
-    daily_top = daily[daily["team_name"].isin(top5)]
+    top_teams = last_day.sort_values("prob", ascending=False).head(top_k)["team_name"].tolist()
+    daily_top = daily[daily["team_name"].isin(top_teams)]
 
     fig, ax = plt.subplots(figsize=(12, 6))
     for name, grp in daily_top.groupby("team_name"):
@@ -93,11 +95,11 @@ def main():
     ax.xaxis.set_major_locator(mdates.MonthLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
     ax.yaxis.set_major_formatter(PercentFormatter())
-    ax.set_title(f"{market_table} – Top 5 Implied Probabilities Over Time")
+    ax.set_title(f"{market_table} – Top {top_k} Implied Probabilities Over Time")
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     plt.xticks(rotation=45)
-    ax.legend(title="Name", bbox_to_anchor=(1.02, 1), loc='upper left')
+    ax.legend(title="Team Name", loc='best', frameon=False)
     plt.tight_layout()
     st.pyplot(fig)
 
