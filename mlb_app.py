@@ -31,11 +31,11 @@ def main():
 
     market_options = [
         "NBAMVP", "NBAChampionship", "NBAEasternConference", "NBAWesternConference",
-        "NBAAtlantic", "NBAPacific", "NBACentral", "NBASoutheast", "NBASouthwest",
-        "NBANorthwest", "NBADefensivePotY", "NBAMIP", "NBARotY", "NBASixthMotY"
+        "NBADefensivePotY", "NBAMIP", "NBARotY", "NBASixthMotY"
     ]
+    division_tables = ["NBAAtlantic", "NBAPacific", "NBACentral", "NBASoutheast", "NBASouthwest", "NBANorthwest"]
 
-    market_table = st.selectbox("Select Market Table", market_options)
+    market_table = st.selectbox("Select Market Table", market_options + division_tables)
     col1, col2 = st.columns(2)
     start_date = col1.date_input("Start Date", datetime(2024, 12, 31))
     end_date   = col2.date_input("End Date", datetime(2025, 4, 30))
