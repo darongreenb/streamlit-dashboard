@@ -67,42 +67,6 @@ team_alias_map = {
 sportsbook_cols = ["BetMGM","DraftKings","Caesars","ESPNBet","FanDuel",
                    "BallyBet","RiversCasino","Bet365"]
 
-def best_odds_decimal_prob(event_type,event_label,participant,cutoff_dt,fut_conn):
-    tbl = futures_table_map.get((event_type, event_label))
-    if not tbl: return 1.0, 0.0
-    alias = team_alias_map.get(participant, participant)
-    with with_cursor(fut_conn) as cur:
-        cur.execute(
-            f"""SELECT {','.join(sportsbook_cols)}
-                  FROM {tbl}
-                 WHERE team_name = %s AND date_created <= %s
-                 ORDER BY date_created DESC LIMIT 1""",
-            (alias, cutoff_dt)
-        )
-        row = cur.fetchone()
-    if not row: return 1.0, 0.0
-    nums = [cast_odds(row[c]) for c in sportsbook_cols]; nums = [n for n in nums if n]
-    if not nums: return 1.0, 0.0
-    best = max(nums)
-    return 1.0 + (best/100) if best>0 else 1.0 + 100/abs(best), american_odds_to_prob(best)
-
-def compute_proportional_weights(bet_df, sel_type, sel_lbl, fut_conn):
-    records = []
-    now = datetime.utcnow()
-    for wager_id, group in bet_df.groupby("WagerID"):
-        decs = []
-        for _, row in group.iterrows():
-            if row["EventType"] == sel_type and row["EventLabel"] == sel_lbl:
-                dec, _ = best_odds_decimal_prob(row["EventType"], row["EventLabel"], row["ParticipantName"], now, fut_conn)
-                if dec > 1.0:
-                    decs.append(dec)
-        sum_exc = sum(d - 1 for d in decs)
-        if sum_exc <= 0:
-            continue
-        for d in decs:
-            records.append({"WagerID": wager_id, "Weight": (d - 1) / sum_exc})
-    return pd.DataFrame(records)
-
 # ───────────────── STREAMLIT PAGE ─────────────────
 def return_plot_page():
     st.header("% Return Plot")
@@ -137,12 +101,44 @@ def return_plot_page():
     if bet_df.empty:
         st.warning("No active wagers found"); return
 
-    wgt = compute_proportional_weights(bet_df, sel_type, sel_lbl, fut_conn)
+    tbl_name = futures_table_map[(sel_type, sel_lbl)]
+    participants = bet_df[(bet_df.EventType == sel_type) & (bet_df.EventLabel == sel_lbl)]["ParticipantName"].map(lambda x: team_alias_map.get(x, x)).unique().tolist()
+
+    with with_cursor(fut_conn) as cur:
+        placeholders = ",".join(["%s"] * len(participants))
+        cur.execute(
+            f"""SELECT team_name, MAX(date_created) as date_created, {','.join(sportsbook_cols)}
+                FROM {tbl_name}
+                WHERE team_name IN ({placeholders})
+                GROUP BY team_name""",
+            participants
+        )
+        odds_data = pd.DataFrame(cur.fetchall())
+
+    odds_map = {}
+    for _, row in odds_data.iterrows():
+        odds = [cast_odds(row[col]) for col in sportsbook_cols if cast_odds(row[col]) != 0]
+        if odds:
+            dec = 1 + (max(odds) / 100 if max(odds) > 0 else 100 / abs(max(odds)))
+            odds_map[row["team_name"]] = dec
+
+    records = []
+    for wager_id, group in bet_df.groupby("WagerID"):
+        legs = group[(group.EventType == sel_type) & (group.EventLabel == sel_lbl)]
+        decs = []
+        for _, row in legs.iterrows():
+            alias = team_alias_map.get(row["ParticipantName"], row["ParticipantName"])
+            dec = odds_map.get(alias, 1.0)
+            if dec > 1.0:
+                decs.append(dec)
+        sum_exc = sum(d - 1 for d in decs)
+        if sum_exc <= 0: continue
+        for d in decs:
+            records.append({"WagerID": wager_id, "Weight": (d - 1) / sum_exc})
+
+    wgt = pd.DataFrame(records)
     if wgt.empty:
         st.warning("No relevant legs found"); return
-
-    participants = bet_df["ParticipantName"].map(lambda x: team_alias_map.get(x, x)).unique().tolist()
-    tbl_name = futures_table_map[(sel_type, sel_lbl)]
 
     @st.cache_data(ttl=3600, show_spinner=False)
     def cached_odds(tbl, names, start, end):
