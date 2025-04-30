@@ -128,10 +128,15 @@ def probability_plot_page():
     date_range = pd.date_range(sd, ed, freq='D')
     all_frames = []
     for name, grp in raw.groupby('team_name'):
+        if grp.empty:
+            continue
         g = grp.set_index('date').reindex(date_range).ffill()
+        if 'prob' not in g.columns:
+            continue
         g = g[['prob']].reset_index()
         g['team_name'] = name
         all_frames.append(g)
+
     daily = pd.concat(all_frames, ignore_index=True)
 
     # select top‑5 by probability on end date
