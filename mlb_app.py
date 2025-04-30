@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.ticker import PercentFormatter
 
-
 # ─────────────────── PAGE CONFIG ───────────────────
 st.set_page_config(page_title="NBA Futures Dashboard", layout="wide")
 
@@ -129,8 +128,8 @@ def probability_plot_page():
     date_range = pd.date_range(sd, ed, freq='D')
     all_frames = []
     for name, grp in raw.groupby('team_name'):
-        g = grp.set_index('date').reindex(date_range).ffill().reset_index()
-        g.columns = ['date', 'prob']
+        g = grp.set_index('date').reindex(date_range).ffill()
+        g = g[['prob']].reset_index()
         g['team_name'] = name
         all_frames.append(g)
     daily = pd.concat(all_frames, ignore_index=True)
