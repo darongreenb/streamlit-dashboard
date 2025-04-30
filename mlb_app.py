@@ -35,7 +35,7 @@ def with_cursor(conn):
     conn.ping(reconnect=True)
     return conn.cursor()
 
-# ────────── ODDS HELPERS ──────────
+# ────────── ODDS / UTILS ──────────
 
 def american_odds_to_decimal(o:int)->float:
     return 1 + (o/100) if o>0 else 1 + 100/abs(o) if o else 1
@@ -89,7 +89,7 @@ sportsbook_cols = [
     "BallyBet", "RiversCasino", "Bet365",
 ]
 
-# ────────── CORE ──────────
+# ────────── CORE HELPERS ──────────
 
 def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, fut_conn):
     tbl = futures_table_map.get((event_type, event_label))
@@ -110,96 +110,62 @@ def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, fut_
     best = max(nums)
     return american_odds_to_decimal(best), american_odds_to_prob(best)
 
-# ────────── EV TABLE (unchanged) ──────────
-# ... existing build_ev_dataframe() and ev_table_page() definitions remain here (omitted for brevity) ...
+# ────────── EV TABLE BUILD & PAGE ──────────
 
-# ────────── ODDS MOVEMENT PAGE ──────────
+def build_ev_dataframe(now: datetime):
+    bet_conn, fut_conn = new_betting_conn(), new_futures_conn()
 
-def odds_movement_page():
-    st.header("Weekly Odds Movement (Top‑5)")
+    # Active rows
+    with with_cursor(bet_conn) as cur:
+        cur.execute("""
+            SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake,
+                   l.EventType, l.EventLabel, l.ParticipantName
+              FROM bets b JOIN legs l ON b.WagerID=l.WagerID
+             WHERE b.WhichBankroll='GreenAleph' AND b.WLCA='Active' AND l.LeagueName='NBA'""")
+        active_rows = cur.fetchall()
 
-    fut_conn = new_futures_conn()
+    active_bets = defaultdict(lambda:{"pot":0,"stake":0,"legs":[]})
+    for r in active_rows:
+        d = active_bets[r["WagerID"]]
+        d["pot"]   = d["pot"]   or float(r["PotentialPayout"] or 0)
+        d["stake"] = d["stake"] or float(r["DollarsAtStake"] or 0)
+        d["legs"].append((r["EventType"], r["EventLabel"], r["ParticipantName"]))
 
-    # user selects market
-    etypes = sorted({t for (t, _) in futures_table_map})
-    sel_type = st.selectbox("Event Type", etypes, key="om_type")
-    elabels = sorted({l for (t, l) in futures_table_map if t == sel_type})
-    sel_lbl = st.selectbox("Event Label", elabels, key="om_lbl")
+    active_stake, active_exp = defaultdict(float), defaultdict(float)
+    for pot, stake, legs in [(v["pot"],v["stake"],v["legs"]) for v in active_bets.values()]:
+        decs, prob = [], 1.0
+        for et,el,pn in legs:
+            dec,p = best_odds_decimal_prob(et,el,pn,now,fut_conn)
+            if p==0:
+                prob=0; break
+            decs.append((dec,et,el)); prob*=p
+        if prob==0: continue
+        expected = pot*prob
+        sum_exc = sum(d-1 for d,_,_ in decs)
+        if sum_exc<=0: continue
+        for d,et,el in decs:
+            w=(d-1)/sum_exc
+            active_stake[(et,el)]+=w*stake
+            active_exp[(et,el)]  +=w*expected
 
-    col1, col2 = st.columns(2)
-    sd = col1.date_input("Start", datetime.utcnow().date() - timedelta(days=120), key="om_sd")
-    ed = col2.date_input("End", datetime.utcnow().date(), key="om_ed")
-    if sd > ed:
-        st.error("Start date must precede end date"); return
+    # Resolved
+    with with_cursor(bet_conn) as cur:
+        cur.execute("""
+            SELECT b.WagerID, b.NetProfit,
+                   l.EventType, l.EventLabel, l.ParticipantName
+              FROM bets b JOIN legs l ON b.WagerID=l.WagerID
+             WHERE b.WhichBankroll='GreenAleph' AND b.WLCA IN('Win','Loss','Cashout') AND l.LeagueName='NBA'""")
+        res_rows = cur.fetchall()
 
-    if not st.button("Plot Odds Movement", key="plot_btn"):
-        st.stop()
+    wager_net, wager_legs = defaultdict(float), defaultdict(list)
+    for r in res_rows:
+        wager_net[r["WagerID"]]=float(r["NetProfit"] or 0)
+        wager_legs[r["WagerID"]].append((r["EventType"],r["EventLabel"],r["ParticipantName"]))
 
-    tbl = futures_table_map[(sel_type, sel_lbl)]
-
-    # pull odds snapshots in range
-    with with_cursor(fut_conn) as cur:
-        cur.execute(
-            f"SELECT team_name, date_created, {','.join(sportsbook_cols)} FROM {tbl} "
-            "WHERE date_created BETWEEN %s AND %s ORDER BY team_name, date_created",
-            (f"{sd} 00:00:00", f"{ed} 23:59:59"),
-        )
-        raw = pd.DataFrame(cur.fetchall())
-
-    if raw.empty:
-        st.warning("No odds data for that range"); return
-
-    # best odds ➜ prob
-    raw[sportsbook_cols] = raw[sportsbook_cols].apply(pd.to_numeric, errors="coerce").fillna(0)
-    raw["best"] = raw[sportsbook_cols].replace(0, pd.NA).max(axis=1).fillna(0).astype(int)
-    raw["prob"] = raw["best"].apply(american_odds_to_prob)
-    raw["date"] = pd.to_datetime(raw["date_created"]).dt.date
-
-    # keep last snapshot per team per day
-    raw = (raw.sort_values(["team_name", "date"]).groupby(["team_name", "date"]).tail(1))[
-        ["team_name", "date", "prob"]
-    ]
-
-    # resample to weekly (Monday start) – forward fill within each team
-    raw["week"] = pd.to_datetime(raw["date"]).dt.to_period("W").dt.start_time
-    weekly = (
-        raw.sort_values(["team_name", "week"])
-        .groupby("team_name")
-        .apply(lambda g: g.drop_duplicates('week').set_index('week').asfreq('W-MON').ffill())
-        .reset_index(level=0)
-        .reset_index()
-    )
-
-    # pick top‑5 players/teams by prob on last week
-    last_week = weekly["week"].max()
-    top5_names = (
-        weekly[weekly["week"] == last_week]
-        .nlargest(5, "prob")["team_name"]
-        .tolist()
-    )
-    top5 = weekly[weekly["team_name"].isin(top5_names)]
-
-    # ---- plot ----
-    fig, ax = plt.subplots(figsize=(11, 6))
-    for name, grp in top5.groupby("team_name"):
-        ax.plot(grp["week"], grp["prob"] * 100, marker="o", linewidth=2, label=name)
-
-    ax.set_title(f"{sel_lbl} Implied Probability Over Time", fontsize=16, pad=12)
-    ax.set_xlabel("Week", fontsize=12)
-    ax.set_ylabel("Implied Probability (%)", fontsize=12)
-    ax.yaxis.set_major_formatter(mdates.PercentFormatter())
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %d"))
-    plt.xticks(rotation=45)
-    ax.legend(title="Top‑5", bbox_to_anchor=(1.02, 1), loc="upper left")
-    ax.grid(True, alpha=0.3)
-    st.pyplot(fig, use_container_width=True)
-
-# ────────── SIDEBAR NAV ──────────
-
-page = st.sidebar.radio("Choose Page", ["EV Table", "Odds Movement Plot"], key="nav")
-
-if page == "EV Table":
-    # build_ev_dataframe & ev_table_page assumed present (omitted here for brevity)
-    st.write("EV Table not included in this snippet")
-else:
-    odds_movement_page()
+    realized_np=defaultdict(float)
+    for wid,legs in wager_legs.items():
+        net=wager_net[wid]
+        decs=[(best_odds_decimal_prob(et,el,pn,now,fut_conn)[0],et,el) for et,el,pn in legs]
+        sum_exc=sum(d-1 for d,_,_ in decs)
+        if sum_exc<=0: continue
+        for d,et,el
