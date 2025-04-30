@@ -168,7 +168,10 @@ def return_plot_page():
         raw["best"] = raw[sportsbook_cols].replace(0, pd.NA).max(axis=1).fillna(0).astype(int)
         raw["prob"] = raw["best"].apply(american_odds_to_prob)
         raw["date"] = pd.to_datetime(raw["date_created"]).dt.date
-        return (raw.sort_values(["team_name","date"]).groupby(["team_name","date"]).tail(1))["team_name","date","prob"]
+        return (raw.sort_values(["team_name","date"])
+            .groupby(["team_name","date"])
+            .tail(1)[["team_name", "date", "prob"]])
+
 
     odds_df = cached_odds(tbl_name, participants, start_date, end_date)
     if odds_df.empty:
