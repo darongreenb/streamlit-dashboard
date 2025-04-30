@@ -1,132 +1,68 @@
-import streamlit as st
-import pymysql
-import pandas as pd
-import matplotlib.pyplot as plt
+import streamlit as st, pymysql, pandas as pd, matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from datetime import datetime, timedelta
-import re
 
-# ───────────────── DB HELPERS ─────────────────
-
+# ─────────── helpers ───────────
 def new_betting_conn():
-    return pymysql.connect(
-        host=st.secrets["BETTING_DB"]["host"],
-        user=st.secrets["BETTING_DB"]["user"],
-        password=st.secrets["BETTING_DB"]["password"],
-        database=st.secrets["BETTING_DB"]["database"],
-        cursorclass=pymysql.cursors.DictCursor,
-        autocommit=True,
-    )
+    return pymysql.connect(**st.secrets["BETTING_DB"],
+                           cursorclass=pymysql.cursors.DictCursor,
+                           autocommit=True)
 
+def with_cursor(c): c.ping(reconnect=True); return c.cursor()
 
-def with_cursor(conn):
-    conn.ping(reconnect=True)
-    return conn.cursor()
+# ─────────── page ───────────
+def weekly_expected_profit():
+    st.header("Expected Profit – weekly snapshot")
 
-# ───────────────── FUTURES MAP ─────────────────
+    ev_map = {("Most Valuable Player Award","Award"):None,
+              ("Championship","NBA Championship"):None}   # map still unused here
+    etype = st.selectbox("Event Type", sorted({t for t,_ in ev_map}))
+    elabel= st.selectbox("Event Label",
+                         sorted({l for t,l in ev_map if t==etype}))
+    sd, ed = st.date_input("Start", datetime.utcnow().date()-timedelta(90)),\
+             st.date_input("End",   datetime.utcnow().date())
+    if sd>ed: st.error("Start > End"); return
+    if not st.button("Plot"): return
 
-futures_table_map = {
-    ("Most Valuable Player Award", "Award"): "NBAMVP",
-    ("Championship", "NBA Championship"): "NBAChampionship",
-    ("Conference Winner", "Eastern Conference"): "NBAEasternConference",
-    ("Conference Winner", "Western Conference"): "NBAWesternConference",
-    ("Defensive Player of Year Award", "Award"): "NBADefensivePotY",
-    ("Division Winner", "Atlantic Division"): "NBAAtlantic",
-    ("Division Winner", "Central Division"): "NBACentral",
-    ("Division Winner", "Northwest Division"): "NBANorthwest",
-    ("Division Winner", "Pacific Division"): "NBAPacific",
-    ("Division Winner", "Southeast Division"): "NBASoutheast",
-    ("Division Winner", "Southwest Division"): "NBASouthwest",
-    ("Most Improved Player Award", "Award"): "NBAMIP",
-    ("Rookie of Year Award", "Award"): "NBARotY",
-    ("Sixth Man of Year Award", "Award"): "NBASixthMotY",
-}
-
-# ───────────────── MAIN PAGE ─────────────────
-
-def expected_profit_plot_page():
-    st.header("Expected Profit Plot (Weekly, Rolling EV)")
-
-    bet_conn = new_betting_conn()
-
-    # ---- user selections ----
-    ev_types = sorted({t for (t, _) in futures_table_map})
-    sel_type = st.selectbox("Event Type", ev_types)
-    labels   = sorted({lbl for (t, lbl) in futures_table_map if t == sel_type})
-    sel_lbl  = st.selectbox("Event Label", labels)
-
-    col1, col2 = st.columns(2)
-    start_date = col1.date_input("Start Date", datetime.utcnow().date() - timedelta(days=90))
-    end_date   = col2.date_input("End Date",   datetime.utcnow().date())
-    if start_date > end_date:
-        st.error("Start date must be before end date.")
-        return
-
-    if not st.button("Generate Plot"):
-        st.stop()
-
-    # ---- load wagers & legs ----
-    with with_cursor(bet_conn) as cur:
+    # pull once
+    with with_cursor(new_betting_conn()) as cur:
         cur.execute(
-            """SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake, b.NetProfit,
-                          b.DateTimePlaced, b.WLCA,
-                          l.EventType, l.EventLabel
-                     FROM bets b
-                     JOIN legs l ON b.WagerID = l.WagerID
-                    WHERE b.WhichBankroll='GreenAleph' AND l.LeagueName='NBA'
-                      AND l.EventType=%s AND l.EventLabel=%s""",
-            (sel_type, sel_lbl))
-        rows = cur.fetchall()
+        """SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake, b.NetProfit,
+                  b.DateTimePlaced, b.WLCA
+             FROM bets b
+             JOIN legs l ON b.WagerID=l.WagerID
+            WHERE b.WhichBankroll='GreenAleph'
+              AND l.LeagueName='NBA'
+              AND l.EventType=%s AND l.EventLabel=%s""",
+            (etype, elabel))
+        df = pd.DataFrame(cur.fetchall())
+    if df.empty: st.warning("No bets"); return
 
-    df = pd.DataFrame(rows)
-    if df.empty:
-        st.warning("No relevant bets found.")
-        return
+    df["DateTimePlaced"]=pd.to_datetime(df["DateTimePlaced"])
+    for c in ["PotentialPayout","DollarsAtStake","NetProfit"]:
+        df[c]=pd.to_numeric(df[c],errors="coerce").fillna(0)
 
-    # ---- clean dates ----
-    df = df[df["DateTimePlaced"].notnull()].copy()
-    df["DateTimePlaced"] = pd.to_datetime(df["DateTimePlaced"])
-    df = df[df["DateTimePlaced"].dt.date <= end_date]
+    weeks = pd.date_range(sd, ed, freq="W-MON")
+    out=[]
+    for w in weeks:
+        active   =(df[(df.WLCA=="Active") & (df.DateTimePlaced<=w)]
+                   .drop_duplicates("WagerID"))
+        resolved =(df[(df.WLCA.isin(["Win","Loss","Cashout"])) &
+                      (df.DateTimePlaced<=w)]
+                   .drop_duplicates("WagerID"))
+        pot,stake = active.PotentialPayout.sum(), active.DollarsAtStake.sum()
+        net = resolved.NetProfit.sum()
+        out.append({"week":w, "expected_profit":pot-stake+net})
+    plot=pd.DataFrame(out)
 
-    # ensure numeric
-    for col in ["PotentialPayout", "DollarsAtStake", "NetProfit"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
-
-    # ---- generate weekly timeline ----
-    weekly_dates = pd.date_range(start=start_date, end=end_date, freq="W-MON")
-    if not weekly_dates.size:
-        weekly_dates = pd.to_datetime([start_date])
-
-    results = []
-    for week_end in weekly_dates:
-        # active wagers as of week_end (deduplicated)
-        active = (df[(df["WLCA"] == "Active") & (df["DateTimePlaced"] <= week_end)]
-                  .drop_duplicates("WagerID"))
-        # resolved wagers on/before week_end (deduplicated)
-        resolved = (df[(df["WLCA"].isin(["Win", "Loss", "Cashout"])) & (df["DateTimePlaced"] <= week_end)]
-                    .drop_duplicates("WagerID"))
-
-        pot   = active["PotentialPayout"].sum()
-        stake = active["DollarsAtStake"].sum()
-        net   = resolved["NetProfit"].sum()
-
-        expected_profit = pot - stake + net
-        results.append({"week": week_end, "expected_profit": expected_profit})
-
-    plot_df = pd.DataFrame(results)
-
-    # ---- plot ----
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(plot_df["week"], plot_df["expected_profit"], marker="o")
-    ax.set_title(f"Expected Profit — {sel_type}: {sel_lbl}")
-    ax.set_xlabel("Week")
-    ax.set_ylabel("Expected Profit ($)")
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+    fig,ax=plt.subplots(figsize=(9,5))
+    ax.plot(plot.week,plot.expected_profit,marker="o")
+    ax.set_title(f"Expected Profit — {etype}: {elabel}")
+    ax.set_xlabel("Week"); ax.set_ylabel("$")
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %d"))
     plt.xticks(rotation=45)
     st.pyplot(fig, use_container_width=True)
 
-# ───────────────── SIDEBAR NAV ─────────────────
-
-page = st.sidebar.radio("Choose Page", ["Expected Profit Plot"])
-if page == "Expected Profit Plot":
-    expected_profit_plot_page()
+# ─────────── run ───────────
+if st.sidebar.radio("Page",["Weekly Expected Profit"])=="Weekly Expected Profit":
+    weekly_expected_profit()
