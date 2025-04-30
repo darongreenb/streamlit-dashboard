@@ -40,7 +40,7 @@ def main():
     start_date = col1.date_input("Start Date", datetime(2024, 10, 1))
     end_date   = col2.date_input("End Date", datetime(2025, 4, 30))
 
-    top_k = st.slider("Number of Top Participants to Show", min_value=1, max_value=10, value=5)
+    top_k = st.slider("Number of Top Participants to Show", min_value=1, max_value=30, value=5)
 
     if start_date > end_date:
         st.error("Start date must be before end date.")
