@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from matplotlib.ticker import PercentFormatter
+
 
 # ─────────────────── PAGE CONFIG ───────────────────
 st.set_page_config(page_title="NBA Futures Dashboard", layout="wide")
@@ -146,7 +148,7 @@ def probability_plot_page():
     ax.set_ylabel('Implied Probability (%)')
     ax.xaxis.set_major_locator(mdates.MonthLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
-    ax.yaxis.set_major_formatter(mdates.PercentFormatter())
+    ax.yaxis.set_major_formatter(PercentFormatter())
     ax.set_title(f"{elabel} – Daily Implied Probability (Top‑5)")
     ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
     plt.xticks(rotation=45)
