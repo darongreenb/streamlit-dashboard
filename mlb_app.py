@@ -165,7 +165,7 @@ def odds_movement_page():
     weekly = (
         raw.sort_values(["team_name", "week"])
         .groupby("team_name")
-        .apply(lambda g: g.set_index("week").asfreq("W-MON").ffill())
+        .apply(lambda g: g.drop_duplicates('week').set_index('week').asfreq('W-MON').ffill())
         .reset_index(level=0)
         .reset_index()
     )
