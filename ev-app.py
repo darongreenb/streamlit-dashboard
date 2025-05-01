@@ -7,26 +7,28 @@ import pandas as pd
 
 # ─────────────────  PAGE CONFIG  ─────────────────
 st.set_page_config(page_title="EV Table", layout="wide")
+st.markdown("<h1 style='text-align: center;'>NBA Futures EV Table</h1>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center; color: gray;'>among markets tracked in <code>futures_db</code></h3>", unsafe_allow_html=True)
 
 # ─────────────────  DB HELPERS  ──────────────────
 def new_betting_conn():
     return pymysql.connect(
-        host       = "betting-db.cp86ssaw6cm7.us-east-1.rds.amazonaws.com",
-        user       = "admin",
-        password   = "7nRB1i2&A-K>",
-        database   = "betting_db",
-        cursorclass= pymysql.cursors.DictCursor,
-        autocommit = True,
+        host="betting-db.cp86ssaw6cm7.us-east-1.rds.amazonaws.com",
+        user="admin",
+        password="7nRB1i2&A-K>",
+        database="betting_db",
+        cursorclass=pymysql.cursors.DictCursor,
+        autocommit=True,
     )
 
 def new_futures_conn():
     return pymysql.connect(
-        host       = "greenalephfutures.cnwukek8ge3b.us-east-2.rds.amazonaws.com",
-        user       = "admin",
-        password   = "greenalephadmin",
-        database   = "futuresdata",
-        cursorclass= pymysql.cursors.DictCursor,
-        autocommit = True,
+        host="greenalephfutures.cnwukek8ge3b.us-east-2.rds.amazonaws.com",
+        user="admin",
+        password="greenalephadmin",
+        database="futuresdata",
+        cursorclass=pymysql.cursors.DictCursor,
+        autocommit=True,
     )
 
 def with_cursor(conn):
@@ -73,11 +75,9 @@ team_alias_map = {
     "Portland Trail Blazers":"Trail Blazers","Golden State Warriors":"Warriors","Washington Wizards":"Wizards",
 }
 
-sportsbook_cols = ["BetMGM","DraftKings","Caesars","ESPNBet","FanDuel",
-                   "BallyBet","RiversCasino","Bet365"]
+sportsbook_cols = ["BetMGM","DraftKings","Caesars","ESPNBet","FanDuel","BallyBet","RiversCasino","Bet365"]
 
-# ─────────────────  ODDS FETCHER  ────────────────
-def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, fut_conn):
+def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, fut_conn, vig_map):
     tbl = futures_table_map.get((event_type, event_label))
     if not tbl: return 1.0, 0.0
     alias = team_alias_map.get(participant, participant)
@@ -91,19 +91,35 @@ def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, fut_
         )
         row = cur.fetchone()
     if not row: return 1.0, 0.0
-    nums = [cast_odds(row[c]) for c in sportsbook_cols]; nums = [n for n in nums if n]
+    nums = [cast_odds(row.get(c)) for c in sportsbook_cols if row.get(c)]
+    nums = [n for n in nums if n]
     if not nums: return 1.0, 0.0
     best = max(nums)
-    return american_odds_to_decimal(best), american_odds_to_prob(best)
+    dec = american_odds_to_decimal(best)
+    prob = american_odds_to_prob(best)
+    vig = vig_map.get((event_type, event_label), 0.05)
+    return dec, prob * (1 - vig)
 
-# ─────────────────  MAIN PAGE  ────────────────────
-def ev_table_page():
-    st.header("EV Table")
+# ─────────────────  EV TABLE PAGE  ────────────────
+def main():
     bet_conn = new_betting_conn()
     fut_conn = new_futures_conn()
     now = datetime.utcnow()
 
-    # ───── Active Bets ─────
+    # Customize Vig
+    st.markdown("### 🧹 Customize Vig by Market")
+    vig_inputs = {}
+    unique_markets = sorted(set((et, el) for et, el in futures_table_map))
+    with st.expander("Set Vig Percentage Per Market", expanded=False):
+        for et, el in unique_markets:
+            key = f"{et}|{el}"
+            percent = st.slider(
+                label=f"{et} — {el}", min_value=0, max_value=20,
+                value=5, step=1, key=key
+            )
+            vig_inputs[(et, el)] = percent / 100.0
+
+    # ------- Active wagers -------
     sql_active = """
         SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake,
                l.EventType, l.EventLabel, l.ParticipantName
@@ -126,7 +142,7 @@ def ev_table_page():
         pot, stake, legs = data["pot"], data["stake"], data["legs"]
         decs = []; prob = 1.0
         for et,el,pn in legs:
-            dec,p = best_odds_decimal_prob(et,el,pn,now,fut_conn)
+            dec,p = best_odds_decimal_prob(et,el,pn,now,fut_conn,vig_inputs)
             if p == 0: prob = 0; break
             decs.append((dec,et,el)); prob *= p
         if prob == 0: continue
@@ -138,7 +154,7 @@ def ev_table_page():
             active_stake[(et,el)] += w*stake
             active_exp  [(et,el)] += w*expected
 
-    # ───── Realized Profit ─────
+    # ------- Realised net profit -------
     sql_real = """
         SELECT b.WagerID, b.NetProfit,
                l.EventType, l.EventLabel, l.ParticipantName
@@ -151,15 +167,16 @@ def ev_table_page():
         cur.execute(sql_real)
         rows = cur.fetchall()
 
-    wager_net, wager_legs = defaultdict(float), defaultdict(list)
+    wager_net  = defaultdict(float)
+    wager_legs = defaultdict(list)
     for r in rows:
-        wager_net[r["WagerID"]] = float(r["NetProfit"] or 0)
+        wager_net [r["WagerID"]] = float(r["NetProfit"] or 0)
         wager_legs[r["WagerID"]].append((r["EventType"],r["EventLabel"],r["ParticipantName"]))
 
     realized_np = defaultdict(float)
     for wid,legs in wager_legs.items():
-        net = wager_net[wid]
-        decs = [(best_odds_decimal_prob(et,el,pn,now,fut_conn)[0], et, el) for et,el,pn in legs]
+        net  = wager_net[wid]
+        decs = [(best_odds_decimal_prob(et,el,pn,now,fut_conn,vig_inputs)[0], et, el) for et,el,pn in legs]
         sum_exc = sum(d-1 for d,_,_ in decs)
         if sum_exc <= 0: continue
         for d,et,el in decs:
@@ -167,24 +184,38 @@ def ev_table_page():
 
     bet_conn.close(); fut_conn.close()
 
-    # ───── Combine Results ─────
-    keys = set(active_stake) | set(active_exp) | set(realized_np)
-    out = []
+    # ------- Assemble dataframe -------
+    keys = set(active_stake)|set(active_exp)|set(realized_np)
+    out  = []
     for et,el in sorted(keys):
-        stake = active_stake.get((et,el), 0)
-        exp   = active_exp.get((et,el), 0)
-        net   = realized_np.get((et,el), 0)
-        out.append({
-            "EventType": et,
-            "EventLabel": el,
-            "ActiveDollarsAtStake": round(stake, 2),
-            "ActiveExpectedPayout": round(exp, 2),
-            "RealizedNetProfit": round(net, 2),
-            "ExpectedValue": round(exp - stake + net, 2)
-        })
-
+        stake = active_stake.get((et,el),0)
+        exp   = active_exp.get((et,el),0)
+        net   = realized_np.get((et,el),0)
+        out.append(dict(EventType=et, EventLabel=el,
+                        ActiveDollarsAtStake = round(stake,2),
+                        ActiveExpectedPayout = round(exp  ,2),
+                        RealizedNetProfit    = round(net  ,2),
+                        ExpectedValue        = round(exp-stake+net,2)))
     df = pd.DataFrame(out).sort_values(["EventType","EventLabel"]).reset_index(drop=True)
-    st.dataframe(df, use_container_width=True)
 
-# Call the page render function
-ev_table_page()
+    # ------- Summary Metrics -------
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("💸 Active Stake", f"${df['ActiveDollarsAtStake'].sum():,.0f}")
+    col2.metric("📈 Expected Payout", f"${df['ActiveExpectedPayout'].sum():,.0f}")
+    col3.metric("💰 Realized Net Profit", f"${df['RealizedNetProfit'].sum():,.0f}")
+    col4.metric("⚡️ Expected Value", f"${df['ExpectedValue'].sum():,.0f}")
+
+    # ------- Highlighted DataFrame -------
+    def highlight_ev(val):
+        color = "green" if val > 0 else "red" if val < 0 else "black"
+        return f"color: {color}; font-weight: bold"
+
+    styled_df = df.style.format("${:,.0f}", subset=[
+        "ActiveDollarsAtStake", "ActiveExpectedPayout", "RealizedNetProfit", "ExpectedValue"]) \
+        .applymap(highlight_ev, subset=["ExpectedValue"])
+
+    st.markdown("### Market-Level Breakdown")
+    st.dataframe(styled_df, use_container_width=True, height=700)
+
+if __name__ == "__main__":
+    main()
