@@ -119,8 +119,103 @@ def ev_table_page():
             )
             vig_inputs[(et, el)] = percent / 100.0
 
-    # (Rest of ev_table_page function unchanged, but every call to best_odds_decimal_prob
-    # now includes vig_inputs as the last argument)
+    # ------- Active wagers -------
+    sql_active = """
+        SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake,
+               l.EventType, l.EventLabel, l.ParticipantName
+          FROM bets b JOIN legs l ON b.WagerID = l.WagerID
+         WHERE b.WhichBankroll='GreenAleph' AND b.WLCA='Active' AND l.LeagueName='NBA'
+    """
+    with with_cursor(bet_conn) as cur:
+        cur.execute(sql_active)
+        rows = cur.fetchall()
+
+    active_bets = defaultdict(lambda: {"pot":0,"stake":0,"legs":[]})
+    for r in rows:
+        w = active_bets[r["WagerID"]]
+        w["pot"]   = w["pot"]   or float(r["PotentialPayout"] or 0)
+        w["stake"] = w["stake"] or float(r["DollarsAtStake"] or 0)
+        w["legs"].append((r["EventType"], r["EventLabel"], r["ParticipantName"]))
+
+    active_stake, active_exp = defaultdict(float), defaultdict(float)
+    for data in active_bets.values():
+        pot, stake, legs = data["pot"], data["stake"], data["legs"]
+        decs = []; prob = 1.0
+        for et,el,pn in legs:
+            dec,p = best_odds_decimal_prob(et,el,pn,now,fut_conn,vig_inputs)
+            if p == 0: prob = 0; break
+            decs.append((dec,et,el)); prob *= p
+        if prob == 0: continue
+        expected = pot * prob
+        sum_exc  = sum(d-1 for d,_,_ in decs)
+        if sum_exc <= 0: continue
+        for d,et,el in decs:
+            w = (d-1)/sum_exc
+            active_stake[(et,el)] += w*stake
+            active_exp  [(et,el)] += w*expected
+
+    # ------- Realised net profit -------
+    sql_real = """
+        SELECT b.WagerID, b.NetProfit,
+               l.EventType, l.EventLabel, l.ParticipantName
+          FROM bets b JOIN legs l ON b.WagerID = l.WagerID
+         WHERE b.WhichBankroll='GreenAleph'
+           AND b.WLCA IN ('Win','Loss','Cashout')
+           AND l.LeagueName='NBA'
+    """
+    with with_cursor(bet_conn) as cur:
+        cur.execute(sql_real)
+        rows = cur.fetchall()
+
+    wager_net  = defaultdict(float)
+    wager_legs = defaultdict(list)
+    for r in rows:
+        wager_net [r["WagerID"]] = float(r["NetProfit"] or 0)
+        wager_legs[r["WagerID"]].append((r["EventType"],r["EventLabel"],r["ParticipantName"]))
+
+    realized_np = defaultdict(float)
+    for wid,legs in wager_legs.items():
+        net  = wager_net[wid]
+        decs = [(best_odds_decimal_prob(et,el,pn,now,fut_conn,vig_inputs)[0], et, el) for et,el,pn in legs]
+        sum_exc = sum(d-1 for d,_,_ in decs)
+        if sum_exc <= 0: continue
+        for d,et,el in decs:
+            realized_np[(et,el)] += net * ((d-1)/sum_exc)
+
+    bet_conn.close(); fut_conn.close()
+
+    # ------- Assemble dataframe -------
+    keys = set(active_stake)|set(active_exp)|set(realized_np)
+    out  = []
+    for et,el in sorted(keys):
+        stake = active_stake.get((et,el),0)
+        exp   = active_exp.get((et,el),0)
+        net   = realized_np.get((et,el),0)
+        out.append(dict(EventType=et, EventLabel=el,
+                        ActiveDollarsAtStake = round(stake,2),
+                        ActiveExpectedPayout = round(exp  ,2),
+                        RealizedNetProfit    = round(net  ,2),
+                        ExpectedValue        = round(exp-stake+net,2)))
+    df = pd.DataFrame(out).sort_values(["EventType","EventLabel"]).reset_index(drop=True)
+
+    # ------- Summary Metrics -------
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("💸 Active Stake", f"${df['ActiveDollarsAtStake'].sum():,.0f}")
+    col2.metric("📈 Expected Payout", f"${df['ActiveExpectedPayout'].sum():,.0f}")
+    col3.metric("💰 Realized Net Profit", f"${df['RealizedNetProfit'].sum():,.0f}")
+    col4.metric("⚡️ Expected Value", f"${df['ExpectedValue'].sum():,.0f}")
+
+    # ------- Highlighted DataFrame -------
+    def highlight_ev(val):
+        color = "green" if val > 0 else "red" if val < 0 else "black"
+        return f"color: {color}; font-weight: bold"
+
+    styled_df = df.style.format("${:,.0f}", subset=[
+        "ActiveDollarsAtStake", "ActiveExpectedPayout", "RealizedNetProfit", "ExpectedValue"]) \
+        .applymap(highlight_ev, subset=["ExpectedValue"])
+
+    st.markdown("### Market-Level Breakdown")
+    st.dataframe(styled_df, use_container_width=True, height=700)
 
 # Run the page
 ev_table_page()
