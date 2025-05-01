@@ -1,22 +1,50 @@
-# ────────────────────────────────────  NBA Futures Dashboard: EV Table Page  ────────────────────────────────────
+# ─────────────────────  NBA Futures Dashboard: EV Table Page  ──────────────────────
 import streamlit as st
 import pymysql, re
 from collections import defaultdict
 from datetime import datetime
 import pandas as pd
 
-# ───────────────────  PAGE CONFIG  ───────────────────
+# ─────────────────  PAGE CONFIG  ─────────────────
 st.set_page_config(page_title="EV Table", layout="wide")
 st.markdown("<h1 style='text-align: center;'>NBA Futures EV Table</h1>", unsafe_allow_html=True)
 st.markdown("<h3 style='text-align: center; color: gray;'>among markets tracked in <code>futures_db</code></h3>", unsafe_allow_html=True)
 
-# ───────────────────  DB HELPERS  ───────────────────
-# ... unchanged DB helper functions ...
+# ─────────────────  DB HELPERS  ──────────────────
+def new_betting_conn():
+    return pymysql.connect(
+        host="betting-db.cp86ssaw6cm7.us-east-1.rds.amazonaws.com",
+        user="admin",
+        password="7nRB1i2&A-K>",
+        database="betting_db",
+        cursorclass=pymysql.cursors.DictCursor,
+        autocommit=True,
+    )
 
-# ───────────────────  ODDS HELPERS  ───────────────────
-# ... unchanged odds conversion functions ...
+def new_futures_conn():
+    return pymysql.connect(
+        host="greenalephfutures.cnwukek8ge3b.us-east-2.rds.amazonaws.com",
+        user="admin",
+        password="greenalephadmin",
+        database="futuresdata",
+        cursorclass=pymysql.cursors.DictCursor,
+        autocommit=True,
+    )
 
-# ───────────────────  MAPS  ───────────────────
+def with_cursor(conn):
+    conn.ping(reconnect=True)
+    return conn.cursor()
+
+# ─────────────────  ODDS HELPERS  ────────────────
+def american_odds_to_decimal(o): return 1.0 + (o/100) if o > 0 else 1.0 + 100/abs(o) if o else 1.0
+def american_odds_to_prob(o): return 100/(o+100) if o > 0 else abs(o)/(abs(o)+100) if o else 0.0
+def cast_odds(v):
+    if v in (None, "", 0): return 0
+    if isinstance(v, (int, float)): return int(v)
+    m = re.search(r"[-+]?\d+", str(v))
+    return int(m.group()) if m else 0
+
+# ─────────────────  MAPS  ────────────────────────
 futures_table_map = {
     ("Championship","NBA Championship"): "NBAChampionship",
     ("Conference Winner","Eastern Conference"): "NBAEasternConference",
@@ -49,20 +77,6 @@ team_alias_map = {
 
 sportsbook_cols = ["BetMGM","DraftKings","Caesars","ESPNBet","FanDuel","BallyBet","RiversCasino","Bet365"]
 
-# ───────────────────  VIG UI CONFIG  ───────────────────
-st.markdown("### 🧹 Customize Vig by Market")
-vig_inputs = {}
-unique_markets = sorted(set((et, el) for et, el in futures_table_map))
-with st.expander("Set Vig Percentage Per Market", expanded=False):
-    for et, el in unique_markets:
-        key = f"{et}|{el}"
-        percent = st.slider(
-            label=f"{et} — {el}", min_value=0, max_value=20,
-            value=5, step=1, key=key
-        )
-        vig_inputs[(et, el)] = percent / 100.0
-
-# ───────────────────  ODDS FUNCTION WITH VIG  ───────────────────
 def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, fut_conn, vig_map):
     tbl = futures_table_map.get((event_type, event_label))
     if not tbl: return 1.0, 0.0
@@ -86,5 +100,27 @@ def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, fut_
     vig = vig_map.get((event_type, event_label), 0.05)
     return dec, prob * (1 - vig)
 
-# The rest of your EV calculation logic remains unchanged
-# Just pass vig_inputs wherever best_odds_decimal_prob() is called
+# ─────────────────  EV TABLE PAGE  ────────────────
+def ev_table_page():
+    bet_conn = new_betting_conn()
+    fut_conn = new_futures_conn()
+    now = datetime.utcnow()
+
+    # Customize Vig
+    st.markdown("### 🧹 Customize Vig by Market")
+    vig_inputs = {}
+    unique_markets = sorted(set((et, el) for et, el in futures_table_map))
+    with st.expander("Set Vig Percentage Per Market", expanded=False):
+        for et, el in unique_markets:
+            key = f"{et}|{el}"
+            percent = st.slider(
+                label=f"{et} — {el}", min_value=0, max_value=20,
+                value=5, step=1, key=key
+            )
+            vig_inputs[(et, el)] = percent / 100.0
+
+    # (Rest of ev_table_page function unchanged, but every call to best_odds_decimal_prob
+    # now includes vig_inputs as the last argument)
+
+# Run the page
+ev_table_page()
