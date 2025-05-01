@@ -7,11 +7,7 @@ import pandas as pd
 
 # ─────────────────  PAGE CONFIG  ─────────────────
 st.set_page_config(page_title="EV Table", layout="wide")
-
-st.markdown(
-    "<h1 style='text-align: center; color: white;'>NBA Futures EV Table</h1>",
-    unsafe_allow_html=True
-)
+st.markdown("<h1 style='text-align: center;'>NBA Futures EV Table</h1>", unsafe_allow_html=True)
 
 # ─────────────────  DB HELPERS  ──────────────────
 def new_betting_conn():
@@ -87,24 +83,25 @@ def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, fut_
     with with_cursor(fut_conn) as cur:
         cur.execute(
             f"""SELECT {','.join(sportsbook_cols)}
-                FROM {tbl}
-                WHERE team_name = %s AND date_created <= %s
-                ORDER BY date_created DESC LIMIT 1""",
+                  FROM {tbl}
+                 WHERE team_name = %s AND date_created <= %s
+              ORDER BY date_created DESC LIMIT 1""",
             (alias, cutoff_dt)
         )
         row = cur.fetchone()
     if not row: return 1.0, 0.0
-    nums = [cast_odds(row[c]) for c in sportsbook_cols if row[c]] 
+    nums = [cast_odds(row[c]) for c in sportsbook_cols]; nums = [n for n in nums if n]
     if not nums: return 1.0, 0.0
     best = max(nums)
     return american_odds_to_decimal(best), american_odds_to_prob(best)
 
-# ─────────────────  EV TABLE PAGE  ────────────────
+# ─────────────────  EV TABLE PAGE  ────────────────
 def ev_table_page():
     bet_conn = new_betting_conn()
     fut_conn = new_futures_conn()
-    now = datetime.utcnow()
+    now      = datetime.utcnow()
 
+    # ------- Active wagers -------
     sql_active = """
         SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake,
                l.EventType, l.EventLabel, l.ParticipantName
@@ -139,6 +136,7 @@ def ev_table_page():
             active_stake[(et,el)] += w*stake
             active_exp  [(et,el)] += w*expected
 
+    # ------- Realised net profit -------
     sql_real = """
         SELECT b.WagerID, b.NetProfit,
                l.EventType, l.EventLabel, l.ParticipantName
@@ -151,14 +149,15 @@ def ev_table_page():
         cur.execute(sql_real)
         rows = cur.fetchall()
 
-    wager_net, wager_legs = defaultdict(float), defaultdict(list)
+    wager_net  = defaultdict(float)
+    wager_legs = defaultdict(list)
     for r in rows:
-        wager_net[r["WagerID"]] = float(r["NetProfit"] or 0)
+        wager_net [r["WagerID"]] = float(r["NetProfit"] or 0)
         wager_legs[r["WagerID"]].append((r["EventType"],r["EventLabel"],r["ParticipantName"]))
 
     realized_np = defaultdict(float)
     for wid,legs in wager_legs.items():
-        net = wager_net[wid]
+        net  = wager_net[wid]
         decs = [(best_odds_decimal_prob(et,el,pn,now,fut_conn)[0], et, el) for et,el,pn in legs]
         sum_exc = sum(d-1 for d,_,_ in decs)
         if sum_exc <= 0: continue
@@ -167,44 +166,37 @@ def ev_table_page():
 
     bet_conn.close(); fut_conn.close()
 
-    keys = set(active_stake) | set(active_exp) | set(realized_np)
-    out = []
+    # ------- Assemble dataframe -------
+    keys = set(active_stake)|set(active_exp)|set(realized_np)
+    out  = []
     for et,el in sorted(keys):
-        stake = active_stake.get((et,el), 0)
-        exp   = active_exp.get((et,el), 0)
-        net   = realized_np.get((et,el), 0)
-        out.append({
-            "EventType": et,
-            "EventLabel": el,
-            "ActiveDollarsAtStake": round(stake, 2),
-            "ActiveExpectedPayout": round(exp, 2),
-            "RealizedNetProfit": round(net, 2),
-            "ExpectedValue": round(exp - stake + net, 2)
-        })
+        stake = active_stake.get((et,el),0)
+        exp   = active_exp.get((et,el),0)
+        net   = realized_np.get((et,el),0)
+        out.append(dict(EventType=et, EventLabel=el,
+                        ActiveDollarsAtStake = round(stake,2),
+                        ActiveExpectedPayout = round(exp  ,2),
+                        RealizedNetProfit    = round(net  ,2),
+                        ExpectedValue        = round(exp-stake+net,2)))
+    df = pd.DataFrame(out).sort_values(["EventType","EventLabel"]).reset_index(drop=True)
 
-    df = pd.DataFrame(out).sort_values(["EventType", "EventLabel"]).reset_index(drop=True)
-
-    # ───── Summary Metrics Row ─────
-    total_stake = df["ActiveDollarsAtStake"].sum()
-    total_payout = df["ActiveExpectedPayout"].sum()
-    total_net = df["RealizedNetProfit"].sum()
-    total_ev = df["ExpectedValue"].sum()
-
+    # ------- Summary Metrics -------
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("💸 Active Stake", f"${total_stake:,.0f}")
-    col2.metric("📈 Expected Payout", f"${total_payout:,.0f}")
-    col3.metric("💰 Realized Net Profit", f"${total_net:,.0f}")
-    col4.metric("⚡️ Expected Value", f"${total_ev:,.0f}")
+    col1.metric("💸 Active Stake", f"${df['ActiveDollarsAtStake'].sum():,.0f}")
+    col2.metric("📈 Expected Payout", f"${df['ActiveExpectedPayout'].sum():,.0f}")
+    col3.metric("💰 Realized Net Profit", f"${df['RealizedNetProfit'].sum():,.0f}")
+    col4.metric("⚡️ Expected Value", f"${df['ExpectedValue'].sum():,.0f}")
 
-    # ───── Stylish Table ─────
+    # ------- Highlighted DataFrame -------
     def highlight_ev(val):
-        color = 'green' if val > 0 else 'red' if val < 0 else 'black'
-        return f'color: {color}; font-weight: bold'
+        color = "green" if val > 0 else "red" if val < 0 else "black"
+        return f"color: {color}; font-weight: bold"
 
-    styled_df = df.style.format("${:,.0f}", subset=["ActiveDollarsAtStake", "ActiveExpectedPayout", "RealizedNetProfit", "ExpectedValue"])\
-                        .applymap(highlight_ev, subset=["ExpectedValue"])
+    styled_df = df.style.format("${:,.0f}", subset=[
+        "ActiveDollarsAtStake", "ActiveExpectedPayout", "RealizedNetProfit", "ExpectedValue"]) \
+        .applymap(highlight_ev, subset=["ExpectedValue"])
 
-    st.markdown("### Market Breakdown")
+    st.markdown("### Market-Level Breakdown")
     st.dataframe(styled_df, use_container_width=True, height=700)
 
 # Run the page
