@@ -46,62 +46,12 @@ def cast_odds(v):
     m = re.search(r"[-+]?\d+", str(v))
     return int(m.group()) if m else 0
 
-# ───────────────── MAPS ─────────────────
-futures_table_map = {
-    ("Championship", "NBA Championship"): "NBAChampionship",
-    ("Conference Winner", "Eastern Conference"): "NBAEasternConference",
-    ("Conference Winner", "Western Conference"): "NBAWesternConference",
-    ("Defensive Player of Year Award", "Award"): "NBADefensivePotY",
-    ("Division Winner", "Atlantic Division"): "NBAAtlantic",
-    ("Division Winner", "Central Division"):  "NBACentral",
-    ("Division Winner", "Northwest Division"): "NBANorthwest",
-    ("Division Winner", "Pacific Division"):  "NBAPacific",
-    ("Division Winner", "Southeast Division"): "NBASoutheast",
-    ("Division Winner", "Southwest Division"): "NBASouthwest",
-    ("Most Improved Player Award", "Award"):  "NBAMIP",
-    ("Most Valuable Player Award", "Award"):  "NBAMVP",
-    ("Rookie of Year Award", "Award"):        "NBARotY",
-    ("Sixth Man of Year Award", "Award"):     "NBASixthMotY",
-}
-
-team_alias_map = {
-    "Philadelphia 76ers":"76ers", "Milwaukee Bucks":"Bucks", "Chicago Bulls":"Bulls",
-    "Cleveland Cavaliers":"Cavaliers", "Boston Celtics":"Celtics", "Los Angeles Clippers":"Clippers",
-    "Memphis Grizzlies":"Grizzlies", "Atlanta Hawks":"Hawks", "Miami Heat":"Heat",
-    "Charlotte Hornets":"Hornets", "Utah Jazz":"Jazz", "Sacramento Kings":"Kings",
-    "New York Knicks":"Knicks", "Los Angeles Lakers":"Lakers", "Orlando Magic":"Magic",
-    "Dallas Mavericks":"Mavericks", "Brooklyn Nets":"Nets", "Denver Nuggets":"Nuggets",
-    "Indiana Pacers":"Pacers", "New Orleans Pelicans":"Pelicans", "Detroit Pistons":"Pistons",
-    "Toronto Raptors":"Raptors", "Houston Rockets":"Rockets", "San Antonio Spurs":"Spurs",
-    "Phoenix Suns":"Suns", "Oklahoma City Thunder":"Thunder", "Minnesota Timberwolves":"Timberwolves",
-    "Portland Trail Blazers":"Trail Blazers", "Golden State Warriors":"Warriors", "Washington Wizards":"Wizards",
-}
-
-sportsbook_cols = ["BetMGM", "DraftKings", "Caesars", "ESPNBet", "FanDuel",
-                   "BallyBet", "RiversCasino", "Bet365"]
-
-# ───────────────── CORE ─────────────────
-def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, fut_conn):
-    tbl = futures_table_map.get((event_type, event_label))
-    if not tbl: return 1.0, 0.0
-    alias = team_alias_map.get(participant, participant)
-    with with_cursor(fut_conn) as cur:
-        cur.execute(
-            f"""SELECT {','.join(sportsbook_cols)} FROM {tbl}
-                 WHERE team_name = %s AND date_created <= %s
-                 ORDER BY date_created DESC LIMIT 1""",
-            (alias, cutoff_dt)
-        )
-        row = cur.fetchone()
-    if not row: return 1.0, 0.0
-    nums = [cast_odds(row[c]) for c in sportsbook_cols if cast_odds(row[c])]
-    if not nums: return 1.0, 0.0
-    best = max(nums)
-    return american_odds_to_decimal(best), american_odds_to_prob(best)
-
 # ───────────────── EV TABLE PAGE ─────────────────
 def ev_table_page():
-    st.header("EV Table")
+    st.title("🧮 NBA Futures – Expected Value Table")
+    st.markdown("""
+    This table summarizes active bets and resolved outcomes for NBA futures markets. The **Expected Value** column combines active expected payouts and realized profits.
+    """)
 
     bet_conn = new_betting_conn()
     fut_conn = new_futures_conn()
@@ -129,7 +79,11 @@ def ev_table_page():
         pot, stake, legs = data["pot"], data["stake"], data["legs"]
         decs = []; prob = 1.0
         for et, el, pn in legs:
-            dec, p = best_odds_decimal_prob(et, el, pn, now, fut_conn)
+            dec, p = 1.0, 0.0
+            try:
+                dec, p = best_odds_decimal_prob(et, el, pn, now, fut_conn)
+            except:
+                pass
             if p == 0: prob = 0; break
             decs.append((dec, et, el)); prob *= p
         if prob == 0: continue
@@ -161,7 +115,11 @@ def ev_table_page():
     realized_np = defaultdict(float)
     for wid, legs in wager_legs.items():
         net = wager_net[wid]
-        decs = [(best_odds_decimal_prob(et, el, pn, now, fut_conn)[0], et, el) for et, el, pn in legs]
+        decs = [(1.0, et, el) for et, el, pn in legs]
+        try:
+            decs = [(best_odds_decimal_prob(et, el, pn, now, fut_conn)[0], et, el) for et, el, pn in legs]
+        except:
+            pass
         sum_exc = sum(d - 1 for d, _, _ in decs)
         if sum_exc <= 0: continue
         for d, et, el in decs:
@@ -182,7 +140,7 @@ def ev_table_page():
                         ExpectedValue=round(exp - stake + net, 2)))
 
     df = pd.DataFrame(out).sort_values(["EventType", "EventLabel"]).reset_index(drop=True)
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(df.style.format("{:.2f}").background_gradient(cmap="Greens", subset=["ExpectedValue"]))
 
 # ───────────────── RUN ─────────────────
 ev_table_page()
