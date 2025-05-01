@@ -131,7 +131,6 @@ if page == "Implied Probability Tracker":
     top_k = st.slider("Number of Top Participants to Show", min_value=1, max_value=10, value=5)
     manual_selection_enabled = st.checkbox("Manually select participants")
 
-    # DB Connection
     conn = mysql.connector.connect(**FUTURES_DB)
     query = f"""
     SELECT team_name, date_created,
@@ -145,55 +144,56 @@ if page == "Implied Probability Tracker":
 
     if df.empty:
         st.warning("No odds data returned for the selected market.")
-        return
-
-    df['date'] = pd.to_datetime(df['date_created']).dt.date
-    odds_cols = ["BetMGM","DraftKings","Caesars","ESPNBet","FanDuel","BallyBet","RiversCasino","Bet365"]
-    df[odds_cols] = df[odds_cols].apply(pd.to_numeric, errors='coerce').fillna(0)
-    df['best'] = df[odds_cols].replace(0, pd.NA).max(axis=1).fillna(0).astype(int)
-    df['prob'] = df['best'].apply(american_odds_to_probability)
-
-    latest = df.sort_values(['team_name', 'date']).groupby(['team_name','date']).tail(1)
-    date_range = pd.date_range(start_date, end_date, freq='D')
-
-    all_frames = []
-    for name, group in latest.groupby("team_name"):
-        g = group.set_index("date")["prob"].reindex(date_range).ffill()
-        g = g.reset_index().rename(columns={"index": "date"})
-        g["team_name"] = name
-        all_frames.append(g)
-    daily = pd.concat(all_frames)
-
-    if manual_selection_enabled:
-        participants = sorted(daily["team_name"].unique().tolist())
-        selected_participants = st.multiselect("Choose Participants to Display", participants)
-        if not selected_participants:
-            st.warning("Please select at least one participant.")
-            return
-        display_set = selected_participants
     else:
-        last_day = daily[daily['date'] == daily['date'].max()]
-        display_set = last_day.sort_values("prob", ascending=False).head(top_k)["team_name"].tolist()
+        df['date'] = pd.to_datetime(df['date_created']).dt.date
+        odds_cols = ["BetMGM","DraftKings","Caesars","ESPNBet","FanDuel","BallyBet","RiversCasino","Bet365"]
+        df[odds_cols] = df[odds_cols].apply(pd.to_numeric, errors='coerce').fillna(0)
+        df['best'] = df[odds_cols].replace(0, pd.NA).max(axis=1).fillna(0).astype(int)
+        df['prob'] = df['best'].apply(american_odds_to_probability)
 
-    daily_top = daily[daily["team_name"].isin(display_set)]
+        latest = df.sort_values(['team_name', 'date']).groupby(['team_name','date']).tail(1)
+        date_range = pd.date_range(start_date, end_date, freq='D')
 
-    fig, ax = plt.subplots(figsize=(12, 6))
-    for name, grp in daily_top.groupby("team_name"):
-        ax.plot(grp["date"], grp["prob"] * 100, label=name, linewidth=2)
+        all_frames = []
+        for name, group in latest.groupby("team_name"):
+            g = group.set_index("date")["prob"].reindex(date_range).ffill()
+            g = g.reset_index().rename(columns={"index": "date"})
+            g["team_name"] = name
+            all_frames.append(g)
+        daily = pd.concat(all_frames)
 
-    ax.set_ylim(0, 100)
-    ax.set_ylabel("Implied Probability (%)")
-    ax.xaxis.set_major_locator(mdates.MonthLocator())
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
-    ax.yaxis.set_major_formatter(PercentFormatter())
-    title_suffix = ", Selected Participants" if manual_selection_enabled else f" – Top {top_k}"
-    ax.set_title(f"{market_table}{title_suffix} Implied Probabilities Over Time")
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    plt.xticks(rotation=45)
-    ax.legend(title="Team Name", loc='best', frameon=False)
-    plt.tight_layout()
-    st.pyplot(fig)
+        if manual_selection_enabled:
+            participants = sorted(daily["team_name"].unique().tolist())
+            selected_participants = st.multiselect("Choose Participants to Display", participants)
+            if not selected_participants:
+                st.warning("Please select at least one participant.")
+            else:
+                display_set = selected_participants
+        else:
+            last_day = daily[daily['date'] == daily['date'].max()]
+            display_set = last_day.sort_values("prob", ascending=False).head(top_k)["team_name"].tolist()
+
+        if 'display_set' in locals():
+            daily_top = daily[daily["team_name"].isin(display_set)]
+
+            fig, ax = plt.subplots(figsize=(12, 6))
+            for name, grp in daily_top.groupby("team_name"):
+                ax.plot(grp["date"], grp["prob"] * 100, label=name, linewidth=2)
+
+            ax.set_ylim(0, 100)
+            ax.set_ylabel("Implied Probability (%)")
+            ax.xaxis.set_major_locator(mdates.MonthLocator())
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
+            ax.yaxis.set_major_formatter(PercentFormatter())
+            title_suffix = ", Selected Participants" if manual_selection_enabled else f" – Top {top_k}"
+            ax.set_title(f"{market_table}{title_suffix} Implied Probabilities Over Time")
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            plt.xticks(rotation=45)
+            ax.legend(title="Team Name", loc='best', frameon=False)
+            plt.tight_layout()
+            st.pyplot(fig)
+
 elif page == "EV Table":
     st.markdown("<h1 style='text-align: center;'>NBA Futures EV Table</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align: center; color: gray;'>among markets tracked in <code>futures_db</code></h3>", unsafe_allow_html=True)
