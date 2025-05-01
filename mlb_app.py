@@ -37,8 +37,8 @@ def main():
 
     market_table = st.selectbox("Select Market Table", market_options + division_tables)
     col1, col2 = st.columns(2)
-    start_date = col1.date_input("Start Date", datetime(2024, 10, 15))
-    end_date   = col2.date_input("End Date", datetime(2025, 4, 30))
+    start_date = col1.date_input("Start Date", datetime(2024, 12, 23))
+    end_date = col2.date_input("End Date", datetime.today().date())
 
     top_k = st.slider("Number of Top Participants to Show", min_value=1, max_value=10, value=5)
     manual_selection_enabled = st.checkbox("Manually select participants")
