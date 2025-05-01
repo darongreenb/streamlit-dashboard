@@ -6,7 +6,7 @@ import pandas as pd
 from functools import lru_cache
 
 # ────────────────────────── PAGE CONFIG ──────────────────────────
-st.set_page_config(page_title="NBA Futures — EV Table", layout="wide")
+st.set_page_config(page_title="NBA Futures — EV Table", layout="wide")
 
 # ────────────────────────── DB HELPERS ──────────────────────────
 
@@ -74,23 +74,18 @@ def futures_table(event_type: str, event_label: str):
     }
     return mapping.get((event_type, event_label))
 
-alias_map = {
-    "Philadelphia 76ers": "76ers", "Milwaukee Bucks": "Bucks", "Chicago Bulls": "Bulls",
-    "Cleveland Cavaliers": "Cavaliers", "Boston Celtics": "Celtics", "Los Angeles Clippers": "Clippers",
-    "Memphis Grizzlies": "Grizzlies", "Atlanta Hawks": "Hawks", "Miami Heat": "Heat",
-    "Charlotte Hornets": "Hornets", "Utah Jazz": "Jazz", "Sacramento Kings": "Kings",
-    "New York Knicks": "Knicks", "Los Angeles Lakers": "Lakers", "Orlando Magic": "Magic",
-    "Dallas Mavericks": "Mavericks", "Brooklyn Nets": "Nets", "Denver Nuggets": "Nuggets",
-    "Indiana Pacers": "Pacers", "New Orleans Pelicans": "Pelicans", "Detroit Pistons": "Pistons",
-    "Toronto Raptors": "Raptors", "Houston Rockets": "Rockets", "San Antonio Spurs": "Spurs",
-    "Phoenix Suns": "Suns", "Oklahoma City Thunder": "Thunder", "Minnesota Timberwolves": "Timberwolves",
-    "Portland Trail Blazers": "Trail Blazers", "Golden State Warriors": "Warriors", "Washington Wizards": "Wizards",
-}
+alias_map = {n: n.split()[-1] if n.startswith("Los") else n.split(maxsplit=1)[-1] for n in [
+    "Atlanta Hawks", "Boston Celtics", "Brooklyn Nets", "Charlotte Hornets", "Chicago Bulls", "Cleveland Cavaliers",
+    "Dallas Mavericks", "Denver Nuggets", "Detroit Pistons", "Golden State Warriors", "Houston Rockets", "Indiana Pacers",
+    "Los Angeles Clippers", "Los Angeles Lakers", "Memphis Grizzlies", "Miami Heat", "Milwaukee Bucks",
+    "Minnesota Timberwolves", "New Orleans Pelicans", "New York Knicks", "Oklahoma City Thunder", "Orlando Magic",
+    "Philadelphia 76ers", "Phoenix Suns", "Portland Trail Blazers", "Sacramento Kings", "San Antonio Spurs", "Toronto Raptors",
+    "Utah Jazz", "Washington Wizards"
+]}
 
 sportsbook_cols = ["BetMGM", "DraftKings", "Caesars", "ESPNBet", "FanDuel", "BallyBet", "RiversCasino", "Bet365"]
 
-# ---- single‑leg helper ----
-
+# single‑leg helper
 def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, fut_conn):
     tbl = futures_table(event_type, event_label)
     if not tbl:
@@ -169,4 +164,54 @@ def ev_table_page():
 
     wager_net, wager_legs = defaultdict(float), defaultdict(list)
     for r in resolved_rows:
-        wager_net[r["WagerID"]] = float(r
+        wager_net[r["WagerID"]] = float(r["NetProfit"] or 0)
+        wager_legs[r["WagerID"]].append((r["EventType"], r["EventLabel"], r["ParticipantName"]))
+
+    realized_np = defaultdict(float)
+    for wid, legs in wager_legs.items():
+        net_profit = wager_net[wid]
+        legs_info = [(best_odds_decimal_prob(et, el, pn, now, fut_conn)[0], et, el) for et, el, pn in legs]
+        denom = sum(d - 1 for d, _, _ in legs_info)
+        if denom <= 0:
+            continue
+        for dec, et, el in legs_info:
+            realized_np[(et, el)] += net_profit * ((dec - 1) / denom)
+
+    bet_conn.close(); fut_conn.close()
+
+    # ---------- Assemble table ----------
+    markets = sorted(set(active_stake) | set(active_exp) | set(realized_np))
+    rows = []]
+    for et, el in markets:
+        stake   = active_stake.get((et
+        stake   = active_stake.get((et, el), 0.0)
+        payout  = active_exp.get((et, el), 0.0)
+        realized= realized_np.get((et, el), 0.0)
+        rows.append({
+            "EventType": et,
+            "EventLabel": el,
+            "Active Stake": round(stake, 2),
+            "Expected Payout": round(payout, 2),
+            "Realized Profit": round(realized, 2),
+            "Expected Value": round(payout - stake + realized, 2),
+        })
+
+    if not rows:
+        st.info("No NBA futures data to display.")
+        return
+
+    df = pd.DataFrame(rows).sort_values(["EventType", "EventLabel"]).reset_index(drop=True)
+
+    numeric_cols = [c for c in df.columns if c not in ("EventType", "EventLabel")]
+
+    styled = (
+        df.style.format("{:.2f}", subset=numeric_cols)
+               .background_gradient(cmap="Greens", subset=["Expected Value"], vmin=df["Expected Value"].min(), vmax=df["Expected Value"].max())
+               .highlight_max(axis=0, color="#D6EAF8")
+    )
+
+    st.dataframe(styled, use_container_width=True)
+
+# ────────────────────────── RUN ──────────────────────────
+
+ev_table_page()
