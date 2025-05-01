@@ -195,13 +195,11 @@ if page == "Implied Probability Tracker":
             st.pyplot(fig)
 
 elif page == "EV Table":
-    st.markdown("<h1 style='text-align: center;'>NBA Futures EV Table</h1>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align: center; color: gray;'>among markets tracked in <code>futures_db</code></h3>", unsafe_allow_html=True)
-
     bet_conn = new_betting_conn()
     fut_conn = new_futures_conn()
     now = datetime.utcnow()
 
+    # Customize Vig
     st.markdown("### 🧹 Customize Vig by Market")
     vig_inputs = {}
     unique_markets = sorted(set((et, el) for et, el in futures_table_map))
@@ -214,6 +212,7 @@ elif page == "EV Table":
             )
             vig_inputs[(et, el)] = percent / 100.0
 
+    # ------- Active wagers -------
     sql_active = """
         SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake,
                l.EventType, l.EventLabel, l.ParticipantName
@@ -248,6 +247,7 @@ elif page == "EV Table":
             active_stake[(et,el)] += w*stake
             active_exp  [(et,el)] += w*expected
 
+    # ------- Realised net profit -------
     sql_real = """
         SELECT b.WagerID, b.NetProfit,
                l.EventType, l.EventLabel, l.ParticipantName
@@ -277,6 +277,7 @@ elif page == "EV Table":
 
     bet_conn.close(); fut_conn.close()
 
+    # ------- Assemble dataframe -------
     keys = set(active_stake)|set(active_exp)|set(realized_np)
     out  = []
     for et,el in sorted(keys):
@@ -290,12 +291,14 @@ elif page == "EV Table":
                         ExpectedValue        = round(exp-stake+net,2)))
     df = pd.DataFrame(out).sort_values(["EventType","EventLabel"]).reset_index(drop=True)
 
+    # ------- Summary Metrics -------
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("💸 Active Stake", f"${df['ActiveDollarsAtStake'].sum():,.0f}")
     col2.metric("📈 Expected Payout", f"${df['ActiveExpectedPayout'].sum():,.0f}")
     col3.metric("💰 Realized Net Profit", f"${df['RealizedNetProfit'].sum():,.0f}")
     col4.metric("⚡️ Expected Value", f"${df['ExpectedValue'].sum():,.0f}")
 
+    # ------- Highlighted DataFrame -------
     def highlight_ev(val):
         color = "green" if val > 0 else "red" if val < 0 else "black"
         return f"color: {color}; font-weight: bold"
@@ -306,3 +309,4 @@ elif page == "EV Table":
 
     st.markdown("### Market-Level Breakdown")
     st.dataframe(styled_df, use_container_width=True, height=700)
+
