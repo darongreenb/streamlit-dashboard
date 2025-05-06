@@ -1,312 +1,189 @@
 import streamlit as st
-from datetime import datetime, timedelta
+import pymysql
 import pandas as pd
+import numpy as np
+import re
+from datetime import datetime, timedelta
+from collections import defaultdict
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from matplotlib.ticker import PercentFormatter
-import mysql.connector
-import pymysql, re
-from collections import defaultdict
 
-# ────────────────────── CONFIG ──────────────────────
-st.set_page_config(page_title="NBA Futures Dashboard", layout="wide")
-st.sidebar.title("📊 Dashboard Navigation")
+# ──────────────────────────────────────────────
+# PAGE CONFIG
+# ──────────────────────────────────────────────
+st.set_page_config(page_title="NBA Futures – Portfolio EV Over Time", layout="wide")
+st.markdown("""
+<h1 style='text-align:center'>NBA Futures — Portfolio Expected Value Trend</h1>
+<p style='text-align:center;color:gray'>Rolling 7‑day snapshots, using the same EV math as the EV table.</p>
+""", unsafe_allow_html=True)
 
-# ────────────────────── DB CREDS ──────────────────────
-FUTURES_DB = {
-    "host": "greenalephfutures.cnwukek8ge3b.us-east-2.rds.amazonaws.com",
-    "user": "admin",
-    "password": "greenalephadmin",
-    "database": "futuresdata"
-}
-
-BETTING_DB = {
+# ──────────────────────────────────────────────
+# DB CONFIG (directly embedded instead of using Streamlit secrets)
+# ──────────────────────────────────────────────
+BETTING_CFG = {
     "host": "betting-db.cp86ssaw6cm7.us-east-1.rds.amazonaws.com",
     "user": "admin",
     "password": "7nRB1i2&A-K>",
-    "database": "betting_db"
+    "database": "betting_db",
+    "cursorclass": pymysql.cursors.DictCursor,
+    "autocommit": True
 }
 
-# ────────────────────── UTILS ──────────────────────
-def american_odds_to_probability(odds: int) -> float:
-    if odds > 0:
-        return 100.0 / (odds + 100.0)
-    elif odds < 0:
-        return abs(odds) / (abs(odds) + 100.0)
-    return 0.0
+FUTURES_CFG = {
+    "host": "greenalephfutures.cnwukek8ge3b.us-east-2.rds.amazonaws.com",
+    "user": "admin",
+    "password": "greenalephadmin",
+    "database": "futuresdata",
+    "cursorclass": pymysql.cursors.DictCursor,
+    "autocommit": True
+}
 
-def american_odds_to_decimal(o): return 1.0 + (o/100) if o > 0 else 1.0 + 100/abs(o) if o else 1.0
+def new_conn(cfg):
+    return pymysql.connect(**cfg)
 
-def american_odds_to_prob(o): return 100/(o+100) if o > 0 else abs(o)/(abs(o)+100) if o else 0.0
+# ──────────────────────────────────────────────
+# FUTURES MARKETS & TEAM ALIASES
+# ──────────────────────────────────────────────
+sportsbooks = ["BetMGM","DraftKings","Caesars","ESPNBet","FanDuel","BallyBet","RiversCasino","Bet365"]
 
-def cast_odds(v):
-    if v in (None, "", 0): return 0
-    if isinstance(v, (int, float)): return int(v)
-    m = re.search(r"[-+]?\d+", str(v))
-    return int(m.group()) if m else 0
-
-def new_betting_conn():
-    return pymysql.connect(**BETTING_DB, cursorclass=pymysql.cursors.DictCursor, autocommit=True)
-
-def new_futures_conn():
-    return pymysql.connect(**FUTURES_DB, cursorclass=pymysql.cursors.DictCursor, autocommit=True)
-
-def with_cursor(conn):
-    conn.ping(reconnect=True)
-    return conn.cursor()
-
-# ────────────────────── FUTURES MAPS ──────────────────────
-futures_table_map = {
+FUTURES_TABLE = {
     ("Championship","NBA Championship"): "NBAChampionship",
     ("Conference Winner","Eastern Conference"): "NBAEasternConference",
     ("Conference Winner","Western Conference"): "NBAWesternConference",
     ("Defensive Player of Year Award","Award"): "NBADefensivePotY",
     ("Division Winner","Atlantic Division"): "NBAAtlantic",
-    ("Division Winner","Central Division"):  "NBACentral",
-    ("Division Winner","Northwest Division"):"NBANorthwest",
-    ("Division Winner","Pacific Division"):  "NBAPacific",
+    ("Division Winner","Central Division"): "NBACentral",
+    ("Division Winner","Northwest Division"): "NBANorthwest",
+    ("Division Winner","Pacific Division"): "NBAPacific",
     ("Division Winner","Southeast Division"): "NBASoutheast",
     ("Division Winner","Southwest Division"): "NBASouthwest",
-    ("Most Improved Player Award","Award"):  "NBAMIP",
-    ("Most Valuable Player Award","Award"):  "NBAMVP",
-    ("Rookie of Year Award","Award"):        "NBARotY",
-    ("Sixth Man of Year Award","Award"):     "NBASixthMotY",
+    ("Most Improved Player Award","Award"): "NBAMIP",
+    ("Most Valuable Player Award","Award"): "NBAMVP",
+    ("Rookie of Year Award","Award"): "NBARotY",
+    ("Sixth Man of Year Award","Award"): "NBASixthMotY",
 }
 
-team_alias_map = {
-    "Philadelphia 76ers":"76ers","Milwaukee Bucks":"Bucks","Chicago Bulls":"Bulls",
-    "Cleveland Cavaliers":"Cavaliers","Boston Celtics":"Celtics","Los Angeles Clippers":"Clippers",
-    "Memphis Grizzlies":"Grizzlies","Atlanta Hawks":"Hawks","Miami Heat":"Heat",
-    "Charlotte Hornets":"Hornets","Utah Jazz":"Jazz","Sacramento Kings":"Kings",
-    "New York Knicks":"Knicks","Los Angeles Lakers":"Lakers","Orlando Magic":"Magic",
-    "Dallas Mavericks":"Mavericks","Brooklyn Nets":"Nets","Denver Nuggets":"Nuggets",
-    "Indiana Pacers":"Pacers","New Orleans Pelicans":"Pelicans","Detroit Pistons":"Pistons",
-    "Toronto Raptors":"Raptors","Houston Rockets":"Rockets","San Antonio Spurs":"Spurs",
-    "Phoenix Suns":"Suns","Oklahoma City Thunder":"Thunder","Minnesota Timberwolves":"Timberwolves",
-    "Portland Trail Blazers":"Trail Blazers","Golden State Warriors":"Warriors","Washington Wizards":"Wizards",
-}
+TEAM_ALIAS = {n: n.split()[-1] if n.startswith("Los") else n.split(maxsplit=1)[-1] for n in [
+    "Atlanta Hawks","Boston Celtics","Brooklyn Nets","Charlotte Hornets","Chicago Bulls","Cleveland Cavaliers",
+    "Dallas Mavericks","Denver Nuggets","Detroit Pistons","Golden State Warriors","Houston Rockets","Indiana Pacers",
+    "Los Angeles Clippers","Los Angeles Lakers","Memphis Grizzlies","Miami Heat","Milwaukee Bucks","Minnesota Timberwolves",
+    "New Orleans Pelicans","New York Knicks","Oklahoma City Thunder","Orlando Magic","Philadelphia 76ers","Phoenix Suns",
+    "Portland Trail Blazers","Sacramento Kings","San Antonio Spurs","Toronto Raptors","Utah Jazz","Washington Wizards"
+]}
 
-sportsbook_cols = ["BetMGM","DraftKings","Caesars","ESPNBet","FanDuel","BallyBet","RiversCasino","Bet365"]
+# ──────────────────────────────────────────────
+# ODDS HELPERS
+# ──────────────────────────────────────────────
+def cast(v):
+    if v in (None, "", 0): return 0
+    if isinstance(v, (int, float)): return int(v)
+    m = re.search(r"[-+]?\d+", str(v))
+    return int(m.group()) if m else 0
 
-def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, fut_conn, vig_map):
-    tbl = futures_table_map.get((event_type, event_label))
-    if not tbl: return 1.0, 0.0
-    alias = team_alias_map.get(participant, participant)
-    with with_cursor(fut_conn) as cur:
-        cur.execute(
-            f"""SELECT {','.join(sportsbook_cols)}
-                  FROM {tbl}
-                 WHERE team_name = %s AND date_created <= %s
-              ORDER BY date_created DESC LIMIT 1""",
-            (alias, cutoff_dt)
-        )
-        row = cur.fetchone()
-    if not row: return 1.0, 0.0
-    nums = [cast_odds(row.get(c)) for c in sportsbook_cols if row.get(c)]
-    nums = [n for n in nums if n]
-    if not nums: return 1.0, 0.0
-    best = max(nums)
-    dec = american_odds_to_decimal(best)
-    prob = american_odds_to_prob(best)
-    vig = vig_map.get((event_type, event_label), 0.05)
-    return dec, prob * (1 - vig)
+def american_to_prob(odds):
+    return 100/(odds+100) if odds>0 else abs(odds)/(abs(odds)+100) if odds else 0
 
-# ────────────────────── MAIN ──────────────────────
-page = st.sidebar.radio("Choose a Page", ["Implied Probability Tracker", "EV Table"])
+@st.cache_data(ttl=3600)
+def load_all_odds(start: str, end: str) -> pd.DataFrame:
+    frames = []
+    names = [alias for alias in TEAM_ALIAS.values()]
+    placeholders = ",".join(["%s"]*len(names))
+    for (et, el), tbl in FUTURES_TABLE.items():
+        q = f"SELECT team_name,date_created,{','.join(sportsbooks)} FROM {tbl} WHERE team_name IN ({placeholders}) AND date_created BETWEEN %s AND %s ORDER BY team_name,date_created"
+        with new_conn(FUTURES_CFG) as conn, conn.cursor() as cur:
+            cur.execute(q, (*names, start, end))
+            raw = pd.DataFrame(cur.fetchall())
+        if raw.empty: continue
+        raw[sportsbooks] = raw[sportsbooks].apply(pd.to_numeric, errors='coerce').fillna(0)
+        raw['best'] = raw[sportsbooks].replace(0, np.nan).max(axis=1).fillna(0).astype(int)
+        raw['prob'] = raw['best'].apply(american_to_prob)
+        raw['date'] = pd.to_datetime(raw['date_created']).dt.normalize()
+        snap = raw.sort_values(['team_name','date']).groupby(['team_name','date']).tail(1)
+        snap['EventType'], snap['EventLabel'] = et, el
+        frames.append(snap[['team_name','date','prob','EventType','EventLabel']])
+    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
-if page == "Implied Probability Tracker":
-    st.title("NBA Futures – Implied Probability Tracker")
+# ──────────────────────────────────────────────
+# PAGE PARAMETERS
+# ──────────────────────────────────────────────
+col1, col2 = st.columns(2)
+start_date = col1.date_input("Start", datetime.utcnow().date() - timedelta(days=180))
+end_date   = col2.date_input("End",   datetime.utcnow().date())
+if start_date > end_date:
+    st.error("Start date must precede end date."); st.stop()
 
-    market_options = [
-        "NBAMVP", "NBAChampionship", "NBAEasternConference", "NBAWesternConference",
-        "NBADefensivePotY", "NBAMIP", "NBARotY", "NBASixthMotY"
-    ]
-    division_tables = ["NBAAtlantic", "NBAPacific", "NBACentral", "NBASoutheast", "NBASouthwest", "NBANorthwest"]
+if not st.button("Show EV Trend"):
+    st.stop()
 
-    market_table = st.selectbox("Select Market Table", market_options + division_tables)
-    col1, col2 = st.columns(2)
-    start_date = col1.date_input("Start Date", datetime(2024, 12, 23))
-    end_date = col2.date_input("End Date", datetime.today().date())
+# ──────────────────────────────────────────────
+# LOAD BETS
+# ──────────────────────────────────────────────
+with new_conn(BETTING_CFG) as conn, conn.cursor() as cur:
+    cur.execute("""
+        SELECT b.WagerID,b.PotentialPayout,b.DollarsAtStake,b.DateTimePlaced,b.WLCA,
+               l.EventType,l.EventLabel,l.ParticipantName
+          FROM bets b JOIN legs l ON b.WagerID=l.WagerID
+         WHERE b.WhichBankroll='GreenAleph' AND l.LeagueName='NBA'
+    """ )
+    bets = cur.fetchall()
+bets_df = pd.DataFrame(bets)
+if bets_df.empty:
+    st.warning("No NBA wagers found."); st.stop()
 
-    top_k = st.slider("Number of Top Participants to Show", min_value=1, max_value=10, value=5)
-    manual_selection_enabled = st.checkbox("Manually select participants")
+# ──────────────────────────────────────────────
+# PRELOAD ODDS SNAPSHOTS
+# ──────────────────────────────────────────────
+odds_df = load_all_odds(f"{start_date} 00:00:00", f"{end_date} 23:59:59")
+if odds_df.empty:
+    st.warning("No odds data for that period."); st.stop()
 
-    conn = mysql.connector.connect(**FUTURES_DB)
-    query = f"""
-    SELECT team_name, date_created,
-           BetMGM, DraftKings, Caesars, ESPNBet, FanDuel, BallyBet, RiversCasino, Bet365
-    FROM {market_table}
-    WHERE date_created BETWEEN %s AND %s
-    ORDER BY team_name, date_created
-    """
-    df = pd.read_sql(query, conn, params=(f"{start_date} 00:00:00", f"{end_date} 23:59:59"))
-    conn.close()
+# ──────────────────────────────────────────────
+# WEEKLY EV CALCULATION
+# ──────────────────────────────────────────────
+weekly_dates = pd.date_range(start=start_date, end=end_date, freq='7D')
+portfolio_ev = []
+for dt in weekly_dates:
+    dt_norm = dt.normalize()
+    subset = bets_df[(bets_df['DateTimePlaced'] <= dt_norm) & (bets_df['WLCA']=='Active')]
+    ev = 0.0
+    for _, grp in subset.groupby('WagerID'):
+        pot   = grp['PotentialPayout'].iloc[0]
+        stake = grp['DollarsAtStake'].iloc[0]
+        probs, decs = [], []
+        for _, leg in grp.iterrows():
+            sel = odds_df[(odds_df['team_name']==TEAM_ALIAS.get(leg['ParticipantName'], leg['ParticipantName']))
+                         & (odds_df['EventType']==leg['EventType'])
+                         & (odds_df['EventLabel']==leg['EventLabel'])
+                         & (odds_df['date']<=dt_norm)]
+            if sel.empty:
+                probs=[]; break
+            p = sel['prob'].iloc[-1]
+            probs.append(p)
+            decs.append(1/p if p else 1)
+        if not probs:
+            continue
+        prob_prod = np.prod(probs)
+        expected  = pot * prob_prod
+        denom = sum(d-1 for d in decs)
+        if denom<=0: continue
+        for d in decs:
+            w = (d-1)/denom
+            ev += w*(expected - stake)
+    portfolio_ev.append({'date': dt_norm.to_pydatetime(), 'EV': ev})
+trend = pd.DataFrame(portfolio_ev)
+if trend.empty:
+    st.warning("Could not compute EV trend."); st.stop()
 
-    if df.empty:
-        st.warning("No odds data returned for the selected market.")
-    else:
-        df['date'] = pd.to_datetime(df['date_created']).dt.date
-        odds_cols = ["BetMGM","DraftKings","Caesars","ESPNBet","FanDuel","BallyBet","RiversCasino","Bet365"]
-        df[odds_cols] = df[odds_cols].apply(pd.to_numeric, errors='coerce').fillna(0)
-        df['best'] = df[odds_cols].replace(0, pd.NA).max(axis=1).fillna(0).astype(int)
-        df['prob'] = df['best'].apply(american_odds_to_probability)
-
-        latest = df.sort_values(['team_name', 'date']).groupby(['team_name','date']).tail(1)
-        date_range = pd.date_range(start_date, end_date, freq='D')
-
-        all_frames = []
-        for name, group in latest.groupby("team_name"):
-            g = group.set_index("date")["prob"].reindex(date_range).ffill()
-            g = g.reset_index().rename(columns={"index": "date"})
-            g["team_name"] = name
-            all_frames.append(g)
-        daily = pd.concat(all_frames)
-
-        if manual_selection_enabled:
-            participants = sorted(daily["team_name"].unique().tolist())
-            selected_participants = st.multiselect("Choose Participants to Display", participants)
-            if not selected_participants:
-                st.warning("Please select at least one participant.")
-            else:
-                display_set = selected_participants
-        else:
-            last_day = daily[daily['date'] == daily['date'].max()]
-            display_set = last_day.sort_values("prob", ascending=False).head(top_k)["team_name"].tolist()
-
-        if 'display_set' in locals():
-            daily_top = daily[daily["team_name"].isin(display_set)]
-
-            fig, ax = plt.subplots(figsize=(12, 6))
-            for name, grp in daily_top.groupby("team_name"):
-                ax.plot(grp["date"], grp["prob"] * 100, label=name, linewidth=2)
-
-            ax.set_ylim(0, 100)
-            ax.set_ylabel("Implied Probability (%)")
-            ax.xaxis.set_major_locator(mdates.MonthLocator())
-            ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
-            ax.yaxis.set_major_formatter(PercentFormatter())
-            title_suffix = ", Selected Participants" if manual_selection_enabled else f" – Top {top_k}"
-            ax.set_title(f"{market_table}{title_suffix} Implied Probabilities Over Time")
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
-            plt.xticks(rotation=45)
-            ax.legend(title="Team Name", loc='best', frameon=False)
-            plt.tight_layout()
-            st.pyplot(fig)
-
-elif page == "EV Table":
-    bet_conn = new_betting_conn()
-    fut_conn = new_futures_conn()
-    now = datetime.utcnow()
-
-    # Customize Vig
-    st.markdown("### 🧹 Customize Vig by Market")
-    vig_inputs = {}
-    unique_markets = sorted(set((et, el) for et, el in futures_table_map))
-    with st.expander("Set Vig Percentage Per Market", expanded=False):
-        for et, el in unique_markets:
-            key = f"{et}|{el}"
-            percent = st.slider(
-                label=f"{et} — {el}", min_value=0, max_value=20,
-                value=5, step=1, key=key
-            )
-            vig_inputs[(et, el)] = percent / 100.0
-
-    # ------- Active wagers -------
-    sql_active = """
-        SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake,
-               l.EventType, l.EventLabel, l.ParticipantName
-          FROM bets b JOIN legs l ON b.WagerID = l.WagerID
-         WHERE b.WhichBankroll='GreenAleph' AND b.WLCA='Active' AND l.LeagueName='NBA'
-    """
-    with with_cursor(bet_conn) as cur:
-        cur.execute(sql_active)
-        rows = cur.fetchall()
-
-    active_bets = defaultdict(lambda: {"pot":0,"stake":0,"legs":[]})
-    for r in rows:
-        w = active_bets[r["WagerID"]]
-        w["pot"]   = w["pot"]   or float(r["PotentialPayout"] or 0)
-        w["stake"] = w["stake"] or float(r["DollarsAtStake"] or 0)
-        w["legs"].append((r["EventType"], r["EventLabel"], r["ParticipantName"]))
-
-    active_stake, active_exp = defaultdict(float), defaultdict(float)
-    for data in active_bets.values():
-        pot, stake, legs = data["pot"], data["stake"], data["legs"]
-        decs = []; prob = 1.0
-        for et,el,pn in legs:
-            dec,p = best_odds_decimal_prob(et,el,pn,now,fut_conn,vig_inputs)
-            if p == 0: prob = 0; break
-            decs.append((dec,et,el)); prob *= p
-        if prob == 0: continue
-        expected = pot * prob
-        sum_exc  = sum(d-1 for d,_,_ in decs)
-        if sum_exc <= 0: continue
-        for d,et,el in decs:
-            w = (d-1)/sum_exc
-            active_stake[(et,el)] += w*stake
-            active_exp  [(et,el)] += w*expected
-
-    # ------- Realised net profit -------
-    sql_real = """
-        SELECT b.WagerID, b.NetProfit,
-               l.EventType, l.EventLabel, l.ParticipantName
-          FROM bets b JOIN legs l ON b.WagerID = l.WagerID
-         WHERE b.WhichBankroll='GreenAleph'
-           AND b.WLCA IN ('Win','Loss','Cashout')
-           AND l.LeagueName='NBA'
-    """
-    with with_cursor(bet_conn) as cur:
-        cur.execute(sql_real)
-        rows = cur.fetchall()
-
-    wager_net  = defaultdict(float)
-    wager_legs = defaultdict(list)
-    for r in rows:
-        wager_net [r["WagerID"]] = float(r["NetProfit"] or 0)
-        wager_legs[r["WagerID"]].append((r["EventType"],r["EventLabel"],r["ParticipantName"]))
-
-    realized_np = defaultdict(float)
-    for wid,legs in wager_legs.items():
-        net  = wager_net[wid]
-        decs = [(best_odds_decimal_prob(et,el,pn,now,fut_conn,vig_inputs)[0], et, el) for et,el,pn in legs]
-        sum_exc = sum(d-1 for d,_,_ in decs)
-        if sum_exc <= 0: continue
-        for d,et,el in decs:
-            realized_np[(et,el)] += net * ((d-1)/sum_exc)
-
-    bet_conn.close(); fut_conn.close()
-
-    # ------- Assemble dataframe -------
-    keys = set(active_stake)|set(active_exp)|set(realized_np)
-    out  = []
-    for et,el in sorted(keys):
-        stake = active_stake.get((et,el),0)
-        exp   = active_exp.get((et,el),0)
-        net   = realized_np.get((et,el),0)
-        out.append(dict(EventType=et, EventLabel=el,
-                        ActiveDollarsAtStake = round(stake,2),
-                        ActiveExpectedPayout = round(exp  ,2),
-                        RealizedNetProfit    = round(net  ,2),
-                        ExpectedValue        = round(exp-stake+net,2)))
-    df = pd.DataFrame(out).sort_values(["EventType","EventLabel"]).reset_index(drop=True)
-
-    # ------- Summary Metrics -------
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("💸 Active Stake", f"${df['ActiveDollarsAtStake'].sum():,.0f}")
-    col2.metric("📈 Expected Payout", f"${df['ActiveExpectedPayout'].sum():,.0f}")
-    col3.metric("💰 Realized Net Profit", f"${df['RealizedNetProfit'].sum():,.0f}")
-    col4.metric("⚡️ Expected Value", f"${df['ExpectedValue'].sum():,.0f}")
-
-    # ------- Highlighted DataFrame -------
-    def highlight_ev(val):
-        color = "green" if val > 0 else "red" if val < 0 else "black"
-        return f"color: {color}; font-weight: bold"
-
-    styled_df = df.style.format("${:,.0f}", subset=[
-        "ActiveDollarsAtStake", "ActiveExpectedPayout", "RealizedNetProfit", "ExpectedValue"]) \
-        .applymap(highlight_ev, subset=["ExpectedValue"])
-
-    st.markdown("### Market-Level Breakdown")
-    st.dataframe(styled_df, use_container_width=True, height=700)
-
+# ──────────────────────────────────────────────
+# PLOT
+# ──────────────────────────────────────────────
+fig, ax = plt.subplots(figsize=(11,5))
+ax.plot(trend['date'], trend['EV'], marker='o', linewidth=2)
+ax.axhline(0, color='gray', linestyle='--', linewidth=1)
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+ax.set_ylabel('Expected Value ($)')
+ax.set_title('Portfolio EV (Weekly Snapshots)')
+plt.xticks(rotation=45)
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+st.pyplot(fig, use_container_width=True)
