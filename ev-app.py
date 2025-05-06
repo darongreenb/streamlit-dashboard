@@ -1,21 +1,19 @@
+# ─────────────────────  NBA Futures Dashboard: Historical EV Page  ──────────────────────
 import streamlit as st
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from datetime import datetime, timedelta
-import pymysql
+iimport pymysql
 import re
 from collections import defaultdict
 
-# ────────────────────────────────────────────────────────────────────
-# PAGE CONFIG
+# ─────────────────  PAGE CONFIG  ─────────────────
 st.set_page_config(page_title="NBA Futures Historical EV", layout="wide")
 st.markdown("<h1 style='text-align:center'>NBA Futures Historical EV</h1>", unsafe_allow_html=True)
-st.markdown("<h3 style='text-align:center;color:gray'>Weekly EV Tracking</h3>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align:center;color:gray'>Weekly EV Tracking (5% Vig)</h3>", unsafe_allow_html=True)
 
-# ────────────────────────────────────────────────────────────────────
-# DB HELPERS (same as EV Table page)
+# ─────────────────  DB HELPERS  ─────────────────
 def new_betting_conn():
     try:
         return pymysql.connect(
@@ -52,8 +50,7 @@ def with_cursor(conn):
     conn.ping(reconnect=True)
     return conn.cursor()
 
-# ────────────────────────────────────────────────────────────────────
-# ODDS HELPERS & MAPS
+# ─────────────────  ODDS HELPERS & MAPS  ─────────────────
 def american_odds_to_decimal(o):
     return 1.0 + (o/100) if o > 0 else 1.0 + 100/abs(o) if o else 1.0
 
@@ -84,12 +81,23 @@ futures_table_map = {
     ("Rookie of Year Award","Award"): "NBARotY",
     ("Sixth Man of Year Award","Award"): "NBASixthMotY",
 }
-team_alias_map = { 
-    # … same as your EV-table code …
+
+team_alias_map = {
+    "Philadelphia 76ers":"76ers","Milwaukee Bucks":"Bucks","Chicago Bulls":"Bulls",
+    "Cleveland Cavaliers":"Cavaliers","Boston Celtics":"Celtics","Los Angeles Clippers":"Clippers",
+    "Memphis Grizzlies":"Grizzlies","Atlanta Hawks":"Hawks","Miami Heat":"Heat",
+    "Charlotte Hornets":"Hornets","Utah Jazz":"Jazz","Sacramento Kings":"Kings",
+    "New York Knicks":"Knicks","Los Angeles Lakers":"Lakers","Orlando Magic":"Magic",
+    "Dallas Mavericks":"Mavericks","Brooklyn Nets":"Nets","Denver Nuggets":"Nuggets",
+    "Indiana Pacers":"Pacers","New Orleans Pelicans":"Pelicans","Detroit Pistons":"Pistons",
+    "Toronto Raptors":"Raptors","Houston Rockets":"Rockets","San Antonio Spurs":"Spurs",
+    "Phoenix Suns":"Suns","Oklahoma City Thunder":"Thunder","Minnesota Timberwolves":"Timberwolves",
+    "Portland Trail Blazers":"Trail Blazers","Golden State Warriors":"Warriors","Washington Wizards":"Wizards",
 }
+
 sportsbook_cols = ["BetMGM","DraftKings","Caesars","ESPNBet","FanDuel","BallyBet","RiversCasino","Bet365"]
 
-def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, fut_conn, vig_map):
+def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, fut_conn, vig=0.05):
     tbl = futures_table_map.get((event_type, event_label))
     if not tbl or fut_conn is None:
         return 1.0, 0.0
@@ -110,11 +118,9 @@ def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, fut_
     best = max(nums)
     dec = american_odds_to_decimal(best)
     prob = american_odds_to_prob(best)
-    vig = vig_map.get((event_type, event_label), 0.05)
     return dec, prob * (1 - vig)
 
-# ────────────────────────────────────────────────────────────────────
-# SQL QUERIES (identical to EV-table page)
+# ─────────────────  SQL QUERIES  ─────────────────
 sql_active = """
 SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake,
        l.EventType, l.EventLabel, l.ParticipantName
@@ -126,11 +132,10 @@ SELECT b.WagerID, b.NetProfit,
        l.EventType, l.EventLabel, l.ParticipantName
   FROM bets b JOIN legs l ON b.WagerID = l.WagerID
  WHERE b.WhichBankroll='GreenAleph'
-   AND b.WLCA IN ('Win','Loss','Cashout')
-   AND l.LeagueName='NBA'
+   AND b.WLCA IN ('Win','Loss','Cashout') AND l.LeagueName='NBA'
 """
 
-# ────────────────────────────────────────────────────────────────────
+# ─────────────────  HISTORICAL EV PAGE  ─────────────────
 def historical_ev_page():
     bet_conn = new_betting_conn()
     fut_conn = new_futures_conn()
@@ -138,20 +143,16 @@ def historical_ev_page():
         st.warning("Database connection failed. Showing demo data.")
         return
 
-    # date pickers
     start = st.sidebar.date_input("Start", datetime.utcnow().date() - timedelta(days=180))
     end   = st.sidebar.date_input("End",   datetime.utcnow().date())
     if start > end:
         st.error("Start date must be before end date")
         return
 
-    # vig sliders
-    default_vig = st.sidebar.slider("Default Vig %", 0, 20, 5)
-    vig_map = {m: st.sidebar.slider(f"{et} – {el}", 0, 20, default_vig)/100
-               for (et, el), m in zip(futures_table_map.keys(), futures_table_map.keys())}
+    # Assume 5% vig for all markets
+    vig = 0.05
 
-    # build weekly snapshots
-    dates = [start + timedelta(days=7*i) for i in range(((end - start).days//7)+1)]
+    dates = [start + timedelta(days=7*i) for i in range(((end - start).days // 7) + 1)]
     records = []
 
     for dt in dates:
@@ -159,7 +160,7 @@ def historical_ev_page():
 
         # Active
         cur = with_cursor(bet_conn)
-        cur.execute(sql_active + " AND DateTimePlaced<=%s", (snap,))
+        cur.execute(sql_active + " AND b.DateTimePlaced<=%s", (snap,))
         active_rows = cur.fetchall()
         active_bets = defaultdict(lambda: {"pot":0, "stake":0, "legs":[]})
         for r in active_rows:
@@ -167,40 +168,37 @@ def historical_ev_page():
             w["pot"]   = r["PotentialPayout"]
             w["stake"] = r["DollarsAtStake"]
             w["legs"].append((r["EventType"], r["EventLabel"], r["ParticipantName"]))
-        a_stake = a_exp = 0.0
+        total_stake = total_exp = 0.0
         for data in active_bets.values():
             pot, stake, legs = data["pot"], data["stake"], data["legs"]
-            prob = 1.0; decs = []
+            prob = 1.0
             for et, el, pn in legs:
-                dec, p = best_odds_decimal_prob(et, el, pn, snap, fut_conn, vig_map)
-                prob *= p; decs.append(dec)
+                dec, p = best_odds_decimal_prob(et, el, pn, snap, fut_conn, vig)
+                prob *= p
             if prob > 0:
-                a_stake += stake
-                a_exp   += pot * prob
+                total_stake += stake
+                total_exp   += pot * prob
 
         # Realized
-        cur.execute(sql_real + " AND DateTimePlaced<=%s", (snap,))
+        cur.execute(sql_real + " AND b.DateTimePlaced<=%s", (snap,))
         real_rows = cur.fetchall()
-        rel = 0.0
+        realized = 0.0
         for r in real_rows:
             net = r["NetProfit"]
-            decs = []
-            # split net across legs:
-            # identical to EV-table logic
-            cur_legs = [(r["EventType"],r["EventLabel"],r["ParticipantName"])]
-            decs = [best_odds_decimal_prob(et,el,pn,snap,fut_conn,vig_map)[0] for et,el,pn in cur_legs]
-            total_exc = sum(d-1 for d in decs) or 1
+            # single-leg weighting
+            decs = [best_odds_decimal_prob(r["EventType"], r["EventLabel"], r["ParticipantName"], snap, fut_conn, vig)[0]]
+            exc = sum(d - 1 for d in decs) or 1
             for d in decs:
-                rel += net * ((d-1)/total_exc)
+                realized += net * ((d - 1) / exc)
 
-        total_ev = a_exp - a_stake + rel
+        total_ev = total_exp - total_stake + realized
         records.append({"Date": snap, "Total EV": total_ev})
 
     df = pd.DataFrame(records)
 
-    # Matplotlib plot
-    fig, ax = plt.subplots(figsize=(10,5))
-    ax.plot(df["Date"], df["Total EV"], marker="o", linewidth=2, color="green")
+    # Plot
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(df["Date"], df["Total EV"], marker="o", color="green", linewidth=2)
     ax.set_title("Weekly NBA Futures EV")
     ax.set_xlabel("Date")
     ax.set_ylabel("EV ($)")
