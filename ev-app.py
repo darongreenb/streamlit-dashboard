@@ -130,6 +130,19 @@ bets_df = pd.DataFrame(bets)
 if bets_df.empty:
     st.warning("No NBA wagers found."); st.stop()
 
+# Convert numeric columns to appropriate types
+if not bets_df.empty:
+    try:
+        bets_df['PotentialPayout'] = pd.to_numeric(bets_df['PotentialPayout'], errors='coerce')
+        bets_df['DollarsAtStake'] = pd.to_numeric(bets_df['DollarsAtStake'], errors='coerce')
+        bets_df['DateTimePlaced'] = pd.to_datetime(bets_df['DateTimePlaced'], errors='coerce')
+        # Replace NaN values with 0 for numeric columns
+        bets_df['PotentialPayout'].fillna(0, inplace=True)
+        bets_df['DollarsAtStake'].fillna(0, inplace=True)
+    except Exception as e:
+        st.error(f"Error converting data types: {e}")
+        st.stop()
+
 # ──────────────────────────────────────────────
 # PRELOAD ODDS SNAPSHOTS
 # ──────────────────────────────────────────────
@@ -144,7 +157,12 @@ weekly_dates = pd.date_range(start=start_date, end=end_date, freq='7D')
 portfolio_ev = []
 for dt in weekly_dates:
     dt_norm = dt.normalize()
-    subset = bets_df[(bets_df['DateTimePlaced'] <= dt_norm) & (bets_df['WLCA']=='Active')]
+    # Make sure DateTimePlaced is datetime and handle comparison safely
+    subset = bets_df[
+        (pd.notna(bets_df['DateTimePlaced'])) & 
+        (bets_df['DateTimePlaced'] <= dt_norm) & 
+        (bets_df['WLCA']=='Active')
+    ]
     ev = 0.0
     for _, grp in subset.groupby('WagerID'):
         pot   = grp['PotentialPayout'].iloc[0]
@@ -162,13 +180,23 @@ for dt in weekly_dates:
             decs.append(1/p if p else 1)
         if not probs:
             continue
-        prob_prod = np.prod(probs)
-        expected  = pot * prob_prod
-        denom = sum(d-1 for d in decs)
-        if denom<=0: continue
-        for d in decs:
-            w = (d-1)/denom
-            ev += w*(expected - stake)
+        # Handle potential None or invalid values
+        if not probs or None in (pot, stake) or not all(isinstance(p, (int, float)) for p in probs):
+            continue
+            
+        try:
+            prob_prod = np.prod(probs)
+            expected = float(pot) * prob_prod if prob_prod else 0
+            denom = sum(d-1 for d in decs)
+            if denom <= 0: 
+                continue
+                
+            for d in decs:
+                w = (d-1)/denom
+                ev += w*(expected - float(stake))
+        except (TypeError, ValueError) as e:
+            st.error(f"Calculation error: {e}")
+            continue
     portfolio_ev.append({'date': dt_norm.to_pydatetime(), 'EV': ev})
 trend = pd.DataFrame(portfolio_ev)
 if trend.empty:
