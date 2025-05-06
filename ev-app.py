@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from datetime import datetime, timedelta
-iimport pymysql
+import pymysql
 import re
 from collections import defaultdict
 
@@ -112,7 +112,7 @@ def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, fut_
     row = cur.fetchone()
     if not row:
         return 1.0, 0.0
-    nums = [cast_odds(row[c]) for c in sportsbook_cols if row[c]]
+    nums = [cast_odds(row[c]) for c in sportsbook_cols if row.get(c)]
     if not nums:
         return 1.0, 0.0
     best = max(nums)
@@ -128,8 +128,7 @@ SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake,
  WHERE b.WhichBankroll='GreenAleph' AND b.WLCA='Active' AND l.LeagueName='NBA'
 """
 sql_real = """
-SELECT b.WagerID, b.NetProfit,
-       l.EventType, l.EventLabel, l.ParticipantName
+SELECT b.WagerID, b.NetProfit
   FROM bets b JOIN legs l ON b.WagerID = l.WagerID
  WHERE b.WhichBankroll='GreenAleph'
    AND b.WLCA IN ('Win','Loss','Cashout') AND l.LeagueName='NBA'
@@ -149,16 +148,14 @@ def historical_ev_page():
         st.error("Start date must be before end date")
         return
 
-    # Assume 5% vig for all markets
     vig = 0.05
-
     dates = [start + timedelta(days=7*i) for i in range(((end - start).days // 7) + 1)]
     records = []
 
     for dt in dates:
         snap = datetime.combine(dt, datetime.min.time())
 
-        # Active
+        # Active EV
         cur = with_cursor(bet_conn)
         cur.execute(sql_active + " AND b.DateTimePlaced<=%s", (snap,))
         active_rows = cur.fetchall()
@@ -179,17 +176,10 @@ def historical_ev_page():
                 total_stake += stake
                 total_exp   += pot * prob
 
-        # Realized
+        # Realized Net Profit
         cur.execute(sql_real + " AND b.DateTimePlaced<=%s", (snap,))
         real_rows = cur.fetchall()
-        realized = 0.0
-        for r in real_rows:
-            net = r["NetProfit"]
-            # single-leg weighting
-            decs = [best_odds_decimal_prob(r["EventType"], r["EventLabel"], r["ParticipantName"], snap, fut_conn, vig)[0]]
-            exc = sum(d - 1 for d in decs) or 1
-            for d in decs:
-                realized += net * ((d - 1) / exc)
+        realized = sum(float(r["NetProfit"] or 0) for r in real_rows)
 
         total_ev = total_exp - total_stake + realized
         records.append({"Date": snap, "Total EV": total_ev})
