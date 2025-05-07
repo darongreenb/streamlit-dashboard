@@ -198,10 +198,10 @@ def calculate_total_ev(as_of_date=None):
     # ------- Active wagers -------
     sql_active = """
         SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake,
-            l.EventType, l.EventLabel, l.ParticipantName, b.PlacedDateTime
+            l.EventType, l.EventLabel, l.ParticipantName, b.DateTimePlaced
         FROM bets b JOIN legs l ON b.WagerID = l.WagerID
         WHERE b.WhichBankroll='GreenAleph' AND b.WLCA='Active' AND l.LeagueName='NBA'
-        AND b.PlacedDateTime <= %s
+        AND b.DateTimePlaced <= %s
     """
     
     cursor = with_cursor(bet_conn)
@@ -243,12 +243,11 @@ def calculate_total_ev(as_of_date=None):
     # ------- Realised net profit -------
     sql_real = """
         SELECT b.WagerID, b.NetProfit,
-            l.EventType, l.EventLabel, l.ParticipantName, b.SettledDateTime
+            l.EventType, l.EventLabel, l.ParticipantName
         FROM bets b JOIN legs l ON b.WagerID = l.WagerID
         WHERE b.WhichBankroll='GreenAleph'
         AND b.WLCA IN ('Win','Loss','Cashout')
         AND l.LeagueName='NBA'
-        AND b.SettledDateTime <= %s
     """
     
     try:
