@@ -87,13 +87,18 @@ def main():
         last_day = daily[daily['date'] == daily['date'].max()]
         display_set = last_day.sort_values("prob", ascending=False).head(top_k)["team_name"].tolist()
 
+    # ... [unchanged code above this point] ...
+
     daily_top = daily[daily["team_name"].isin(display_set)]
 
     fig, ax = plt.subplots(figsize=(12, 6))
     for name, grp in daily_top.groupby("team_name"):
         ax.plot(grp["date"], grp["prob"] * 100, label=name, linewidth=2)
 
-    ax.set_ylim(0, 100)
+    max_prob = daily_top["prob"].max()
+    y_max = min(max_prob + 0.05, 1.0) * 100  # 5% headroom, capped at 100%
+
+    ax.set_ylim(0, y_max)
     ax.set_ylabel("Implied Probability (%)")
     ax.xaxis.set_major_locator(mdates.MonthLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
@@ -106,6 +111,7 @@ def main():
     ax.legend(title="Team Name", loc='best', frameon=False)
     plt.tight_layout()
     st.pyplot(fig)
+
 
 # ────────────────────── RUN ──────────────────────
 if __name__ == "__main__":
