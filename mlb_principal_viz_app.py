@@ -15,9 +15,9 @@ except ImportError:
     st.stop()
 
 # ─────────────────────  PAGE CONFIG  ─────────────────────
-st.set_page_config(page_title="NBA Futures EV Table", layout="wide")
+st.set_page_config(page_title="Futures EV Table", layout="wide")
 st.markdown("<h1 style='text-align:center'>NBA Futures EV Table</h1>", unsafe_allow_html=True)
-st.markdown("<h3 style='text-align:center;color:gray'>among markets tracked in <code>futures_db</code></h3>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align:center;color:gray'>among markets tracked in <code>futures_db</code></h3> plus settled non-NBA bets", unsafe_allow_html=True)
 
 # ─────────────────────  DB HELPERS  ─────────────────────
 def new_betting_conn():
