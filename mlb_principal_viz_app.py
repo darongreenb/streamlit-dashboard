@@ -131,42 +131,68 @@ team_alias_map = {
 
 sportsbook_cols = ["BetMGM","DraftKings","Caesars","ESPNBet","FanDuel","BallyBet","RiversCasino","Bet365"]
 
-def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, fut_conn, vig_map):
-    """Get best odds with error handling"""
+# ───────────────────────────────────────────────────────────
+# NEW best_odds_decimal_prob  (drop‑in)
+# ───────────────────────────────────────────────────────────
+def best_odds_decimal_prob(event_type, event_label,
+                           participant, cutoff_dt,
+                           fut_conn, vig_map) -> tuple[float, float]:
+    """
+    Return (decimal_odds, probability) for *participant* in the given market,
+    evaluated at the latest date ≤ cutoff_dt that has **any** non‑zero odds.
+    Among the book columns on that date, pick the quote with the *lowest*
+    implied probability (the 'longest' price).  If nothing ever found,
+    fall back to (1.0, 0.0).
+    """
     if fut_conn is None:
         return 1.0, 0.0
-        
+
     tbl = futures_table_map.get((event_type, event_label))
-    if not tbl: return 1.0, 0.0
-    
-    alias = team_alias_map.get(participant, participant)
-    
-    cursor = with_cursor(fut_conn)
-    if cursor is None:
+    if not tbl:                                  # market not mapped
         return 1.0, 0.0
-        
+
+    alias = team_alias_map.get(participant, participant)
+    cur   = with_cursor(fut_conn)
+    if cur is None:
+        return 1.0, 0.0
+
+    # Pull (up to) the last 100 snapshots for this runner before cutoff_dt
     try:
-        cursor.execute(
-            f"""SELECT {','.join(sportsbook_cols)}
-                  FROM {tbl}
-                 WHERE team_name = %s AND date_created <= %s
-              ORDER BY date_created DESC LIMIT 1""",
+        cur.execute(
+            f"""SELECT date_created, {','.join(sportsbook_cols)}
+                 FROM {tbl}
+                WHERE team_name = %s
+                  AND date_created <= %s
+             ORDER BY date_created DESC
+                LIMIT 100""",
             (alias, cutoff_dt)
         )
-        row = cursor.fetchone()
+        rows = cur.fetchall()
     except Exception as e:
-        st.error(f"Error querying odds data: {str(e)}")
+        st.error(f"Odds query error for {participant}: {e}")
         return 1.0, 0.0
-        
-    if not row: return 1.0, 0.0
-    nums = [cast_odds(row.get(c)) for c in sportsbook_cols if row.get(c)]
-    nums = [n for n in nums if n]
-    if not nums: return 1.0, 0.0
-    best = max(nums)
-    dec = american_odds_to_decimal(best)
-    prob = american_odds_to_prob(best)
-    vig = vig_map.get((event_type, event_label), 0.05)
-    return dec, prob * (1 - vig)
+    finally:
+        cur.close()
+
+    # Walk through the rows until we find at least one non‑zero quote
+    for r in rows:
+        # cast all books to ints, discard zeros / nulls
+        quotes = [cast_odds(r.get(c)) for c in sportsbook_cols]
+        quotes = [q for q in quotes if q]          # keep non‑zero
+        if not quotes:
+            continue                               # try previous date
+
+        # pick the quote with *minimum implied probability*
+        best = min(quotes, key=american_odds_to_prob)
+
+        dec  = american_odds_to_decimal(best)
+        prob = american_odds_to_prob(best)
+        vig  = vig_map.get((event_type, event_label), 0.05)   # default 5 %
+        return dec, prob * (1 - vig)
+
+    # No non‑zero odds found in look‑back window
+    return 1.0, 0.0
+
 
 # ─────────────────  EV TABLE PAGE  ────────────────
 def ev_table_page():
