@@ -77,9 +77,43 @@ def cast_odds(v):
 # ─────────────────  MAPS & CONSTANTS  ─────────────
 # (unchanged – kept for brevity)
 from typing import Dict, Tuple
-futures_table_map: Dict[Tuple[str, str], str] = {...}  # OMITTED FOR BREVITY
-team_alias_map = {...}  # OMITTED FOR BREVITY
-sportsbook_cols = ["BetMGM","DraftKings","Caesars","ESPNBet","FanDuel","BallyBet","RiversCasino","Bet365"]
+
+# ─────────────────  MAPS  ────────────────────────
+futures_table_map: Dict[Tuple[str, str], str] = {
+    ("Championship", "NBA Championship"): "NBAChampionship",
+    ("Conference Winner", "Eastern Conference"): "NBAEasternConference",
+    ("Conference Winner", "Western Conference"): "NBAWesternConference",
+    ("Defensive Player of Year Award", "Award"): "NBADefensivePotY",
+    ("Division Winner", "Atlantic Division"): "NBAAtlantic",
+    ("Division Winner", "Central Division"): "NBACentral",
+    ("Division Winner", "Northwest Division"): "NBANorthwest",
+    ("Division Winner", "Pacific Division"): "NBAPacific",
+    ("Division Winner", "Southeast Division"): "NBASoutheast",
+    ("Division Winner", "Southwest Division"): "NBASouthwest",
+    ("Most Improved Player Award", "Award"): "NBAMIP",
+    ("Most Valuable Player Award", "Award"): "NBAMVP",
+    ("Rookie of Year Award", "Award"): "NBARotY",
+    ("Sixth Man of Year Award", "Award"): "NBASixthMotY",
+}
+
+team_alias_map: Dict[str, str] = {
+    "Philadelphia 76ers": "76ers", "Milwaukee Bucks": "Bucks", "Chicago Bulls": "Bulls",
+    "Cleveland Cavaliers": "Cavaliers", "Boston Celtics": "Celtics", "Los Angeles Clippers": "Clippers",
+    "Memphis Grizzlies": "Grizzlies", "Atlanta Hawks": "Hawks", "Miami Heat": "Heat",
+    "Charlotte Hornets": "Hornets", "Utah Jazz": "Jazz", "Sacramento Kings": "Kings",
+    "New York Knicks": "Knicks", "Los Angeles Lakers": "Lakers", "Orlando Magic": "Magic",
+    "Dallas Mavericks": "Mavericks", "Brooklyn Nets": "Nets", "Denver Nuggets": "Nuggets",
+    "Indiana Pacers": "Pacers", "New Orleans Pelicans": "Pelicans", "Detroit Pistons": "Pistons",
+    "Toronto Raptors": "Raptors", "Houston Rockets": "Rockets", "San Antonio Spurs": "Spurs",
+    "Phoenix Suns": "Suns", "Oklahoma City Thunder": "Thunder", "Minnesota Timberwolves": "Timberwolves",
+    "Portland Trail Blazers": "Trail Blazers", "Golden State Warriors": "Warriors", "Washington Wizards": "Wizards",
+}
+
+sportsbook_cols = [
+    "BetMGM", "DraftKings", "Caesars", "ESPNBet", "FanDuel",
+    "BallyBet", "RiversCasino", "Bet365",
+]
+ = ["BetMGM","DraftKings","Caesars","ESPNBet","FanDuel","BallyBet","RiversCasino","Bet365"]
 
 # ─────────────────  CORE: BEST ODDS  ─────────────
 # (function unchanged – kept for brevity)
