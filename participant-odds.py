@@ -108,7 +108,7 @@ def main():
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     plt.xticks(rotation=45)
-    ax.legend(title="Team Name", loc='best', frameon=False)
+    ax.legend(title="Participant Name", loc='best', frameon=False)
     plt.tight_layout()
     st.pyplot(fig)
 
