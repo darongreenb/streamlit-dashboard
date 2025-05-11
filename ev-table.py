@@ -33,7 +33,6 @@ def new_betting_conn():
         st.error(f"Betting-db connection failed: {e.args[0]}")
         return None
 
-
 def new_futures_conn():
     try:
         return pymysql.connect(
@@ -48,7 +47,6 @@ def new_futures_conn():
     except pymysql.Error as e:
         st.error(f"Futures-db connection failed: {e.args[0]}")
         return None
-
 
 def with_cursor(conn):
     if conn is None:
@@ -117,10 +115,7 @@ def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, fut_
     if cur is None: return 1.0, 0.0
     try:
         cur.execute(
-            f"""SELECT {','.join(sportsbook_cols)}
-                  FROM {tbl}
-                 WHERE team_name=%s AND date_created<=%s
-              ORDER BY date_created DESC LIMIT 100""",
+            f"SELECT {','.join(sportsbook_cols)} FROM {tbl} WHERE team_name=%s AND date_created<=%s ORDER BY date_created DESC LIMIT 100",
             (alias, cutoff_dt)
         )
         rows = cur.fetchall()
@@ -133,7 +128,6 @@ def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, fut_
         nums = [cast_odds(r.get(c)) for c in sportsbook_cols]
         nums = [n for n in nums if n]
         if not nums: continue
-        # pick longest (lowest implied prob)
         best = min(nums, key=american_odds_to_prob)
         dec = american_odds_to_decimal(best)
         prob = american_odds_to_prob(best)
@@ -154,17 +148,12 @@ def ev_table_page():
         now = datetime.utcnow()
         vig_inputs = {k: 0.05 for k in futures_table_map}
 
-        # Active NBA futures
         cursor = with_cursor(bet_conn)
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT b.WagerID, b.PotentialPayout, b.DollarsAtStake,
                    l.EventType, l.EventLabel, l.ParticipantName
               FROM bets b JOIN legs l ON b.WagerID = l.WagerID
-             WHERE b.WhichBankroll='GreenAleph'
-               AND b.WLCA='Active'
-               AND l.LeagueName='NBA'"""
-        )
+             WHERE b.WhichBankroll='GreenAleph' AND b.WLCA='Active' AND l.LeagueName='NBA'""")
         active_rows = cursor.fetchall()
         active_bets = defaultdict(lambda: {"pot":0, "stake":0, "legs":[]})
         for r in active_rows:
@@ -195,16 +184,10 @@ def ev_table_page():
                 active_stake[(et, el)] += w * stake
                 active_exp[(et, el)] += w * expected
 
-        # Realized NBA futures
-        cursor.execute(
-            """
-            SELECT b.WagerID, b.NetProfit,
-                   l.EventType, l.EventLabel, l.ParticipantName
+        cursor.execute("""
+            SELECT b.WagerID, b.NetProfit, l.EventType, l.EventLabel, l.ParticipantName
               FROM bets b JOIN legs l ON b.WagerID = l.WagerID
-             WHERE b.WhichBankroll='GreenAleph'
-               AND b.WLCA IN ('Win','Loss','Cashout')
-               AND l.LeagueName='NBA'"""
-        )
+             WHERE b.WhichBankroll='GreenAleph' AND b.WLCA IN ('Win','Loss','Cashout') AND l.LeagueName='NBA'""")
         real_rows = cursor.fetchall()
         wager_net, wager_legs = defaultdict(float), defaultdict(list)
         for r in real_rows:
@@ -221,7 +204,7 @@ def ev_table_page():
             for d, (et, el, _) in zip(decs, legs):
                 realized_np[(et, el)] += net * ((d - 1) / exc_sum)
 
-        # ---------- Assemble table ----------
+        # Assemble
         rows_out = []
         for et, el in sorted(active_stake.keys() | active_exp.keys() | realized_np.keys()):
             stake = active_stake.get((et, el), 0)
@@ -238,30 +221,31 @@ def ev_table_page():
         df = pd.DataFrame(rows_out)
         if not df.empty:
             df = df.sort_values(["EventType", "EventLabel"]).reset_index(drop=True)
-            # Add TOTAL row
             totals = df[["ActiveDollarsAtStake", "ActiveExpectedPayout", "RealizedNetProfit", "ExpectedValue"]].sum()
             total_row = {
-                "EventType": "TOTAL",
+                "EventType": "",
                 "EventLabel": "",
                 "ActiveDollarsAtStake": totals["ActiveDollarsAtStake"],
                 "ActiveExpectedPayout": totals["ActiveExpectedPayout"],
                 "RealizedNetProfit": totals["RealizedNetProfit"],
                 "ExpectedValue": totals["ExpectedValue"],
             }
-            df = pd.concat([df, pd.DataFrame([total_row])], ignore_index=True)
+            st.metric("💸 Active Stake", f"${totals['ActiveDollarsAtStake']:,.2f}")
+            st.metric("📈 Expected Payout", f"${totals['ActiveExpectedPayout']:,.2f}")
+            st.metric("💰 Realized Net Profit", f"${totals['RealizedNetProfit']:,.2f}")
+            st.metric("⚡️ Expected Value", f"${totals['ExpectedValue']:,.2f}")
 
-            styled = df.style.format("${:,.2f}", subset=[
-                "ActiveDollarsAtStake",
-                "ActiveExpectedPayout",
-                "RealizedNetProfit",
-                "ExpectedValue",
-            ]).applymap(
+            styled = df.style.format({
+                "ActiveDollarsAtStake": "${:,.2f}",
+                "ActiveExpectedPayout": "${:,.2f}",
+                "RealizedNetProfit": "${:,.2f}",
+                "ExpectedValue": "${:,.2f}",
+            }).applymap(
                 lambda v: "color: green; font-weight: bold" if isinstance(v, (int, float)) and v > 0 else
                           "color: red; font-weight: bold" if isinstance(v, (int, float)) and v < 0 else
                           "",
                 subset=["ExpectedValue"],
             )
-
             st.markdown("### Market-Level Breakdown")
             st.dataframe(styled, use_container_width=True, height=700)
         else:
@@ -274,26 +258,25 @@ def ev_table_page():
         st.code(traceback.format_exc())
         display_demo_data()
 
-# Demo fallback
+# Demo
+
 def display_demo_data():
-    data = [
-        {"EventType":"Championship","EventLabel":"NBA Championship",
-         "ActiveDollarsAtStake":5000,"ActiveExpectedPayout":15000,
-         "RealizedNetProfit":2000,"ExpectedValue":12000},
-    ]
-    df = pd.DataFrame(data)
-    totals = df[["ActiveDollarsAtStake","ActiveExpectedPayout","RealizedNetProfit","ExpectedValue"]].sum()
-    total_row = {"EventType":"TOTAL","EventLabel":"",
-                 "ActiveDollarsAtStake":totals["ActiveDollarsAtStake"],
-                 "ActiveExpectedPayout":totals["ActiveExpectedPayout"],
-                 "RealizedNetProfit":totals["RealizedNetProfit"],
-                 "ExpectedValue":totals["ExpectedValue"]}
-    df = pd.concat([df, pd.DataFrame([total_row])], ignore_index=True)
-    styled = df.style.format("${:,.0f}").applymap(
-        lambda v: "color: green; font-weight: bold" if isinstance(v, (int, float)) and v > 0 else "",
-    )
+    """Display placeholder data when database connections fail"""
+    demo_df = pd.DataFrame([
+        {"EventType":"Demo","EventLabel":"No Data","ActiveDollarsAtStake":0.0,
+         "ActiveExpectedPayout":0.0,"RealizedNetProfit":0.0,"ExpectedValue":0.0}
+    ])
+    st.metric("💸 Active Stake", "$0.00")
+    st.metric("📈 Expected Payout", "$0.00")
+    st.metric("💰 Realized Net Profit", "$0.00")
+    st.metric("⚡️ Expected Value", "$0.00")
+    styled = demo_df.style.format({
+        "ActiveDollarsAtStake":"${:,.2f}",
+        "ActiveExpectedPayout":"${:,.2f}",
+        "RealizedNetProfit":"${:,.2f}",
+        "ExpectedValue":"${:,.2f}"})
+    st.markdown("### Market-Level Breakdown (Demo)")
     st.dataframe(styled, use_container_width=True, height=300)
 
-# Run
 if __name__ == "__main__":
     ev_table_page()
