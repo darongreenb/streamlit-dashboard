@@ -6,8 +6,8 @@ from datetime import datetime
 from typing import Dict, Tuple
 
 # ──────────────────────  PAGE CONFIG  ──────────────────────
-st.set_page_config(page_title="NBA Futures EV Table", layout="wide")
-st.title("🏀 NBA Futures EV Table")
+st.set_page_config(page_title="Futures EV Table", layout="wide")
+st.title("🔮 Futures EV Table")
 st.caption("Data from `betting_db` + `futuresdata`, settled non-NBA bets included")
 
 # ──────────────────────  DB HELPERS  ──────────────────────
