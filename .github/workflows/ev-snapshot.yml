@@ -3,7 +3,7 @@ name: Daily EV snapshot
 on:
   schedule:
     # Runs every day at 05:00 UTC (1:00 AM EDT)
-    - cron: '30 18 * * *'
+    - cron: '28 18 * * *'
   workflow_dispatch:
 
 jobs:
