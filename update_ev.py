@@ -92,34 +92,38 @@ team_alias_map = {
 sportsbook_cols = ["BetMGM","DraftKings","Caesars","ESPNBet","FanDuel","BallyBet","RiversCasino","Bet365"]
 
 def best_odds_decimal_prob(event_type, event_label, participant, cutoff_dt, vig_map):
-    """Fetch up to 100 snapshots and pick the longest (min implied prob) non-zero quote."""
     tbl = futures_table_map.get((event_type, event_label))
     if tbl is None:
         return 1.0, 0.0
 
     alias = team_alias_map.get(participant, participant)
+    target_date = cutoff_dt.date()
+
     with engine_fut.connect() as conn:
         rows = conn.execute(
             sqlalchemy.text(f"""
-                SELECT {','.join(sportsbook_cols)}
+                SELECT {','.join(sportsbook_cols)}, DATE(date_created) as dt
                   FROM {tbl}
                  WHERE team_name = :alias
-                   AND date_created <= :dt
+                   AND DATE(date_created) = :target_date
               ORDER BY date_created DESC
                  LIMIT 100
-            """), {"alias": alias, "dt": cutoff_dt}
+            """), {"alias": alias, "target_date": target_date}
         ).mappings().all()
 
     for r in rows:
         quotes = [cast_odds(r[c]) for c in sportsbook_cols]
-        quotes = [q for q in quotes if q]
-        if not quotes:
-            continue
-        best = min(quotes, key=american_odds_to_prob)
-        dec  = american_odds_to_decimal(best)
+        valid_quotes = [q for q in quotes if q]
+
+        if not valid_quotes:
+            continue  # All zero or None; try next row (same day, newer timestamp)
+
+        best = max(valid_quotes, key=american_odds_to_prob)
+        dec = american_odds_to_decimal(best)
         prob = american_odds_to_prob(best) * (1 - vig_map.get((event_type, event_label), 0.05))
         return dec, prob
 
+    # No valid odds found on that date
     return 1.0, 0.0
 
 # ─────────────────────────────────────────────────────────────────────────────
