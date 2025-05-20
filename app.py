@@ -679,7 +679,8 @@ elif page == "NBA Charts":
         'Toronto Raptors', 'Utah Jazz', 'Washington Wizards',
         'Atlanta Hawks', 'Charlotte Hornets', 'Los Angeles Clippers', 'Milwaukee Bucks',
         'Memphis Grizzlies', 'Orlando Magic', 'Miami Heat', 'Detroit Pistons',
-        'Houston Rockets', 'Los Angeles Lakers'
+        'Houston Rockets', 'Los Angeles Lakers', 'Boston Celtics', 'Denver Nuggets', 
+        'Golden State Warriors', 'Cleveland Cavaliers'
     ]
 
     # 1️⃣  Active-principal by EventType  ───────────────────────────
