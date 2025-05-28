@@ -1,35 +1,35 @@
-# name: Daily EV snapshot
+name: Daily EV snapshot
 
-# on:
-#   schedule:
-#     # Runs every day at 05:00 UTC (1:00 AM EDT)
-#     - cron: '28 18 * * *'
-#   workflow_dispatch:
+on:
+  schedule:
+    # Runs every day at 05:00 UTC (1:00 AM EDT)
+    - cron: '28 18 * * *'
+  workflow_dispatch:
 
-# jobs:
-#   snapshot:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v3
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-#       - name: Set up Python
-#         uses: actions/setup-python@v4
-#         with:
-#           python-version: '3.x'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
 
-#       - name: Install dependencies
-#         run: |
-#           pip install pymysql sqlalchemy pandas matplotlib
+      - name: Install dependencies
+        run: |
+          pip install pymysql sqlalchemy pandas matplotlib
 
-#       - name: Run EV snapshot
-#         env:
-#           BET_HOST: ${{ secrets.BET_HOST }}
-#           BET_USER: ${{ secrets.BET_USER }}
-#           BET_PW:   ${{ secrets.BET_PW }}
-#           BET_DB:   ${{ secrets.BET_DB }}
-#           FUT_HOST: ${{ secrets.FUT_HOST }}
-#           FUT_USER: ${{ secrets.FUT_USER }}
-#           FUT_PW:   ${{ secrets.FUT_PW }}
-#           FUT_DB:   ${{ secrets.FUT_DB }}
-#         run: python update_ev.py
+      - name: Run EV snapshot
+        env:
+          BET_HOST: ${{ secrets.BET_HOST }}
+          BET_USER: ${{ secrets.BET_USER }}
+          BET_PW:   ${{ secrets.BET_PW }}
+          BET_DB:   ${{ secrets.BET_DB }}
+          FUT_HOST: ${{ secrets.FUT_HOST }}
+          FUT_USER: ${{ secrets.FUT_USER }}
+          FUT_PW:   ${{ secrets.FUT_PW }}
+          FUT_DB:   ${{ secrets.FUT_DB }}
+        run: python update_ev.py
