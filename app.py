@@ -310,7 +310,7 @@ if page == "Principal Volume":
         'NCAA Men\'s Basketball': 'lightcoral',  # Light orange
         'Olympics': 'black',
         'NFL': 'purple',
-        'MLB': 'gray'
+        'MLB 2025': 'gray'
     }
 
     # SQL queries
@@ -2476,7 +2476,7 @@ elif page == "Tennis Charts":
                 
 elif page == "MLB Charts":
     # MLB Charts
-    st.title('MLB Active Bets - GA1')
+    st.title('MLB 2025 Active Bets - GA1')
 
     # SQL query to fetch data for the main bar chart
     main_query = """
@@ -2717,7 +2717,7 @@ elif page == "MLB Charts":
                         
 elif page == "MLB Principal Tables":
     # MLB Principal Tables
-    st.title('MLB Principal Tables - GA1')
+    st.title('MLB 2025 Principal Tables - GA1')
     
     # SQL query to fetch the data for Active Straight Bets
     straight_bets_query = """
