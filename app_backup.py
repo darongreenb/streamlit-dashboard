@@ -310,7 +310,7 @@ if page == "Principal Volume":
         'NCAA Men\'s Basketball': 'lightcoral',  # Light orange
         'Olympics': 'black',
         'NFL': 'purple',
-        'MLB': 'gray'
+        'MLB 2025': 'gray'
     }
 
     # SQL queries
@@ -2476,7 +2476,7 @@ elif page == "Tennis Charts":
                 
 elif page == "MLB Charts":
     # MLB Charts
-    st.title('MLB Active Bets - GA1')
+    st.title('MLB 2025 Active Bets - GA1')
 
     # SQL query to fetch data for the main bar chart
     main_query = """
@@ -2495,7 +2495,7 @@ elif page == "MLB Charts":
         JOIN 
             (SELECT DISTINCT WagerID, EventType, LeagueName FROM legs) l ON db.WagerID = l.WagerID
         WHERE
-            l.LeagueName = 'MLB'
+            l.LeagueName = 'MLB 2025'
         GROUP BY 
             l.EventType
     )
@@ -2511,7 +2511,7 @@ elif page == "MLB Charts":
     JOIN 
         (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
     WHERE
-        l.LeagueName = 'MLB';
+        l.LeagueName = 'MLB 2025';
     """
 
     # Fetch the data for the main bar chart
@@ -2583,7 +2583,7 @@ elif page == "MLB Charts":
             JOIN 
                 legs l ON b.WagerID = l.WagerID
             WHERE
-                l.LeagueName = 'MLB'
+                l.LeagueName = 'MLB 2025'
                 AND l.EventType = '{event_type_option}'
                 AND b.WhichBankroll = 'GreenAleph'
                 AND b.WLCA = 'Active';
@@ -2617,7 +2617,7 @@ elif page == "MLB Charts":
                     JOIN 
                         legs l ON db.WagerID = l.WagerID
                     WHERE
-                        l.LeagueName = 'MLB'
+                        l.LeagueName = 'MLB 2025'
                         AND l.EventType = '{event_type_option}'
                         AND l.EventLabel = '{event_label_option}'
                     GROUP BY 
@@ -2717,7 +2717,7 @@ elif page == "MLB Charts":
                         
 elif page == "MLB Principal Tables":
     # MLB Principal Tables
-    st.title('MLB Principal Tables - GA1')
+    st.title('MLB 2025 Principal Tables - GA1')
     
     # SQL query to fetch the data for Active Straight Bets
     straight_bets_query = """
@@ -2730,7 +2730,7 @@ elif page == "MLB Principal Tables":
         FROM bets b    
         JOIN legs l ON b.WagerID = l.WagerID
         WHERE b.LegCount = 1
-          AND l.LeagueName = 'MLB'
+          AND l.LeagueName = 'MLB 2025'
           AND b.WhichBankroll = 'GreenAleph'
           AND b.WLCA = 'Active'
         GROUP BY l.EventType, l.ParticipantName
@@ -2745,7 +2745,7 @@ elif page == "MLB Principal Tables":
         FROM bets b
         JOIN legs l ON b.WagerID = l.WagerID
         WHERE b.LegCount = 1
-          AND l.LeagueName = 'MLB'
+          AND l.LeagueName = 'MLB 2025'
           AND b.WhichBankroll = 'GreenAleph'
           AND b.WLCA = 'Active'
         GROUP BY l.EventType
@@ -2760,7 +2760,7 @@ elif page == "MLB Principal Tables":
         FROM bets b
         JOIN legs l ON b.WagerID = l.WagerID
         WHERE b.LegCount = 1
-          AND l.LeagueName = 'MLB'
+          AND l.LeagueName = 'MLB 2025'
           AND b.WhichBankroll = 'GreenAleph'
           AND b.WLCA = 'Active'
     )
@@ -2794,7 +2794,7 @@ elif page == "MLB Principal Tables":
     JOIN 
         legs l ON b.WagerID = l.WagerID
     WHERE 
-        l.LeagueName = 'MLB'
+        l.LeagueName = 'MLB 2025'
         AND b.WhichBankroll = 'GreenAleph'
         AND b.WLCA = 'Active'
         AND b.LegCount > 1;
