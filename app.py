@@ -75,23 +75,6 @@ if page == "Main Page":
     FROM 
         DistinctBets;
     """
-    )
-    SELECT 
-        l.LeagueName,
-        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake
-    FROM 
-        DistinctBets db
-    JOIN 
-        (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
-    GROUP BY 
-        l.LeagueName
-    UNION ALL
-    SELECT 
-        'Total' AS LeagueName,
-        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake
-    FROM 
-        DistinctBets;
-    """
 
     # Fetch and process data for Active Principal by League
     active_principal_data = get_data_from_db(data_query)
