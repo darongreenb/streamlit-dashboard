@@ -2486,6 +2486,7 @@ elif page == "MLB Charts":
         FROM bets
         WHERE WhichBankroll = 'GreenAleph'
           AND WLCA = 'Active'
+          AND LegCount = 1
     ),
     EventTypeSums AS (
         SELECT 
@@ -2512,7 +2513,7 @@ elif page == "MLB Charts":
     JOIN 
         (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
     WHERE
-        l.LeagueName = 'MLB 2025';
+        l.LeagueName = 'MLB 2025'
     """
 
     # Fetch the data for the main bar chart
