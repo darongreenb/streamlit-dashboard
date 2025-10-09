@@ -57,6 +57,7 @@ if page == "Main Page":
         FROM bets
         WHERE WhichBankroll = 'GreenAleph'
           AND WLCA = 'Active'
+          AND LegCount = 1
     )
     SELECT 
         l.LeagueName,
