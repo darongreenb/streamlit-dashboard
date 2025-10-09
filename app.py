@@ -50,13 +50,6 @@ if page == "Main Page":
     st.title('Principal Dashboard - GreenAleph I')
     st.markdown(f"**Last Update:** {last_update_time}", unsafe_allow_html=True)
 
-    # SQL query for Active Principal by League bar chart
-    data_query = """
-    WITH DistinctBets AS (
-        SELECT DISTINCT WagerID, DollarsAtStake, NetProfit
-        FROM bets
-        WHERE WhichBankroll = 'GreenAleph'
-          AND WLCA = 'Active'
           # SQL query for Active Principal by League bar chart
     data_query = """
     WITH DistinctBets AS (
