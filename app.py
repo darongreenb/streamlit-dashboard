@@ -57,6 +57,31 @@ if page == "Main Page":
         FROM bets
         WHERE WhichBankroll = 'GreenAleph'
           AND WLCA = 'Active'
+          # SQL query for Active Principal by League bar chart
+    data_query = """
+    WITH DistinctBets AS (
+        SELECT DISTINCT WagerID, DollarsAtStake, NetProfit
+        FROM bets
+        WHERE WhichBankroll = 'GreenAleph'
+          AND WLCA = 'Active'
+          AND LegCount = 1
+    )
+    SELECT 
+        l.LeagueName,
+        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake
+    FROM 
+        DistinctBets db
+    JOIN 
+        (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
+    GROUP BY 
+        l.LeagueName
+    UNION ALL
+    SELECT 
+        'Total' AS LeagueName,
+        ROUND(SUM(DollarsAtStake)) AS TotalDollarsAtStake
+    FROM 
+        DistinctBets;
+    """
     )
     SELECT 
         l.LeagueName,
