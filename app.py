@@ -310,7 +310,7 @@ if page == "Principal Volume":
         'NBA': 'darkorange',
         'NCAA Men\'s Basketball': 'lightcoral',  # Light orange
         'Olympics': 'black',
-        'NFL': 'purple',
+        'NFL 2026': 'purple',
         'MLB 2025': 'gray'
     }
     
@@ -1673,7 +1673,7 @@ elif page == "NHL Charts":
 
 elif page == "NFL Charts":
     # NFL Charts
-    st.title('NFL Active Bets - GA1')
+    st.title('NFL 2026 Active Bets - GA1')
 
     # SQL query to fetch data for the first bar chart
     first_chart_query = """
@@ -1692,7 +1692,7 @@ elif page == "NFL Charts":
         JOIN 
             (SELECT DISTINCT WagerID, EventType, LeagueName FROM legs) l ON db.WagerID = l.WagerID
         WHERE
-            l.LeagueName = 'NFL'
+            l.LeagueName = 'NFL 2026'
         GROUP BY 
             l.EventType
     )
@@ -1708,7 +1708,7 @@ elif page == "NFL Charts":
     JOIN 
         (SELECT DISTINCT WagerID, LeagueName FROM legs) l ON db.WagerID = l.WagerID
     WHERE
-        l.LeagueName = 'NFL';
+        l.LeagueName = 'NFL 2026';
     """
 
     # Fetch the data for the first bar chart
@@ -1769,7 +1769,7 @@ elif page == "NFL Charts":
     all_event_types_query = """
     SELECT DISTINCT EventType
     FROM legs
-    WHERE LeagueName = 'NFL';
+    WHERE LeagueName = 'NFL 2026';
     """
     all_event_types_data = get_data_from_db(all_event_types_query)
 
@@ -1805,7 +1805,7 @@ elif page == "NFL Charts":
             JOIN legs l ON b.WagerID = l.WagerID
             WHERE 
                 b.WhichBankroll = 'GreenAleph'
-                AND l.LeagueName = 'NFL'
+                AND l.LeagueName = 'NFL 2026'
                 AND l.EventType = '{event_type_option}'
                 AND b.LegCount = 1
             """
@@ -1822,7 +1822,7 @@ elif page == "NFL Charts":
             JOIN 
                 legs l ON b.WagerID = l.WagerID
             WHERE
-                l.LeagueName = 'NFL'
+                l.LeagueName = 'NFL 2026'
                 AND l.EventType = '{event_type_option}'
                 AND b.WhichBankroll = 'GreenAleph'
                 AND {wlca_condition}
@@ -1856,7 +1856,7 @@ elif page == "NFL Charts":
                     JOIN 
                         legs l ON db.WagerID = l.WagerID
                     WHERE
-                        l.LeagueName = 'NFL'
+                        l.LeagueName = 'NFL 2026'
                         AND l.EventType = '{event_type_option}'
                         AND l.EventLabel = '{event_label_option}'
                     GROUP BY 
@@ -1963,7 +1963,7 @@ elif page == "NFL Charts":
         b.WhichBankroll = 'GreenAleph'
         AND b.WLCA = 'Active'
         AND b.LegCount > 1  -- Only count parlays
-        AND l.LeagueName = 'NFL'
+        AND l.LeagueName = 'NFL 2026'
         AND l.EventType = %s
     GROUP BY 
         l.ParticipantName
@@ -2034,7 +2034,7 @@ elif page == "NFL Charts":
                 b.WhichBankroll = 'GreenAleph'
                 AND b.WLCA = 'Active'
                 AND b.LegCount > 1  -- Only count parlays
-                AND l.LeagueName = 'NFL'
+                AND l.LeagueName = 'NFL 2026'
                 AND l.EventType = %s
             GROUP BY 
                 l.ParticipantName
