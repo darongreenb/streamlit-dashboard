@@ -91,7 +91,7 @@ if page == "Main Page":
         
         fig, ax = plt.subplots(figsize=(15, 10))
         bars = ax.bar(active_principal_df['LeagueName'], active_principal_df['TotalDollarsAtStake'], color=bar_colors, width=0.6, edgecolor='black')
-        ax.set_title('GA1: Total Active Principal', fontsize=18, fontweight='bold')
+        ax.set_title('GAII: Total Active Principal', fontsize=18, fontweight='bold')
         ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
         for bar in bars:
             height = bar.get_height()
@@ -301,7 +301,7 @@ if page == "Main Page":
 
 
 if page == "Principal Volume":
-    st.title("Principal Volume (GA1)")
+    st.title("Principal Volume (GAII)")
 
     # Define custom color mapping
     league_colors = {
@@ -564,7 +564,7 @@ if page == "Principal Volume":
 
 # Adding the new "Betting Frequency" page
 if page == "Betting Frequency":
-    st.title("Betting Frequency (GA1)")
+    st.title("Betting Frequency (GAII)")
 
     # SQL query to get the number of bets by month for 'GreenAleph II'
     frequency_query = """
@@ -671,7 +671,7 @@ if page == "Betting Frequency":
 
 elif page == "NBA Charts":
     # NBA Charts
-    st.title('NBA Active Bets - GA1')
+    st.title('NBA Active Bets - GAII')
 
     # --- teams to EXCLUDE for “Championship” / “Conference Winner” ---
     EXCLUDED_NBA_TEAMS = [
@@ -721,7 +721,7 @@ elif page == "NBA Charts":
     ax.bar(first_chart_df['EventType'], first_chart_df['TotalDollarsAtStake'],
            color=[pastel[i % len(pastel)] for i in range(len(first_chart_df))],
            width=0.6, edgecolor='black')
-    ax.set_title('Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
+    ax.set_title('Active Principal by EventType (GAII)', fontsize=18, fontweight='bold')
     ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
     for bar in ax.patches:
         ax.annotate(f'{bar.get_height():,.0f}',
@@ -824,7 +824,7 @@ elif page == "NBA Charts":
     st.pyplot(fig)
 
     # 4️⃣  Parlays section  ────────────────────────────────────────
-    st.header("NBA Parlays - GA1")
+    st.header("NBA Parlays - GAII")
     parlay_count_query = f"""
     SELECT l.ParticipantName,
            COUNT(DISTINCT b.WagerID) AS NumberOfParlays
@@ -847,7 +847,7 @@ elif page == "NBA Charts":
         fig, ax = plt.subplots(figsize=(14, 8))
         bars = ax.bar(parlay_df['ParticipantName'], parlay_df['NumberOfParlays'],
                       color='skyblue', edgecolor='black')
-        ax.set_title(f"Parlay Involvement by Participant for {event_type_option} (GA1)",
+        ax.set_title(f"Parlay Involvement by Participant for {event_type_option} (GAII)",
                      fontsize=18, fontweight='bold')
         ax.set_ylabel("Number of Parlays", fontsize=14, fontweight='bold')
         plt.xticks(rotation=45, ha='right', fontsize=12, fontweight='bold')
@@ -886,7 +886,7 @@ elif page == "NBA Charts":
         bars = ax.bar(parlay_dollars_df['ParticipantName'],
                       parlay_dollars_df['TotalDollarsAtStake'],
                       color='lightblue', edgecolor='black')
-        ax.set_title(f"Total Dollars At Stake in Parlays by Participant for {event_type_option} (GA1)",
+        ax.set_title(f"Total Dollars At Stake in Parlays by Participant for {event_type_option} (GAII)",
                      fontsize=18, fontweight='bold')
         ax.set_ylabel("Total Dollars At Stake ($)", fontsize=14, fontweight='bold')
         plt.xticks(rotation=45, ha='right', fontsize=12, fontweight='bold')
@@ -905,7 +905,7 @@ elif page == "NBA Charts":
 
 elif page == "NCAAB Charts":
     # NCAAB Charts
-    st.title('NCAAB Active Bets - GA1')
+    st.title('NCAAB Active Bets - GAII')
 
     # SQL query to fetch data for the first bar chart
     first_chart_query = """
@@ -967,7 +967,7 @@ elif page == "NCAAB Charts":
         bars = ax.bar(first_chart_df['EventType'], first_chart_df['TotalDollarsAtStake'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(first_chart_df['EventType']))], width=0.6, edgecolor='black')
 
         # Add labels and title
-        ax.set_title('Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
+        ax.set_title('Active Principal by EventType (GAII)', fontsize=18, fontweight='bold')
         ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
 
         # Annotate each bar with the value (no dollar sign)
@@ -1134,7 +1134,7 @@ elif page == "NCAAB Charts":
 
 
             # Add a new section at the bottom for tracking the number of parlays by participant
-            st.header("NCAAB Parlays - GA1")
+            st.header("NCAAB Parlays - GAII")
 
             # SQL query to count the number of parlays each participant is involved in for the selected EventType
             parlay_count_query = f"""
@@ -1177,7 +1177,7 @@ elif page == "NCAAB Charts":
                     bars = ax.bar(parlay_df['ParticipantName'], parlay_df['NumberOfParlays'], color='skyblue', edgecolor='black')
                     
                     # Set title and labels
-                    ax.set_title(f"Parlay Involvement by Participant for {event_type_option} (GA1)", fontsize=18, fontweight='bold')
+                    ax.set_title(f"Parlay Involvement by Participant for {event_type_option} (GAII)", fontsize=18, fontweight='bold')
                     ax.set_ylabel("Number of Parlays", fontsize=14, fontweight='bold')
                     
                     # Rotate x-axis labels
@@ -1249,7 +1249,7 @@ elif page == "NCAAB Charts":
                             bars = ax.bar(parlay_dollars_df['ParticipantName'], parlay_dollars_df['TotalDollarsAtStake'], color='lightblue', edgecolor='black')
                             
                             # Set title and labels
-                            ax.set_title(f"Total Dollars At Stake in Parlays by Participant for {event_type_option} (GA1)", fontsize=18, fontweight='bold')
+                            ax.set_title(f"Total Dollars At Stake in Parlays by Participant for {event_type_option} (GAII)", fontsize=18, fontweight='bold')
                             ax.set_ylabel("Total Dollars At Stake ($)", fontsize=14, fontweight='bold')
                             
                             # Rotate x-axis labels
@@ -1285,7 +1285,7 @@ elif page == "NCAAB Charts":
 
 elif page == "NHL Charts":
     # NHL Charts
-    st.title('NHL Active Bets - GA1')
+    st.title('NHL Active Bets - GAII')
 
     # SQL query to fetch data for the first bar chart
     first_chart_query = """
@@ -1347,7 +1347,7 @@ elif page == "NHL Charts":
         bars = ax.bar(first_chart_df['EventType'], first_chart_df['TotalDollarsAtStake'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(first_chart_df['EventType']))], width=0.6, edgecolor='black')
 
         # Add labels and title
-        ax.set_title('Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
+        ax.set_title('Active Principal by EventType (GAII)', fontsize=18, fontweight='bold')
         ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
 
         # Annotate each bar with the value (no dollar sign)
@@ -1514,7 +1514,7 @@ elif page == "NHL Charts":
 
 
             # Add a new section at the bottom for tracking the number of parlays by participant
-            st.header("NHL Parlays - GA1")
+            st.header("NHL Parlays - GAII")
 
             # SQL query to count the number of parlays each participant is involved in for the selected EventType
             parlay_count_query = f"""
@@ -1557,7 +1557,7 @@ elif page == "NHL Charts":
                     bars = ax.bar(parlay_df['ParticipantName'], parlay_df['NumberOfParlays'], color='skyblue', edgecolor='black')
                     
                     # Set title and labels
-                    ax.set_title(f"Parlay Involvement by Participant for {event_type_option} (GA1)", fontsize=18, fontweight='bold')
+                    ax.set_title(f"Parlay Involvement by Participant for {event_type_option} (GAII)", fontsize=18, fontweight='bold')
                     ax.set_ylabel("Number of Parlays", fontsize=14, fontweight='bold')
                     
                     # Rotate x-axis labels
@@ -1629,7 +1629,7 @@ elif page == "NHL Charts":
                             bars = ax.bar(parlay_dollars_df['ParticipantName'], parlay_dollars_df['TotalDollarsAtStake'], color='lightblue', edgecolor='black')
                             
                             # Set title and labels
-                            ax.set_title(f"Total Dollars At Stake in Parlays by Participant for {event_type_option} (GA1)", fontsize=18, fontweight='bold')
+                            ax.set_title(f"Total Dollars At Stake in Parlays by Participant for {event_type_option} (GAII)", fontsize=18, fontweight='bold')
                             ax.set_ylabel("Total Dollars At Stake ($)", fontsize=14, fontweight='bold')
                             
                             # Rotate x-axis labels
@@ -1673,7 +1673,7 @@ elif page == "NHL Charts":
 
 elif page == "NFL Charts":
     # NFL Charts
-    st.title('NFL 2026 Active Bets - GA1')
+    st.title('NFL 2026 Active Bets - GAII')
 
     # SQL query to fetch data for the first bar chart
     first_chart_query = """
@@ -1735,7 +1735,7 @@ elif page == "NFL Charts":
         bars = ax.bar(first_chart_df['EventType'], first_chart_df['TotalDollarsAtStake'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(first_chart_df['EventType']))], width=0.6, edgecolor='black')
 
         # Add labels and title
-        ax.set_title('Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
+        ax.set_title('Active Principal by EventType (GAII)', fontsize=18, fontweight='bold')
         ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
 
         # Annotate each bar with the value (no dollar sign)
@@ -1948,7 +1948,7 @@ elif page == "NFL Charts":
 
 
     # Add a new section at the bottom for tracking NFL parlays
-    st.header("NFL Parlays - GA1")
+    st.header("NFL Parlays - GAII")
     
     # SQL query to count the number of parlays each participant is involved in for the selected EventType
     parlay_count_query = f"""
@@ -1991,7 +1991,7 @@ elif page == "NFL Charts":
             bars = ax.bar(parlay_df['ParticipantName'], parlay_df['NumberOfParlays'], color='skyblue', edgecolor='black')
             
             # Set title and labels
-            ax.set_title(f"Parlay Involvement by Participant for {event_type_option} (GA1)", fontsize=18, fontweight='bold')
+            ax.set_title(f"Parlay Involvement by Participant for {event_type_option} (GAII)", fontsize=18, fontweight='bold')
             ax.set_ylabel("Number of Parlays", fontsize=14, fontweight='bold')
             
             # Rotate x-axis labels
@@ -2062,7 +2062,7 @@ elif page == "NFL Charts":
                     bars = ax.bar(parlay_dollars_df['ParticipantName'], parlay_dollars_df['TotalDollarsAtStake'], color='lightblue', edgecolor='black')
                     
                     # Set title and labels
-                    ax.set_title(f"Total Dollars At Stake in Parlays by Participant for {event_type_option} (GA1)", fontsize=18, fontweight='bold')
+                    ax.set_title(f"Total Dollars At Stake in Parlays by Participant for {event_type_option} (GAII)", fontsize=18, fontweight='bold')
                     ax.set_ylabel("Total Dollars At Stake ($)", fontsize=14, fontweight='bold')
                     
                     # Rotate x-axis labels
@@ -2260,7 +2260,7 @@ elif page == "NFL Playoffs EV":
 
 elif page == "Tennis Charts":
     
-    st.title('Tennis Futures and Active Bets - GA1')
+    st.title('Tennis Futures and Active Bets - GAII')
 
     # Function to fetch and plot bar charts
     def plot_bar_chart(data, title, ylabel):
@@ -2478,7 +2478,7 @@ elif page == "Tennis Charts":
                 
 elif page == "MLB Charts":
     # MLB Charts
-    st.title('MLB 2025 Active Bets - GA1')
+    st.title('MLB 2025 Active Bets - GAII')
 
     # SQL query to fetch data for the main bar chart
     main_query = """
@@ -2528,7 +2528,7 @@ elif page == "MLB Charts":
         main_df = pd.DataFrame(main_data)
 
         # Display the fetched data
-       # st.subheader('Total Dollars At Stake by EventType (GA1)')
+       # st.subheader('Total Dollars At Stake by EventType (GAII)')
         
         # Create data for visualization
         main_df['TotalDollarsAtStake'] = main_df['TotalDollarsAtStake'].astype(float).round(0)
@@ -2544,7 +2544,7 @@ elif page == "MLB Charts":
         bars = ax.bar(main_df['EventType'], main_df['TotalDollarsAtStake'], color=[pastel_colors[i % len(pastel_colors)] for i in range(len(main_df['EventType']))], width=0.6, edgecolor='black')
 
         # Add labels and title
-        ax.set_title('Total Active Principal by EventType (GA1)', fontsize=18, fontweight='bold')
+        ax.set_title('Total Active Principal by EventType (GAII)', fontsize=18, fontweight='bold')
         ax.set_ylabel('Total Dollars At Stake ($)', fontsize=14, fontweight='bold')
 
         # Annotate each bar with the value (no dollar sign)
@@ -2720,7 +2720,7 @@ elif page == "MLB Charts":
                         
 elif page == "MLB Principal Tables":
     # MLB Principal Tables
-    st.title('MLB 2025 Principal Tables - GA1')
+    st.title('MLB 2025 Principal Tables - GAII')
     
     # SQL query to fetch the data for Active Straight Bets
     straight_bets_query = """
@@ -2812,19 +2812,19 @@ elif page == "MLB Principal Tables":
     # Display the data
     if straight_bets_data:
         straight_bets_df = pd.DataFrame(straight_bets_data)
-        st.subheader('Active Straight Bets in GA1')
+        st.subheader('Active Straight Bets in GAII')
         st.table(straight_bets_df)
     
     if parlay_bets_data:
         parlay_bets_df = pd.DataFrame(parlay_bets_data)
-        st.subheader('Active Parlay Bets in GA1')
+        st.subheader('Active Parlay Bets in GAII')
         st.table(parlay_bets_df)
 
 
 
 elif page == "NBA Participant Positions":
     # NBA Participant Positions
-    st.title('NBA Participant Positions - GA1')
+    st.title('NBA Participant Positions - GAII')
 
     # Fetch the list of participant names for the dropdown
     participants_query = """
@@ -2895,7 +2895,7 @@ elif page == "NBA Participant Positions":
 
 elif page == "NFL Participant Positions":
     # NFL Participant Positions
-    st.title('NFL Participant Positions - GA1')
+    st.title('NFL Participant Positions - GAII')
 
     # Fetch the list of participant names for the dropdown
     participants_query = """
